@@ -2,11 +2,23 @@
 <html>
 <head>
   <title>Dashboard Test Page</title>
+  <link rel="stylesheet" href="../src/css/jquery.gridster.css">
+  <link rel="stylesheet" href="../src/css/style.css">
 </head>
 <body>
 
   <script src="../src/jquery-1.10.2.js"></script>
   <script src="../src/underscore.js"></script>
+  <script src="../src/jquery.gridster.with-extras.js"></script>
   <script src="../src/dbp.js"></script>
+  <script>
+    var dbp = new DBP();
+    dbp.init();
+    dbp.dashboard.init(function(dashboard) {
+      var self = this;
+      dashboard.createDummy(self.module);
+    });
+
+  </script>
 </body>
 </html>

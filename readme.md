@@ -1,7 +1,9 @@
 # DBP
 ## Dashboard Panel
-## JavaScript Framework for HTML5 Dashboards and widgets
+#### JavaScript Framework for HTML5 Dashboards & Widgets
 
 Created by Erhan Gundogan <erhan.gundogan@gmail.com>
 
-## MIT License
+### License
+
+MIT
