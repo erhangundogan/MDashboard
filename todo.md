@@ -31,7 +31,6 @@
 * print
 * export
 
----------------
 
 ## Widget
 
@@ -53,14 +52,12 @@
 * save
 * delete
 * render
-* header
 * footer
 * events
 * animation
 * print
 * export
 
----------------
 
 ## Chart
 
@@ -83,7 +80,6 @@
 * events
 * animation
 
----------------
 
 ## Features
 

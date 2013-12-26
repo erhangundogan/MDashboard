@@ -47,6 +47,13 @@ var DBP, Dashboard, Widget;
    */
   Dashboard = function (module) {
     this.module = module;
+    this.widgetOptions = {
+      widget_margins: [10, 10],
+      widget_base_dimensions: [310, 260],
+      draggable: {
+        handle: 'header'
+      }
+    };
     this.container = $('body');
     this.widgets = [];
     return this;
@@ -86,31 +93,43 @@ var DBP, Dashboard, Widget;
     }
   };
 
-  /**
-   * Crates dummy widgets
-   */
-  Dashboard.prototype.createDummy = function () {
+  Dashboard.prototype.render = function() {
     var wrapper = $('<div class="gridster" />'),
         list = $('<ul />'),
-        self = this,
-        gridsterOptions = {
-          widget_margins: [10, 10],
-          widget_base_dimensions: [310, 260]
-        };
+        self = this;
+
+    if (self.widgets.length == 0) return;
 
     self.container.append(
       wrapper.append(
         list));
 
-    //var widget = new Widget(options);
+    _.each(self.widgets, function(widget, index) {
+      list.append(widget.render());
+    });
 
-    list.append($('<li />').attr('data-row', 1).attr('data-col', 1).attr('data-sizex', 1).attr('data-sizey', 3))
-        .append($('<li />').attr('data-row', 1).attr('data-col', 2).attr('data-sizex', 2).attr('data-sizey', 1))
-        .append($('<li />').attr('data-row', 2).attr('data-col', 2).attr('data-sizex', 1).attr('data-sizey', 1))
-        .append($('<li />').attr('data-row', 2).attr('data-col', 3).attr('data-sizex', 1).attr('data-sizey', 1))
-        .append($('<li />').attr('data-row', 3).attr('data-col', 2).attr('data-sizex', 1).attr('data-sizey', 1))
-        .append($('<li />').attr('data-row', 3).attr('data-col', 3).attr('data-sizex', 1).attr('data-sizey', 1))
-        .gridster(gridsterOptions);
+    list.gridster(self.widgetOptions);
+  };
+
+  /**
+   * Crates dummy widgets
+   */
+  Dashboard.prototype.createDummy = function () {
+    var self = this,
+        widgets = [
+          { row:1, col:1, ySize:3, header:'header 1' },
+          { row:1, col:2, xSize:2, header:'header 2' },
+          { row:2, col:2, header:'header 3' },
+          { row:2, col:3, header:'header 4' },
+          { row:3, col:2, settings: false },
+          { row:3, col:3, settings: false }
+        ];
+
+    _.each(widgets, function(widgetOptions, index) {
+      self.widgets.push(new Widget(widgetOptions));
+    });
+
+    self.render();
   };
 
   /**
@@ -120,10 +139,48 @@ var DBP, Dashboard, Widget;
    * @constructor
    */
   Widget = function (_options) {
-    this.xSize = ySize = 1;
+    this.xSize = 1;
+    this.ySize = 1;
+    this.settings = true;
+
     _.extend(this, _options);
     return this;
   };
   Widget.prototype.dashboard = typeof Dashboard;
+  Widget.prototype.render = function() {
+    var self = this,
+        item = $('<li></li>'),
+        options = Object.keys(self);
+
+    _.each(options, function(key, index) {
+      switch(key) {
+        case 'row':
+          item.attr('data-row', self.row);
+          break;
+        case 'col':
+          item.attr('data-col', self.col);
+          break;
+        case 'xSize':
+          item.attr('data-sizex', self.xSize);
+          break;
+        case 'ySize':
+          item.attr('data-sizey', self.ySize);
+          break;
+        case 'header':
+          item.prepend($('<header>' + self.header + '</header>'));
+          break;
+        case 'content':
+          item.append(self.content);
+          break;
+        case 'settings':
+          if (self.settings) {
+            item.prepend($('<i class="fa fa-cog fa-2x fa-white dbp-settings-icon"></i>'));
+          }
+          break;
+      }
+    });
+
+    return item;
+  };
 
 }(this));
