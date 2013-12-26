@@ -47,69 +47,6 @@ a {
     background: #FFF;
 }
 
-.logo,
-.logo-small,
-.ducksboard-logo {
-    display: inline-block;
-    text-indent: -999em;
-    background-image: url(../img/sprite.png);
-    background-repeat: no-repeat;
-}
-
-.ducksboard-logo {
-    width: 120px;
-    height: 18px;
-    background-position: right bottom;
-    margin:0 5px;
-}
-
-.logo {
-    width: 300px;
-    height: 100px;
-    background-position:20px top;
-}
-
-
-.logo-small {
-    width: 200px;
-    height: 60px;
-    background-position: 14px -110px;
-}
-
-.i_download {
-    background: #FFF;
-    padding: 1.8em 2.5em;
-    color: #333;
-}
-
-.i_download,
-.i_download:before,
-.i_download span {
-    display: inline-block;
-    vertical-align: middle;
-}
-
-.i_download:before {
-    content: '';
-    background: url(../img/sprite.png) no-repeat -216px -198px;
-    height: 50px;
-    width: 50px;
-    margin-right: 15px;
-}
-
-.i_download:hover {
-    background-color: #004756;
-    color: #FFF;
-}
-
-.i_download:hover:before {
-    background-position: -158px -198px;
-}
-
-.i_download span {
-    font-size: 2em;
-}
-
 .claim {
     font-family: 'Rancho', cursive;
     font-weight: normal;

@@ -12,13 +12,10 @@
   <script src="../src/jquery.gridster.with-extras.js"></script>
   <script src="../src/dbp.js"></script>
   <script>
-    var dbp = new DBP();
-    dbp.init();
-    dbp.dashboard.init(function(dashboard) {
-      var self = this;
-      dashboard.createDummy(self.module);
+    var dbp = new DBP().init();
+    var request = dbp.dashboard.init(function(err, dashboard) {
+      dashboard.createDummy();
     });
-
   </script>
 </body>
 </html>
