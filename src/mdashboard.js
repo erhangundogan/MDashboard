@@ -29,8 +29,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
         req = [_, $, $.fn.gridster];
 
     for (var r in req) {
-      if (typeof req[r] === 'undefined')
+      if (typeof req[r] === 'undefined') {
         return console.error('MDashboard prerequisites not met!');
+      }
     }
 
     _.extend(self.options, _options);
@@ -123,12 +124,53 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   MWidgetCollection.prototype.createDummyWidgets = function () {
     var self = this,
         widgets = [
-          { row:1, col:1, ySize:3, header:'header 1' },
+          { row:1, col:1, ySize:3, header:'header 1',
+            chart: {
+              library:'d3.v3',
+              type:'bar',
+              dataset: [5, 12, 25, 8, 23, 7, 20],
+              render: function(options) {
+                var self = this,
+                    selector = '#' + self.widget.id;
+
+                var x = d3.scale.linear()
+                  .domain([0, d3.max(options.dataset)])
+                  .range([0, 420]);
+
+                d3.select(selector)
+                  .selectAll("div")
+                    .data(options.dataset)
+                  .enter().append("div")
+                    .style("height", function(d, i) { return d * 5 + "px"; })
+                    .style("left", function(d, i) { return i * 38 + "px"; })
+                    .text(function(d) { return d; });
+              }
+            }
+          },
           { row:1, col:2, xSize:2, header:'header 2' },
           { row:2, col:2, header:'header 3' },
-          { row:2, col:3, header:'header 4' },
+          { row:2, col:3, header:'header 4', settings: false,
+            chart: {
+              library:'d3.v3', type:'pie', dataset: {
+                'ATV': 20,
+                'KanalD': 35,
+                'NTV': 45
+              }
+            }
+          },
           { row:3, col:2, settings: false },
-          { row:3, col:3, settings: false }
+          { row:3, col:3, settings: false,
+            chart: {
+              library:'d3.v3', type:'line', dataset: [
+                { date:'10.05.2013', value:15  },
+                { date:'18.05.2013', value:102 },
+                { date:'20.06.2013', value:83  },
+                { date:'30.07.2013', value:155 },
+                { date:'08.09.2013', value:43  },
+                { date:'11.10.2013', value:62  }
+              ]
+            }
+          }
         ];
 
     _.each(widgets, function(options, index) {
@@ -154,6 +196,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     this.id = 'mwidget-' + this.order;
 
     _.extend(this, _options);
+
+    if (this.chart) {
+      this.chart = new MChart(this, this.chart);
+    }
+
     return this;
   };
   MWidget.prototype.collection = typeof MWidgetCollection;
@@ -180,7 +227,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
           item.attr('data-sizey', self.ySize);
           break;
         case 'header':
-          item.prepend($('<header>' + self.header + '</header>'));
+          item.prepend($('<header class="clearfix">' + self.header + '</header>'));
           break;
         case 'content':
           contentSection.append(self.content);
@@ -190,10 +237,41 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
             item.prepend($('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>'));
           }
           break;
+        case 'chart':
+          item.chart.render(function(err, result) {
+            if (err) {
+              console.error(err);
+            } else {
+              contentSection.append(result);
+            }
+          });
+          break;
       }
     });
-
     return item;
+  };
+
+  MChart = function(ownerWidget, _options) {
+    this.library = 'd3.v3'; // default
+    this.widget = ownerWidget;
+
+    _.extend(this, _options);
+
+    return this;
+  };
+  MChart.prototype.widget = typeof MWidget;
+
+  MChart.prototype.render = function(callback) {
+    var self = this;
+
+    if (!self.type) callback('Chart type not specified!');
+    if (!self.dataset) callback('Chart data not provided');
+
+    switch(self.library) {
+      case 'd3.v3':
+
+        break;
+    }
   };
 
 }(this));

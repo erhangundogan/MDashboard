@@ -96,5 +96,19 @@ a {
 }
 
 .mwidget-content {
+    display: block;
     width: 100%;
+    height: 100%;
+}
+
+.gridster li {
+    overflow: hidden;
+}
+
+.clearfix:after {
+   content: " "; /* Older browser do not support empty content */
+   visibility: hidden;
+   display: block;
+   height: 0;
+   clear: both;
 }
