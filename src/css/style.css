@@ -96,13 +96,13 @@ a {
 .mr05 { margin-right: .5em }
 .mt025 { margin-top: .25em }
 
-.dbp-settings-icon {
+.mdashboard-settings-icon {
   color: #BBB;
   position: absolute;
   right: 7px;
   top: 7px;
 }
 
-.dbp-settings-icon:hover {
+.mdashboard-settings-icon:hover {
   color: white;
 }

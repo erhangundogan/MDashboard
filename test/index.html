@@ -10,11 +10,11 @@
   <script src="../src/jquery-1.10.2.js"></script>
   <script src="../src/underscore.js"></script>
   <script src="../src/jquery.gridster.with-extras.js"></script>
-  <script src="../src/dbp.js"></script>
+  <script src="../src/mdashboard.js"></script>
   <script>
-    var dbp = new DBP().init();
-    var request = dbp.dashboard.init(function(err, dashboard) {
-      dashboard.createDummy();
+    var dashboard = new MDashboard().init();
+    var request = dashboard.collection.init(function(err, dashboard) {
+      dashboard.createDummyWidgets();
     });
   </script>
 </body>
