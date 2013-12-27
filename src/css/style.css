@@ -46,12 +46,6 @@ a {
 }
 
 /* Gridster styles */
-.demo {
-  margin: 3em 0;
-  padding: 7.5em 0 5.5em;
-  background: #004756;
-}
-
 .gridster {
   width: 960px;
   margin: 0 auto;
@@ -69,12 +63,6 @@ a {
   box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
 }
 
-.gridster .gs-w.try {
-  background-image: url(../img/sprite.png);
-  background-repeat: no-repeat;
-  background-position: 37px -169px;
-}
-
 .gridster .preview-holder {
   border: none !important;
   border-radius: 0 !important;
@@ -87,7 +75,7 @@ a {
   font-size: 20px;
   line-height: normal;
   padding: 4px 0 6px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   cursor: move;
   text-align: center;
 }
@@ -105,4 +93,8 @@ a {
 
 .mdashboard-settings-icon:hover {
   color: white;
+}
+
+.mwidget-content {
+    width: 100%;
 }

@@ -5,7 +5,7 @@
  MIT License
  */
 
-var MDashboard, MCollection, MWidget;
+var MDashboard, MWidgetCollection, MWidget, MChart;
 (function (global) {
 
   /**
@@ -15,6 +15,7 @@ var MDashboard, MCollection, MWidget;
    */
   MDashboard = function () {
     this.options = {};
+    this.collections = [];
     return this;
   };
 
@@ -34,38 +35,15 @@ var MDashboard, MCollection, MWidget;
 
     _.extend(self.options, _options);
 
-    self.collection = new MCollection(self);
-
     return self;
   };
 
   /**
-   * MCollection construstor
-   * @ownerDashboard Owner MDashboard
-   * @returns {*} MCollection itself
-   * @constructor
-   */
-  MCollection = function (ownerDashboard) {
-    this.dashboard = ownerDashboard;
-    this.widgetOptions = {
-      widget_margins: [10, 10],
-      widget_base_dimensions: [310, 260],
-      draggable: {
-        handle: 'header'
-      }
-    };
-    this.container = $('body');
-    this.widgets = [];
-    return this;
-  };
-    MCollection.prototype.module = typeof MDashboard;
-
-  /**
    *
-   * @param _options Dashboard options (optional)
+   * @param _options MWidgetCollection options (optional)
    * @param callback Callback when browser finished DOM operations (optional)
    */
-  MCollection.prototype.init = function (_options, callback) {
+  MDashboard.prototype.createCollection = function(_options, callback) {
     var self = this,
         time = 0;
 
@@ -74,16 +52,17 @@ var MDashboard, MCollection, MWidget;
       _options = {};
     }
 
-    _.extend(self, _options);
+    var newCollection = new MWidgetCollection(self, _options);
+    self.collections.push(newCollection);
 
     if (!_options && !callback) {
-      return self;
+      return newCollection;
     } else {
       var DOMLoadCheck = setInterval(function () {
         var body = $('body');
         if (body && body.length > 0) {
           clearInterval(DOMLoadCheck);
-          callback(null, self);
+          callback(null, newCollection);
         } else if (time >= 10000) {
           callback('DOM load timeout');
         } else {
@@ -93,8 +72,34 @@ var MDashboard, MCollection, MWidget;
     }
   };
 
+  /**
+   * MWidgetCollection construstor
+   * @ownerDashboard Owner MDashboard
+   * @returns {*} MWidgetCollection itself
+   * @constructor
+   */
+  MWidgetCollection = function (ownerDashboard, _options) {
+    this.dashboard = ownerDashboard;
+    this.order = ownerDashboard.collections.length + 1;
+    this.collectionOptions = {
+      widget_margins: [10, 10],
+      widget_base_dimensions: [310, 260],
+      draggable: {
+        handle: 'header'
+      }
+    };
+    this.container = $('body');
+    this.widgets = [];
 
-  MCollection.prototype.render = function() {
+    if (_options) {
+      _.extend(this, _options);
+    }
+
+    return this;
+  };
+  MWidgetCollection.prototype.dashboard = typeof MDashboard;
+
+  MWidgetCollection.prototype.render = function() {
     var wrapper = $('<div class="gridster" />'),
         list = $('<ul />'),
         self = this;
@@ -109,13 +114,13 @@ var MDashboard, MCollection, MWidget;
       list.append(widget.render());
     });
 
-    list.gridster(self.widgetOptions);
+    list.gridster(self.collectionOptions);
   };
 
   /**
    * Crates dummy widgets
    */
-  MCollection.prototype.createDummyWidgets = function () {
+  MWidgetCollection.prototype.createDummyWidgets = function () {
     var self = this,
         widgets = [
           { row:1, col:1, ySize:3, header:'header 1' },
@@ -126,8 +131,8 @@ var MDashboard, MCollection, MWidget;
           { row:3, col:3, settings: false }
         ];
 
-    _.each(widgets, function(widgetOptions, index) {
-      self.widgets.push(new MWidget(widgetOptions));
+    _.each(widgets, function(options, index) {
+      self.widgets.push(new MWidget(self, options));
     });
 
     self.render();
@@ -135,23 +140,30 @@ var MDashboard, MCollection, MWidget;
 
   /**
    *
+   * @param ownerCollection Owner MCollection
    * @param _options Widget options (optional)
    * @returns {*} Widget itself
    * @constructor
    */
-  MWidget = function (_options) {
+  MWidget = function (ownerCollection, _options) {
     this.xSize = 1;
     this.ySize = 1;
     this.settings = true;
+    this.collection = ownerCollection;
+    this.order = this.collection.widgets.length + 1;
+    this.id = 'mwidget-' + this.order;
 
     _.extend(this, _options);
     return this;
   };
-  MWidget.prototype.collection = typeof MCollection;
+  MWidget.prototype.collection = typeof MWidgetCollection;
   MWidget.prototype.render = function() {
     var self = this,
         item = $('<li></li>'),
+        contentSection = $('<div></div>').addClass('mwidget-content'),
         options = Object.keys(self);
+
+    item.append(contentSection);
 
     _.each(options, function(key, index) {
       switch(key) {
@@ -171,7 +183,7 @@ var MDashboard, MCollection, MWidget;
           item.prepend($('<header>' + self.header + '</header>'));
           break;
         case 'content':
-          item.append(self.content);
+          contentSection.append(self.content);
           break;
         case 'settings':
           if (self.settings) {

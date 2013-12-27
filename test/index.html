@@ -13,8 +13,8 @@
   <script src="../src/mdashboard.js"></script>
   <script>
     var dashboard = new MDashboard().init();
-    var request = dashboard.collection.init(function(err, dashboard) {
-      dashboard.createDummyWidgets();
+    var dashboardCollection = dashboard.createCollection(function(err, collection) {
+        collection.createDummyWidgets();
     });
   </script>
 </body>
