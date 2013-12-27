@@ -113,6 +113,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
 
     _.each(self.widgets, function(widget, index) {
       list.append(widget.render());
+      widget.container = $('#' + widget.id);
+      if (widget.chart && widget.chart.render) {
+        widget.chart.render();
+      }
     });
 
     list.gridster(self.collectionOptions);
@@ -124,43 +128,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   MWidgetCollection.prototype.createDummyWidgets = function () {
     var self = this,
         widgets = [
-          { row:1, col:1, ySize:3, header:'header 1',
+          { row:1, col:1, ySize:3, header:"header 1",
             chart: {
-              library:'d3.v3',
-              type:'bar',
+              library:"d3.v3",
+              type:"bar",
               dataset: [5, 12, 25, 8, 23, 7, 20],
               render: function(options) {
-                var self = this,
-                    selector = '#' + self.widget.id;
+                debugger;
+                var width = self.collectionOptions.widget_base_dimensions[0],
+                    height = self.collectionOptions.widget_base_dimensions[1] * 3;
 
-                var x = d3.scale.linear()
-                  .domain([0, d3.max(options.dataset)])
-                  .range([0, 420]);
+                self.widgets[0].container.append('<svg class="chart"></svg>');
 
-                d3.select(selector)
-                  .selectAll("div")
-                    .data(options.dataset)
-                  .enter().append("div")
-                    .style("height", function(d, i) { return d * 5 + "px"; })
-                    .style("left", function(d, i) { return i * 38 + "px"; })
-                    .text(function(d) { return d; });
+                var y = d3.scale.linear().range([height, 0]);
+                var chart = d3.select(".chart").attr("width", width).attr("height", height);
+                y.domain([0, d3.max(this.dataset, function(d) { return d; })]);
+
+                var barWidth = width / this.dataset.length;
+                var bar = chart.selectAll("g")
+                  .data(this.dataset)
+                  .enter().append("g")
+                  .attr("transform", function(d, i) { return "translate(" + i * barWidth + ",0)"; });
+
+                bar.append("rect")
+                  .attr("y", function(d) { return y(d); })
+                  .attr("height", function(d) { return height - y(d); })
+                  .attr("width", barWidth - 1);
+
+                bar.append("text")
+                  .attr("x", barWidth / 2)
+                  .attr("y", function(d) { return y(d) + 3; })
+                  .attr("dy", ".75em")
+                  .text(function(d) { return d; });
               }
             }
           },
           { row:1, col:2, xSize:2, header:'header 2' },
           { row:2, col:2, header:'header 3' },
-          { row:2, col:3, header:'header 4', settings: false,
-            chart: {
+          { row:2, col:3, header:'header 4', settings: false
+            /*chart: {
               library:'d3.v3', type:'pie', dataset: {
                 'ATV': 20,
                 'KanalD': 35,
                 'NTV': 45
               }
-            }
+            }*/
           },
           { row:3, col:2, settings: false },
-          { row:3, col:3, settings: false,
-            chart: {
+          { row:3, col:3, settings: false
+            /*chart: {
               library:'d3.v3', type:'line', dataset: [
                 { date:'10.05.2013', value:15  },
                 { date:'18.05.2013', value:102 },
@@ -169,7 +185,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
                 { date:'08.09.2013', value:43  },
                 { date:'11.10.2013', value:62  }
               ]
-            }
+            }*/
           }
         ];
 
@@ -237,17 +253,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
             item.prepend($('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>'));
           }
           break;
-        case 'chart':
-          item.chart.render(function(err, result) {
-            if (err) {
-              console.error(err);
-            } else {
-              contentSection.append(result);
-            }
-          });
-          break;
       }
     });
+
     return item;
   };
 
@@ -261,7 +269,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   };
   MChart.prototype.widget = typeof MWidget;
 
-  MChart.prototype.render = function(callback) {
+  /*MChart.prototype.render = function(callback) {
     var self = this;
 
     if (!self.type) callback('Chart type not specified!');
@@ -272,6 +280,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
 
         break;
     }
-  };
+  };*/
 
 }(this));
