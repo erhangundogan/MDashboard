@@ -82,6 +82,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   MWidgetCollection = function (ownerDashboard, _options) {
     this.dashboard = ownerDashboard;
     this.order = ownerDashboard.collections.length + 1;
+    this.isInitialized = false;
     this.collectionOptions = {
       widget_margins: [10, 10],
       widget_base_dimensions: [310, 260],
@@ -95,6 +96,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     if (_options) {
       _.extend(this, _options);
     }
+
+    this.columnWidth = this.collectionOptions.widget_base_dimensions[0];
+    this.rowHeight = this.collectionOptions.widget_base_dimensions[1];
+    this.columnMargin = this.collectionOptions.widget_margins[0];
+    this.rowMargin = this.collectionOptions.widget_margins[1];
 
     return this;
   };
@@ -113,14 +119,136 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
 
     _.each(self.widgets, function(widget, index) {
       list.append(widget.render());
-      widget.container = $('#' + widget.id);
-      if (widget.chart && widget.chart.render) {
-        widget.chart.render();
-      }
     });
 
     list.gridster(self.collectionOptions);
+
+    self.isInitialized = true;
   };
+
+  /**
+   *
+   * @param ownerCollection Owner MCollection
+   * @param _options Widget options (optional)
+   * @returns {*} Widget itself
+   * @constructor
+   */
+  MWidget = function (ownerCollection, _options) {
+    this.xSize = 1;
+    this.ySize = 1;
+    this.settings = true;
+    this.collection = ownerCollection;
+    this.isInitialized = false;
+    this.order = this.collection.widgets.length + 1;
+    this.id = 'mwidget-' + this.order;
+
+    _.extend(this, _options);
+
+    this.width = (this.xSize * this.collection.columnWidth) +
+      ((this.xSize - 1) * this.collection.columnMargin);
+
+    this.height = (this.ySize * this.collection.rowHeight) +
+      ((this.ySize - 1) * this.collection.rowMargin);
+
+    if (this.chart) {
+      this.chart = new MChart(this, this.chart);
+    }
+
+    var self = this;
+    var collectionInitialized = setInterval(function() {
+      if (self.collection.isInitialized) {
+        clearInterval(collectionInitialized);
+        if (self.header) {
+          var headerHeight = self.header.height();
+          self.height = self.height - headerHeight;
+          self.container.height(self.height);
+        }
+        self.isInitialized = true;
+      }
+    }, 100);
+
+    return this;
+  };
+  MWidget.prototype.collection = typeof MWidgetCollection;
+  MWidget.prototype.render = function() {
+    var self = this,
+        item = $('<li></li>').attr('id', this.id),
+        contentSection = $('<div></div>').addClass('mwidget-content'),
+        options = Object.keys(self);
+
+    self.container = contentSection;
+    item.append(contentSection);
+
+    _.each(options, function(key, index) {
+      switch(key) {
+        case 'row':
+          item.attr('data-row', self.row);
+          break;
+        case 'col':
+          item.attr('data-col', self.col);
+          break;
+        case 'xSize':
+          item.attr('data-sizex', self.xSize);
+          break;
+        case 'ySize':
+          item.attr('data-sizey', self.ySize);
+          break;
+        case 'header':
+          var header = $('<header>' + self.header + '</header>')
+            .attr('id', 'mwidget-header-' + self.order);
+          self.header = header;
+          item.prepend(header);
+          break;
+        case 'content':
+          contentSection.append(self.content);
+          break;
+        case 'settings':
+          if (self.settings) {
+            var settingsIcon = $('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>');
+            self.settingsIcon = settingsIcon;
+            item.prepend(settingsIcon);
+          }
+          break;
+      }
+    });
+
+    return item;
+  };
+
+  MChart = function(ownerWidget, _options) {
+    this.library = 'd3.v3'; // default
+    this.widget = ownerWidget;
+    this.isInitialized = false;
+
+    _.extend(this, _options);
+
+    var self = this;
+    var widgetInitialized = setInterval(function() {
+      if (self.widget.isInitialized) {
+        clearInterval(widgetInitialized);
+        if (self.render) {
+          self.render(self.widget);
+        }
+        self.chartInitialized = true;
+      }
+    }, 100);
+
+    return this;
+  };
+  MChart.prototype.widget = typeof MWidget;
+
+  /*MChart.prototype.render = function(callback) {
+    var self = this;
+
+    if (!self.type) callback('Chart type not specified!');
+    if (!self.dataset) callback('Chart data not provided');
+
+    switch(self.library) {
+      case 'd3.v3':
+
+        break;
+    }
+  };*/
 
   /**
    * Crates dummy widgets
@@ -133,12 +261,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
               library:"d3.v3",
               type:"bar",
               dataset: [5, 12, 25, 8, 23, 7, 20],
-              render: function(options) {
-                debugger;
-                var width = self.collectionOptions.widget_base_dimensions[0],
-                    height = self.collectionOptions.widget_base_dimensions[1] * 3;
+              render: function(widget) {
+                var width = widget.width,
+                    height = widget.height;
 
-                self.widgets[0].container.append('<svg class="chart"></svg>');
+                widget.container.append('<svg class="chart"></svg>');
 
                 var y = d3.scale.linear().range([height, 0]);
                 var chart = d3.select(".chart").attr("width", width).attr("height", height);
@@ -195,91 +322,5 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
 
     self.render();
   };
-
-  /**
-   *
-   * @param ownerCollection Owner MCollection
-   * @param _options Widget options (optional)
-   * @returns {*} Widget itself
-   * @constructor
-   */
-  MWidget = function (ownerCollection, _options) {
-    this.xSize = 1;
-    this.ySize = 1;
-    this.settings = true;
-    this.collection = ownerCollection;
-    this.order = this.collection.widgets.length + 1;
-    this.id = 'mwidget-' + this.order;
-
-    _.extend(this, _options);
-
-    if (this.chart) {
-      this.chart = new MChart(this, this.chart);
-    }
-
-    return this;
-  };
-  MWidget.prototype.collection = typeof MWidgetCollection;
-  MWidget.prototype.render = function() {
-    var self = this,
-        item = $('<li></li>'),
-        contentSection = $('<div></div>').addClass('mwidget-content'),
-        options = Object.keys(self);
-
-    item.append(contentSection);
-
-    _.each(options, function(key, index) {
-      switch(key) {
-        case 'row':
-          item.attr('data-row', self.row);
-          break;
-        case 'col':
-          item.attr('data-col', self.col);
-          break;
-        case 'xSize':
-          item.attr('data-sizex', self.xSize);
-          break;
-        case 'ySize':
-          item.attr('data-sizey', self.ySize);
-          break;
-        case 'header':
-          item.prepend($('<header class="clearfix">' + self.header + '</header>'));
-          break;
-        case 'content':
-          contentSection.append(self.content);
-          break;
-        case 'settings':
-          if (self.settings) {
-            item.prepend($('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>'));
-          }
-          break;
-      }
-    });
-
-    return item;
-  };
-
-  MChart = function(ownerWidget, _options) {
-    this.library = 'd3.v3'; // default
-    this.widget = ownerWidget;
-
-    _.extend(this, _options);
-
-    return this;
-  };
-  MChart.prototype.widget = typeof MWidget;
-
-  /*MChart.prototype.render = function(callback) {
-    var self = this;
-
-    if (!self.type) callback('Chart type not specified!');
-    if (!self.dataset) callback('Chart data not provided');
-
-    switch(self.library) {
-      case 'd3.v3':
-
-        break;
-    }
-  };*/
 
 }(this));
