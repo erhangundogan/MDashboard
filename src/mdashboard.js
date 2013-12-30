@@ -150,7 +150,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     this.height = (this.ySize * (this.collection.rowHeight)) +
       (2 * ((this.ySize - 1) * this.collection.rowMargin));
 
-    if (this.chart) {
+    if (this.contentType === "chart") {
       this.chart = new MChart(this, this.chart);
     }
 
@@ -206,8 +206,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
           self.header = header;
           item.prepend(header);
           break;
-        case 'content':
-          contentSection.append(self.content);
+        case 'html':
+          if (self.contentType === "html" && self.html.render) {
+            contentSection.append(self.html.render(self));
+          }
+          //contentSection.append(self.content);
           break;
         case 'settings':
           if (self.settings) {
@@ -263,7 +266,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   MWidgetCollection.prototype.createDummyWidgets = function () {
     var self = this,
         widgets = [
-          { row:1, col:1, ySize:3, header:"header 1",
+
+          // mwidget-1
+          // bar chart
+          { row:1,
+            col:1,
+            ySize:3,
+            header:"header 1",
+            contentType:"chart",
             chart: {
               library:"d3.v3",
               type:"bar",
@@ -298,21 +308,72 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
               }
             }
           },
-          { row:1, col:2, xSize:2, header:'header 2' },
-          { row:2, col:2, ySize:2,
-            chart: {
-              library:'d3.v3',
-              type:'line',
+
+          // mwidget-2
+          // empty
+          { row:1,
+            col:2,
+            xSize:2,
+            header:"header 2",
+            contentType:"html",
+            html: {
               dataset: [
-                { date:'10.05.2013', value:15  },
-                { date:'18.05.2013', value:102 },
-                { date:'20.06.2013', value:83  },
-                { date:'30.07.2013', value:155 },
-                { date:'08.09.2013', value:43  },
-                { date:'11.10.2013', value:62  },
-                { date:'18.10.2013', value:69  },
-                { date:'05.11.2013', value:43  },
-                { date:'11.12.2013', value:162 }
+                { label:"Feedback", value:32 },
+                { label:"Reservation", value:8 },
+                { label:"Meeting", value:4 },
+                { label:"Performance", value:11 }
+              ],
+              style: function(widget) {
+                var htmlStyle = [];
+                htmlStyle.push("<style>");
+                htmlStyle.push("#" + widget.id + " table.ui-crm-results { width:100%; height:100%; font-size:16pt; border-width:0 } ");
+                htmlStyle.push("#" + widget.id + " table.ui-crm-results tr:nth-child(odd) { background-color: #EEE; } ");
+                htmlStyle.push("#" + widget.id + " table.ui-crm-results tr td div.ui-crm-label { text-align: left; font-weight: bold } ");
+                htmlStyle.push("#" + widget.id + " table.ui-crm-results tr td div.ui-crm-result { text-align: center; } ");
+                htmlStyle.push("</style>");
+                return htmlStyle = htmlStyle.join(" ");
+              },
+              render: function(widget) {
+                var table = $("<table></table>").attr("padding", 0).attr("spacing", 0).addClass("ui-crm-results");
+
+                _.each(this.dataset, function(item, index) {
+                  var tr = $("<tr></tr>");
+
+                  tr.append(
+                    $("<td></td>").append(
+                      $("<div></div>").addClass("ui-crm-label").append(item.label)));
+                  tr.append(
+                    $("<td></td>").append(
+                      $("<div></div>").addClass("ui-crm-result").append(item.value)));
+
+                  table.append(tr);
+                });
+
+                widget.container.append(this.style(widget));
+                widget.container.append(table);
+              }
+            }
+          },
+
+          // mwidget-3
+          //line chart
+          { row:2,
+            col:2,
+            ySize:2,
+            contentType:"chart",
+            chart: {
+              library:"d3.v3",
+              type:"line",
+              dataset: [
+                { date:"10.05.2013", value:15  },
+                { date:"18.05.2013", value:102 },
+                { date:"20.06.2013", value:83  },
+                { date:"30.07.2013", value:155 },
+                { date:"08.09.2013", value:43  },
+                { date:"11.10.2013", value:62  },
+                { date:"18.10.2013", value:69  },
+                { date:"05.11.2013", value:43  },
+                { date:"11.12.2013", value:162 }
               ],
               style: function(widget) {
                 var chartStyle = [];
@@ -396,7 +457,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
               }
             }
           },
-          { row:2, col:3, header:'header 4', settings: false,
+
+          // mwidget-4
+          // pie chart
+          { row:2,
+            col:3,
+            header:'header 4',
+            settings: false,
+            contentType:"chart",
             chart: {
               library:'d3.v3',
               type:'pie',
@@ -456,7 +524,43 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
               }
             }
           },
-          { row:3, col:3, settings: false }
+
+          // mwidget-5
+          // empty
+          { row:3,
+            col:3,
+            settings: false,
+            contentType:"chart",
+            chart: {
+              library:"google",
+              type:"gauge",
+              dataset: [
+                ["label", "value"],
+                ["Performance", 55]
+              ],
+              render: function(widget) {
+                google.load("visualization", "1", {packages:[this.type]});
+                google.setOnLoadCallback(drawChart);
+                function drawChart() {
+                  var data = google.visualization.arrayToDataTable(this.dataset);
+                  var options = {
+                    width: widget.width, height: widget.height,
+                    redFrom: 90, redTo: 100,
+                    yellowFrom:75, yellowTo: 90,
+                    minorTicks: 5
+                  };
+
+                  widget.container.append('<div class="chart"></div>');
+                  var container = $("#" + widget.id + " .chart");
+
+                  if (container && container.length > 0) {
+                    var chart = new google.visualization.Gauge(container[0]);
+                    chart.draw(this.dataset, options);
+                  }
+                }
+              }
+            }
+          }
         ];
 
     _.each(widgets, function(options, index) {

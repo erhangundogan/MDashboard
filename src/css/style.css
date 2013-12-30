@@ -97,10 +97,13 @@ a {
   position: absolute;
   right: 7px;
   top: 7px;
+  z-index: 1000;
+  opacity: .5;
 }
 
 .mdashboard-settings-icon:hover {
-  color: white;
+  color: #333;
+  opacity: 1;
 }
 
 .mwidget-content {
