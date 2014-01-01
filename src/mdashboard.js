@@ -8,6 +8,8 @@
 var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 (function (global) {
 
+  var globalUniqueIdLength = 32;
+
   /**
    * MDashboard
    * @returns {*}
@@ -38,10 +40,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     _.extend(self.options, _options);
 
     return self;
-  };
-
-  MDashboard.prototype.connect = function() {
-    var self = this;
   };
 
   /**
@@ -89,6 +87,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.dashboard = ownerDashboard;
     this.order = ownerDashboard.collections.length + 1;
     this.isInitialized = false;
+    this.service = null;
     this.collectionOptions = {
       widget_margins: [10, 10],
       //widget_base_dimensions: [360, 300],
@@ -212,7 +211,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isInitialized = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
-    this.services = this.collection.dashboard.services;
+    this.service = null;
 
     _.extend(this, _options);
 
@@ -302,10 +301,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       console.log("onSettingsOpen");
     }
   };
+  MWidget.prototype.service = typeof MService;
 
   MChart = function(ownerWidget, _options) {
     this.library = 'd3.v3'; // default
     this.widget = ownerWidget;
+    this.service = null;
     this.isInitialized = false;
 
     _.extend(this, _options);
@@ -325,14 +326,34 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   };
   MChart.prototype.widget = typeof MWidget;
 
-  MService = function(ownerDashboard, _options, _ajaxOptions) {
+  /**
+   * Data services for widgets and charts
+   * @param ownerDashboard
+   * @param _options service options
+   * @param _ajaxOptions $.ajax options
+   * @return self
+   * @constructor
+   */
+  MService = function(owner, _options, _ajaxOptions) {
     var self = this;
-    this.name = 'Dashboard Service';
-    this.dashboard = ownerDashboard;
-    this.params = [];
-    this.errors = [];
-    this.results = [],
+    this.name = 'MService';
+    this.schedule = '1 * * * *'; // cron string: 5 * * * * (5 dakikada bir)
+    this.requests = [];
+    this.responses = [];
     this.isInitialized = false;
+    this.isScheduled = false;
+
+    switch(owner) {
+      case (typeof MDashboard):
+        self.dashboard = owner;
+        owner.services.push(self);
+        break;
+      default:
+        owner.service = self;
+        break;
+    }
+
+    _.extend(this, _options);
 
     this.ajaxOptions = {
       async: true,
@@ -354,23 +375,53 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           alert( "page not found" );
         }
       }*/
-      timeout: 30000,
+      timeout: 30000, // 30sn
       type: 'GET',
       //username: ''
       url: ''
     };
-
-    _.extend(this, _options);
-
     _.extend(this.ajaxOptions, _ajaxOptions);
 
-    return this;
+    return self;
   };
   MService.prototype.dashboard = typeof MDashboard;
-  MService.prototype.init = function() {
+
+  /**
+   * Here we go to get it
+   * @param _params service parameters
+   */
+  MService.prototype.begin = function(_params) {
     var self = this;
-    self.requestTime = new Date();
-    $.ajax.call(self, self.ajaxOptions);
+
+    function callMeMaybe() {
+      debugger;
+      var requestItem = {
+        id: getUniqueId(globalUniqueIdLength),
+        time: new Date(),
+        params: _params
+      };
+
+      self.requests.push(requestItem);
+      _.extend(self.ajaxOptions, {
+        context: requestItem,
+        data: _params || {}
+      });
+
+      $.ajax.call(self, self.ajaxOptions);
+    }
+
+    if (self.schedule) {
+      // http://bunkat.github.io/later/parsers.html#cron
+      var cronSchedule = later.parse.cron(self.schedule),
+          schedule = later.schedule();
+
+      // http://bunkat.github.io/later/execute.html#set-interval
+      self.scheduled = later.setInterval(callMeMaybe, schedule);
+    } else {
+      callMeMaybe();
+    }
+
+    return self;
   };
   /**
    * MService ajaxOptions .error
@@ -378,15 +429,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @param status
    */
   MService.prototype.fail = function(request, status, error) {
+    debugger;
     var self = this;
-    this.errors.push({
-      requestTime: self.requestTime,
-      responseTime: new Date(),
-      name: self.name,
-      request: request,
+    self.responses.push({
+      id: getUniqueId(globalUniqueIdLength),
+      time: new Date(),
+      requestId: request.id,
+      requestTime: request.time,
+      ajaxRequest: request,
       status: status,
       error: error
     });
+    self.isInitialized = true;
   };
   /**
    * MService ajaxOptions .success
@@ -395,16 +449,39 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @param request
    */
   MService.prototype.done = function(data, status, request) {
+    debugger;
     var self = this;
-    this.results.push({
-      requestTime: self.requestTime,
-      responseTime: new Date(),
-      name: self.name,
+    self.responses.push({
+      id: getUniqueId(globalUniqueIdLength),
+      time: new Date(),
+      requestId: request.id,
+      requestTime: request.time,
       request: request,
       status: status,
       data: data
     });
+    self.isInitialized = true;
   };
 
+  /**
+   * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
+   * @param len
+   */
+  function getUniqueId(len) {
+    var buf = [],
+        chars = "ABCDEF0123456789",
+        charlen = chars.length,
+        firstAlphaNumeric = firstAlphaNumeric || false;
+
+    var getRandomInt = function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    };
+
+    for (var i = 0; i < len; ++i) {
+      buf.push(chars[getRandomInt(0, charlen - 1)]);
+    }
+
+    return buf.join("");
+  }
 
 }(this));
