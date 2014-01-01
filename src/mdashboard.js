@@ -5,7 +5,7 @@
  MIT License
  */
 
-var MDashboard, MWidgetCollection, MWidget, MChart;
+var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 (function (global) {
 
   /**
@@ -16,6 +16,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   MDashboard = function () {
     this.options = {};
     this.collections = [];
+    this.services = [];
     return this;
   };
 
@@ -37,6 +38,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     _.extend(self.options, _options);
 
     return self;
+  };
+
+  MDashboard.prototype.connect = function() {
+    var self = this;
   };
 
   /**
@@ -207,16 +212,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     this.isInitialized = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
+    this.services = this.collection.dashboard.services;
 
     _.extend(this, _options);
 
-    /*
-    this.width = (this.xSize * this.collection.columnWidth) +
-      (2 * ((this.xSize - 1) * this.collection.columnMargin));
-
-    this.height = (this.ySize * (this.collection.rowHeight)) +
-      (2 * ((this.ySize - 1) * this.collection.rowMargin));
-*/
     if (this.contentType === "chart") {
       this.chart = new MChart(this, this.chart);
     }
@@ -296,7 +295,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
   };
   MWidget.prototype.redraw = function() {
     var self = this;
-
     self.container.empty();
   };
   MWidget.prototype.events = {
@@ -326,5 +324,87 @@ var MDashboard, MWidgetCollection, MWidget, MChart;
     return this;
   };
   MChart.prototype.widget = typeof MWidget;
+
+  MService = function(ownerDashboard, _options, _ajaxOptions) {
+    var self = this;
+    this.name = 'Dashboard Service';
+    this.dashboard = ownerDashboard;
+    this.params = [];
+    this.errors = [];
+    this.results = [],
+    this.isInitialized = false;
+
+    this.ajaxOptions = {
+      async: true,
+      cache: true,
+      complete: self.complete,
+      contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+      crossDomain: false,
+      data: {},
+      //dataType: 'json'
+      global: true,
+      headers: {},
+      ifModified: false,
+      //jsonp: ''
+      //jsonpCallback: function() {}
+      //password: ''
+      processData: true,
+      /*statusCode: {
+        404: function() {
+          alert( "page not found" );
+        }
+      }*/
+      timeout: 30000,
+      type: 'GET',
+      //username: ''
+      url: ''
+    };
+
+    _.extend(this, _options);
+
+    _.extend(this.ajaxOptions, _ajaxOptions);
+
+    return this;
+  };
+  MService.prototype.dashboard = typeof MDashboard;
+  MService.prototype.init = function() {
+    var self = this;
+    self.requestTime = new Date();
+    $.ajax.call(self, self.ajaxOptions);
+  };
+  /**
+   * MService ajaxOptions .error
+   * @param request
+   * @param status
+   */
+  MService.prototype.fail = function(request, status, error) {
+    var self = this;
+    this.errors.push({
+      requestTime: self.requestTime,
+      responseTime: new Date(),
+      name: self.name,
+      request: request,
+      status: status,
+      error: error
+    });
+  };
+  /**
+   * MService ajaxOptions .success
+   * @param data
+   * @param status
+   * @param request
+   */
+  MService.prototype.done = function(data, status, request) {
+    var self = this;
+    this.results.push({
+      requestTime: self.requestTime,
+      responseTime: new Date(),
+      name: self.name,
+      request: request,
+      status: status,
+      data: data
+    });
+  };
+
 
 }(this));
