@@ -97,9 +97,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     };
     this.widgets = [];
 
-    if (_options) {
-      _.extend(this, _options);
-    }
+    _.extend(this, _options);
 
     if (!this.container) {
       this.container = $('body');

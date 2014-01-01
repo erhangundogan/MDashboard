@@ -62,20 +62,20 @@ var widgets = [
     header: 'Feedbacks',
     contentType: "html",
     html: {
-      dataset: function(widget) {
+      /*dataset: function(widget) {
         var taskService = new MService(
           widget, {
             name: 'Task'
           }, {
             url: ''
           });
-      },
-      /*dataset: [
+      },*/
+      dataset: [
         { label: "Feedback", value: 32 },
         { label: "Reservation", value: 8 },
         { label: "Meeting", value: 4 },
         { label: "Performance", value: 11 }
-      ],*/
+      ],
       style: function (widget) {
         var htmlStyle = [];
         htmlStyle.push("<style>");
