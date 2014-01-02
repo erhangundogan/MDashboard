@@ -50,6 +50,8 @@ var widgets = [
           .text(function (d) {
             return d;
           });
+
+        widget.isRendered = true;
       }
     }
   },
@@ -104,6 +106,8 @@ var widgets = [
 
         widget.container.append(this.style(widget));
         widget.container.append(table);
+
+        widget.isRendered = true;
       }
     }
   },
@@ -215,6 +219,8 @@ var widgets = [
           .datum(this.dataset)
           .attr("class", "line")
           .attr("d", line);
+
+        widget.isRendered = true;
       }
     }
   },
@@ -288,6 +294,8 @@ var widgets = [
           .text(function (d, i) {
             return chart.dataset[i].label;
           });
+
+        widget.isRendered = true;
       }
     }
   },
@@ -322,7 +330,9 @@ var widgets = [
 
               }, 3000);
          		}
-        })
+        });
+
+        widget.isRendered = true;
       },
       options: {
 

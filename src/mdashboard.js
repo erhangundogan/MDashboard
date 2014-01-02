@@ -29,7 +29,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MDashboard.prototype.init = function (_options) {
     var self = this,
-        req = [_, $, $.fn.gridster];
+      req = [_, $, $.fn.gridster];
 
     for (var r in req) {
       if (typeof req[r] === 'undefined') {
@@ -47,9 +47,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @param _options MWidgetCollection options (optional)
    * @param callback Callback when browser finished DOM operations (optional)
    */
-  MDashboard.prototype.createCollection = function(_options, callback) {
+  MDashboard.prototype.createCollection = function (_options, callback) {
     var self = this,
-        time = 0;
+      time = 0;
 
     if (_.isFunction(_options)) {
       callback = _options;
@@ -89,10 +89,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isInitialized = false;
     this.service = null;
     this.collectionOptions = {
-      widget_margins: [10, 10],
-      //widget_base_dimensions: [360, 300],
-      draggable: {
-        handle: 'header'
+      widget_margins:[10, 10],
+      resize:{
+        enabled:true,
+        stop:function (e, ui, $widget) {
+          var resizedWidgetId = $widget.attr('id'),
+            resizedWidget = _.find(self.widgets, function (item) {
+              return item.id === resizedWidgetId;
+            });
+
+          if (resizedWidget) {
+            resizedWidget.invalidate();
+          }
+        }
+      },
+      draggable:{
+        handle:'header'
       }
     };
     this.widgets = [];
@@ -101,13 +113,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     if (!this.container) {
       this.container = $('body');
-      $(window).bind('resize', function(event) {
+      $(window).bind('resize', function (event) {
         self.events.onContainerResize(event, self);
       });
       this.height = $(window).height();
     } else {
       this.height = $(this.container).height();
-      $(this.container).bind('resize', function(event) {
+      $(this.container).bind('resize', function (event) {
         self.events.onContainerResize(event, self);
       });
     }
@@ -120,13 +132,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     return this;
   };
   MWidgetCollection.prototype.dashboard = typeof MDashboard;
-  MWidgetCollection.prototype.invalidate = function() {
+  MWidgetCollection.prototype.invalidate = function () {
     var self = this;
 
     self.collectionOptions.widget_base_dimensions = [self.width, self.height];
 
     var xCount = yCount = 0;
-    _.each(self.widgets, function(widget, index) {
+    _.each(self.widgets, function (widget, index) {
       if (widget.row === 1) {
         xCount += widget.xSize;
       }
@@ -142,7 +154,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     self.columnWidth = xWidth;
     self.rowHeight = yHeight;
 
-    _.each(self.widgets, function(widget, index) {
+    _.each(self.widgets, function (widget, index) {
       widget.width = (widget.xSize * self.columnWidth) +
         (2 * ((widget.xSize - 1) * self.columnMargin));
 
@@ -150,10 +162,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         (2 * ((widget.ySize - 1) * self.rowMargin));
     });
   };
-  MWidgetCollection.prototype.render = function() {
+  MWidgetCollection.prototype.render = function () {
     var wrapper = $('<div class="gridster" />'),
-        list = $('<ul />'),
-        self = this;
+      list = $('<ul />'),
+      self = this;
 
     if (self.widgets.length == 0) return;
 
@@ -161,7 +173,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       wrapper.append(
         list));
 
-    _.each(self.widgets, function(widget, index) {
+    _.each(self.widgets, function (widget, index) {
       list.append(widget.render());
     });
 
@@ -169,11 +181,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     self.isInitialized = true;
     return self;
   };
-  MWidgetCollection.prototype.add = function(widget) {
+  MWidgetCollection.prototype.add = function (widget) {
     var self = this;
 
     if (_.isArray(widget)) {
-      _.each(widget, function(item, index) {
+      _.each(widget, function (item, index) {
         self.widgets.push(new MWidget(self, item));
       });
     } else if (_.isObject(widget)) {
@@ -185,10 +197,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     return self;
   };
   MWidgetCollection.prototype.events = {
-    onCollectionChange: function(collection) {
+    onCollectionChange:function (collection) {
       collection.invalidate();
     },
-    onContainerResize: function(event, collection) {
+    onContainerResize:function (event, collection) {
       //widget.resize();
       collection.invalidate();
     }
@@ -207,6 +219,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.settings = true;
     this.collection = ownerCollection;
     this.isInitialized = false;
+    this.isRendered = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
     this.service = null;
@@ -218,7 +231,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     }
 
     var self = this;
-    var collectionInitialized = setInterval(function() {
+    var collectionInitialized = setInterval(function () {
       if (self.collection.isInitialized) {
         clearInterval(collectionInitialized);
         if (self.header) {
@@ -237,20 +250,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       }
     }, 100);
 
+    var widgetIsRendered = setInterval(function () {
+      if (self.isRendered) {
+        clearInterval(widgetIsRendered);
+        self.container.removeClass('loading');
+      }
+    }, 100);
+
     return this;
   };
   MWidget.prototype.collection = typeof MWidgetCollection;
-  MWidget.prototype.render = function() {
+  MWidget.prototype.render = function () {
     var self = this,
-        item = $('<li></li>').attr('id', this.id),
-        contentSection = $('<div></div>').addClass('mwidget-content'),
-        options = Object.keys(self);
+      item = $('<li></li>').attr('id', this.id),
+      contentSection = $('<div></div>').addClass('mwidget-content').addClass('loading'),
+      options = Object.keys(self);
 
+    self.mainContainer = item;
     self.container = contentSection;
     item.append(contentSection);
 
-    _.each(options, function(key, index) {
-      switch(key) {
+    _.each(options, function (key, index) {
+      switch (key) {
         case 'row':
           item.attr('data-row', self.row);
           break;
@@ -264,8 +285,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           item.attr('data-sizey', self.ySize);
           break;
         case 'header':
-          var header = $('<header>' + self.header + '</header>')
-            .attr('id', 'mwidget-header-' + self.order);
+          var header = $('<header>' + self.header + '</header>').attr('id', 'mwidget-header-' + self.order);
           self.header = header;
           item.prepend(header);
           break;
@@ -279,7 +299,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           if (self.settings) {
             var settingsIcon = $('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>');
             self.settingsIcon = settingsIcon;
-            settingsIcon.bind('click', function(event) {
+            settingsIcon.bind('click', function (event) {
               self.events.onSettingsOpen(event, self);
             });
             item.prepend(settingsIcon);
@@ -290,18 +310,54 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     return item;
   };
-  MWidget.prototype.redraw = function() {
+  MWidget.prototype.invalidate = function () {
     var self = this;
+    self.isRendered = false;
     self.container.empty();
+
+    self.xSize = parseInt(self.mainContainer.attr('data-sizex'));
+    self.ySize = parseInt(self.mainContainer.attr('data-sizey'));
+
+    self.width = (self.xSize * self.collection.columnWidth) +
+      (2 * ((self.xSize - 1) * self.collection.columnMargin));
+
+    self.height = (self.ySize * (self.collection.rowHeight)) +
+      (2 * ((self.ySize - 1) * self.collection.rowMargin));
+
+    if (self.header) {
+      var headerHeight = self.header.height();
+      self.height = self.height - headerHeight;
+
+      if (self.header.css) {
+        var headerPaddingTop = parseInt(self.header.css('padding-top')) || 0;
+        var headerPaddingBottom = parseInt(self.header.css('padding-bottom')) || 0;
+        self.height -= (headerPaddingTop + headerPaddingBottom);
+      }
+    }
+    self.container.height(self.height).addClass('loading');
+
+    var widgetIsRendered = setInterval(function () {
+      if (self.isRendered) {
+        clearInterval(widgetIsRendered);
+        self.container.removeClass('loading');
+      }
+    }, 100);
+
+    if (self.contentType === "chart" && self.chart) {
+      self.chart.render(self);
+    } else if (self.contentType === "html" && self.html) {
+      self.container.append(self.html.render(self));
+    }
+
   };
   MWidget.prototype.events = {
-    onSettingsOpen: function(event, widget) {
+    onSettingsOpen:function (event, widget) {
       console.log("onSettingsOpen");
     }
   };
   MWidget.prototype.service = typeof MService;
 
-  MChart = function(ownerWidget, _options) {
+  MChart = function (ownerWidget, _options) {
     this.library = 'd3.v3'; // default
     this.widget = ownerWidget;
     this.service = null;
@@ -310,13 +366,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     _.extend(this, _options);
 
     var self = this;
-    var widgetInitialized = setInterval(function() {
+    var widgetInitialized = setInterval(function () {
       if (self.widget.isInitialized) {
         clearInterval(widgetInitialized);
         if (self.render) {
           self.render(self.widget);
         }
-        self.chartInitialized = true;
       }
     }, 100);
 
@@ -332,16 +387,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @return self
    * @constructor
    */
-  MService = function(owner, _options, _ajaxOptions) {
+  MService = function (owner, _options, _ajaxOptions) {
     var self = this;
     this.name = 'MService';
-    this.schedule = '1 * * * *'; // cron string: 5 * * * * (5 dakikada bir)
+    this.schedule = null; // https://raw.github.com/erhangundogan/MDashboard/master/cron.md
     this.requests = [];
     this.responses = [];
     this.isInitialized = false;
     this.isScheduled = false;
 
-    switch(owner) {
+    switch (owner) {
       case (typeof MDashboard):
         self.dashboard = owner;
         owner.services.push(self);
@@ -354,29 +409,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     _.extend(this, _options);
 
     this.ajaxOptions = {
-      async: true,
-      cache: true,
-      complete: self.complete,
-      contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-      crossDomain: false,
-      data: {},
+      async:true,
+      cache:true,
+      contentType:'application/x-www-form-urlencoded; charset=UTF-8',
+      crossDomain:false,
+      data:{},
       //dataType: 'json'
-      global: true,
-      headers: {},
-      ifModified: false,
+      global:true,
+      headers:{},
+      ifModified:false,
       //jsonp: ''
       //jsonpCallback: function() {}
       //password: ''
-      processData: true,
+      processData:true,
       /*statusCode: {
-        404: function() {
-          alert( "page not found" );
-        }
-      }*/
-      timeout: 30000, // 30sn
-      type: 'GET',
+       404: function() {
+       alert( "page not found" );
+       }
+       }*/
+      timeout:30000, // 30sn
+      type:'GET',
       //username: ''
-      url: ''
+      url:''
     };
     _.extend(this.ajaxOptions, _ajaxOptions);
 
@@ -388,55 +442,57 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * Here we go to get it
    * @param _params service parameters
    */
-  MService.prototype.begin = function(_params) {
+  MService.prototype.begin = function (callback) {
     var self = this;
 
     function callMeMaybe() {
-      debugger;
       var requestItem = {
-        id: getUniqueId(globalUniqueIdLength),
-        time: new Date(),
-        params: _params
+        id:getUniqueId(globalUniqueIdLength),
+        time:new Date()
       };
 
       self.requests.push(requestItem);
       _.extend(self.ajaxOptions, {
-        context: requestItem,
-        data: _params || {}
+        context:requestItem
       });
 
-      $.ajax.call(self, self.ajaxOptions);
+      var request = $.ajax(self.ajaxOptions);
+
+      request.done(function (data, status, request) {
+        callback(null, data);
+      });
+
+      request.fail(function (request, status, error) {
+        callback(error);
+      });
     }
 
     if (self.schedule) {
       // http://bunkat.github.io/later/parsers.html#cron
       var cronSchedule = later.parse.cron(self.schedule),
-          schedule = later.schedule();
+        schedule = later.schedule();
 
       // http://bunkat.github.io/later/execute.html#set-interval
       self.scheduled = later.setInterval(callMeMaybe, schedule);
     } else {
       callMeMaybe();
     }
-
-    return self;
   };
   /**
    * MService ajaxOptions .error
    * @param request
    * @param status
    */
-  MService.prototype.fail = function(request, status, error) {
-    debugger;
+  MService.prototype.fail = function (request, status, error) {
     var self = this;
     self.responses.push({
-      id: getUniqueId(globalUniqueIdLength),
-      time: new Date(),
-      requestId: request.id,
-      requestTime: request.time,
-      ajaxRequest: request,
-      status: status,
-      error: error
+      id:getUniqueId(globalUniqueIdLength),
+      time:new Date(),
+      requestId:request.id,
+      requestTime:request.time,
+      ajaxRequest:request,
+      status:status,
+      error:error
     });
     self.isInitialized = true;
   };
@@ -446,20 +502,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @param status
    * @param request
    */
-  MService.prototype.done = function(data, status, request) {
-    debugger;
-    var self = this;
-    self.responses.push({
-      id: getUniqueId(globalUniqueIdLength),
-      time: new Date(),
-      requestId: request.id,
-      requestTime: request.time,
-      request: request,
-      status: status,
-      data: data
-    });
-    self.isInitialized = true;
-  };
+  /*MService.prototype.done = function (data, status, request) {
+   var self = this;
+   self.responses.push({
+   id: getUniqueId(globalUniqueIdLength),
+   time: new Date(),
+   requestId: request.id,
+   requestTime: request.time,
+   request: request,
+   status: status,
+   data: data
+   });
+   self.isInitialized = true;
+   };*/
 
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
@@ -467,9 +522,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   function getUniqueId(len) {
     var buf = [],
-        chars = "ABCDEF0123456789",
-        charlen = chars.length,
-        firstAlphaNumeric = firstAlphaNumeric || false;
+      chars = "ABCDEF0123456789",
+      charlen = chars.length,
+      firstAlphaNumeric = firstAlphaNumeric || false;
 
     var getRandomInt = function getRandomInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
