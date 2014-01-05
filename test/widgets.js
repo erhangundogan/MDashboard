@@ -146,18 +146,16 @@ var widgets = [
       },
       render: function (widget) {
         var chart = this,
+          format = d3.time.format("%d.%m.%Y"),
+          parseDate = format.parse,
           margin = {top: 20, right: 20, bottom: 80, left: 50},
           width = widget.width - margin.left - margin.right,
-          height = widget.height - margin.top - margin.bottom;
+          height = widget.height - margin.top - margin.bottom,
+          x = d3.time.scale().range([0, width]),
+          y = d3.scale.linear().range([height, 0]);
 
         widget.container.append(chart.style(widget));
         widget.container.append('<svg class="chart"></svg>');
-
-        var parseDate = d3.time.format("%d.%m.%Y").parse;
-
-        var x = d3.time.scale().range([0, width]);
-
-        var y = d3.scale.linear().range([height, 0]);
 
         var xAxis = d3.svg.axis()
           .scale(x)
@@ -182,7 +180,8 @@ var widgets = [
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
         this.dataset.forEach(function (d) {
-          d.date = parseDate(d.date);
+          var date = _.isString(d.date) ? parseDate(d.date) : d.date;
+          d.date = date;
           d.value = +d.value;
         });
 

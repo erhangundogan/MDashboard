@@ -16,6 +16,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @constructor
    */
   MDashboard = function () {
+    this.uid = getUniqueId(globalUniqueIdLength);
     this.options = {};
     this.collections = [];
     this.services = [];
@@ -49,7 +50,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MDashboard.prototype.createCollection = function (_options, callback) {
     var self = this,
-      time = 0;
+        time = 0;
 
     if (_.isFunction(_options)) {
       callback = _options;
@@ -84,6 +85,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MWidgetCollection = function (ownerDashboard, _options) {
     var self = this;
+    this.uid = getUniqueId(globalUniqueIdLength);
     this.dashboard = ownerDashboard;
     this.order = ownerDashboard.collections.length + 1;
     this.isInitialized = false;
@@ -111,23 +113,29 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     _.extend(this, _options);
 
-    if (!this.container) {
-      this.container = $('body');
-      $(window).bind('resize', function (event) {
-        self.events.onContainerResize(event, self);
-      });
-      this.height = $(window).height();
+    if (!self.container) {
+      self.container = $('body');
+      self.height = $(window).height();
+
+      $(window).bind('resize', debouncer(
+        function (event) {
+          if (!self.resizing) {
+            self.resizing = true;
+            self.events.onContainerResize(event, self);
+          }
+        }, 1000
+      ));
     } else {
-      this.height = $(this.container).height();
-      $(this.container).bind('resize', function (event) {
-        self.events.onContainerResize(event, self);
-      });
+      self.height = $(self.container).height();
+      $(this.container).bind('resize', debouncer(
+        function (event) {
+          if (!self.resizing) {
+            self.resizing = true;
+            self.events.onContainerResize(event, self);
+          }
+        }, 1000
+      ));
     }
-
-    this.width = $(this.container).width();
-
-    this.columnMargin = this.collectionOptions.widget_margins[0];
-    this.rowMargin = this.collectionOptions.widget_margins[1];
 
     return this;
   };
@@ -135,6 +143,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   MWidgetCollection.prototype.invalidate = function () {
     var self = this;
 
+    self.width = $(self.container).width();
+    self.height = self.container.is('body') ? $(window).height() : $(self.container).height();
+    self.columnMargin = self.collectionOptions.widget_margins[0];
+    self.rowMargin = self.collectionOptions.widget_margins[1];
     self.collectionOptions.widget_base_dimensions = [self.width, self.height];
 
     var xCount = yCount = 0;
@@ -161,6 +173,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       widget.height = (widget.ySize * (self.rowHeight)) +
         (2 * ((widget.ySize - 1) * self.rowMargin));
     });
+
+    return self;
   };
   MWidgetCollection.prototype.render = function () {
     var wrapper = $('<div class="gridster" />'),
@@ -201,8 +215,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       collection.invalidate();
     },
     onContainerResize:function (event, collection) {
-      //widget.resize();
-      collection.invalidate();
+      collection.isInitialized = false;
+      $('.gridster').remove();
+      collection.invalidate().render();
+      _.each(collection.widgets, function(widget, index) {
+        widget.invalidate();
+      });
+      collection.resizing = false;
     }
   };
 
@@ -214,6 +233,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * @constructor
    */
   MWidget = function (ownerCollection, _options) {
+    this.uid = getUniqueId(globalUniqueIdLength);
     this.xSize = 1;
     this.ySize = 1;
     this.settings = true;
@@ -285,7 +305,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           item.attr('data-sizey', self.ySize);
           break;
         case 'header':
-          var header = $('<header>' + self.header + '</header>').attr('id', 'mwidget-header-' + self.order);
+          var headerText = (self.header && _.isString(self.header) ? self.header :
+            (self.header && self.header instanceof jQuery ? self.header.text() : ''));
+          var header = $('<header>' + headerText + '</header>').attr('id', 'mwidget-header-' + self.order);
           self.header = header;
           item.prepend(header);
           break;
@@ -358,7 +380,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   MWidget.prototype.service = typeof MService;
 
   MChart = function (ownerWidget, _options) {
-    this.library = 'd3.v3'; // default
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.library = 'highcharts'; // default
     this.widget = ownerWidget;
     this.service = null;
     this.isInitialized = false;
@@ -389,6 +412,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MService = function (owner, _options, _ajaxOptions) {
     var self = this;
+
+    this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MService';
     this.schedule = null; // https://raw.github.com/erhangundogan/MDashboard/master/cron.md
     this.requests = [];
@@ -535,6 +560,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     }
 
     return buf.join("");
+  }
+
+  function debouncer(fn, timeout) {
+    var timeoutID,
+        timeout = timeout || 200;
+
+    return function () {
+      var scope = this,
+          args = arguments;
+
+      clearTimeout(timeoutID);
+      timeoutID = setTimeout(function () {
+        fn.apply(scope, Array.prototype.slice.call(args));
+      }, timeout);
+    }
   }
 
 }(this));
