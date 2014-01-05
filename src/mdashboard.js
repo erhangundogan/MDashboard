@@ -91,7 +91,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isInitialized = false;
     this.service = null;
     this.collectionOptions = {
-      widget_margins:[10, 10],
+      widget_margins:[25, 25],
       resize:{
         enabled:true,
         stop:function (e, ui, $widget) {
@@ -167,19 +167,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     self.rowHeight = yHeight;
 
     _.each(self.widgets, function (widget, index) {
-      widget.width = (widget.xSize * self.columnWidth) +
-        (2 * ((widget.xSize - 1) * self.columnMargin));
-
-      widget.height = (widget.ySize * (self.rowHeight)) +
-        (2 * ((widget.ySize - 1) * self.rowMargin));
+      widget.width = (widget.xSize * self.columnWidth) + (2 * ((widget.xSize - 1) * self.columnMargin));
+      widget.height = (widget.ySize * (self.rowHeight)) + (2 * ((widget.ySize - 1) * self.rowMargin));
     });
 
     return self;
   };
   MWidgetCollection.prototype.render = function () {
-    var wrapper = $('<div class="gridster" />'),
-      list = $('<ul />'),
-      self = this;
+    var self = this,
+        wrapper = $('<div class="gridster" />').attr('data-uid', self.uid),
+        list = $('<ul />');
 
     if (self.widgets.length == 0) return;
 
@@ -215,8 +212,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       collection.invalidate();
     },
     onContainerResize:function (event, collection) {
+      var selector = '.gridster[data-uid=' + collection.uid + ']';
+      $(selector).remove();
       collection.isInitialized = false;
-      $('.gridster').remove();
       collection.invalidate().render();
       _.each(collection.widgets, function(widget, index) {
         widget.invalidate();
@@ -374,10 +372,51 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   };
   MWidget.prototype.events = {
     onSettingsOpen:function (event, widget) {
-      console.log("onSettingsOpen");
+      widget.createDialog();
     }
   };
   MWidget.prototype.service = typeof MService;
+  MWidget.prototype.createDialog = function() {
+    var self = this,
+        form = $('<table class="settings-table"></table>');
+
+    _.each(Object.keys(self), function(key, index) {
+      var row = $('<tr></tr>'),
+          optionLabel = $('<td class="settings-title"></td>').append(key),
+          optionValueContainer = $('<td class="settings-value"></td>'),
+          optionValue = $('<input type="text" />').attr('value', self[key]);
+
+      row.append(optionLabel)
+         .append('<td>:</td>')
+         .append(optionValueContainer)
+         .append(optionValue);
+
+      form.append(row);
+    });
+
+    var settingsDialog = $('<div class="settings"></div>'),
+        tabList = $('<ul class="resp-tabs-list"></ul>')
+          .append('<li>Default</li>')
+          .append('<li>Collection</li>')
+          .append('<li>Dashboard</li>'),
+        tabWrapper = $('<div class="resp-tabs-container"></div>'),
+        tabContainer = $('<div></div>');
+
+    settingsDialog
+      .append(tabList)
+      .append(tabWrapper.append(
+        tabContainer.append(form)));
+
+    $.boxer(settingsDialog);
+
+    settingsDialog.easyResponsiveTabs({
+      type: 'vertical',
+      width: '500px',
+      fit: false,
+      closed: true,
+      activate: function() {}  // Callback function, gets called if tab is switched
+    });
+  };
 
   MChart = function (ownerWidget, _options) {
     this.uid = getUniqueId(globalUniqueIdLength);

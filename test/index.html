@@ -3,21 +3,31 @@
 <head>
   <meta charset="utf-8">
   <title>Dashboard Test Page</title>
-  <link rel="stylesheet" href="../lib/development/css/jquery.gridster.css">
-  <link rel="stylesheet" href="../lib/development/css/mdashboard.css">
+  <link rel="stylesheet" href="../lib/development/gridster/jquery.gridster.css">
   <link rel="stylesheet" href="../lib/development/font-awesome-4.0.3/css/font-awesome.min.css">
+  <link rel="stylesheet" href="../lib/development/boxer/jquery.fs.boxer.css">
+  <link rel="stylesheet" href="../lib/development/easy-responsive-tabs/easy-responsive-tabs.css">
+  <link rel="stylesheet" href="../src/css/mdashboard.css">
 </head>
 <body>
   <div class="dashboard-container"></div>
+
+  <!-- core libraries begin -->
   <script src="../lib/development/jquery/jquery-1.10.2.js"></script>
   <script src="../lib/development/underscore/underscore.js"></script>
   <script src="../lib/development/gridster/jquery.gridster.with-extras.js"></script>
-  <script src="../lib/development/async/async.js"></script>
-  <script src="../lib/development/picomodal/picoModal.js"></script>
+  <script src="../lib/development/boxer/jquery.fs.boxer.js"></script>
+  <script src="../lib/development/easy-responsive-tabs/easyResponsiveTabs.js"></script>
+  <script src="../src/mdashboard.js"></script>
+  <!-- core libraries end -->
+
+  <!-- chart libraries begin -->
   <script charset="utf-8" src="../lib/development/d3/d3.v3.js"></script>
   <script src="../lib/development/highcharts/highcharts.src.js"></script>
   <script src="../lib/development/highcharts/highcharts-more.src.js"></script>
-  <script src="../src/mdashboard.js"></script>
+  <!-- chart libraries end -->
+
+  <!-- site specific scripts begin -->
   <script src="widgets.js"></script>
   <script>
     var dashboard = new MDashboard().init();
@@ -25,5 +35,6 @@
         collection.add(widgets).render();
     });
   </script>
+  <!-- site specific scripts end -->
 </body>
 </html>

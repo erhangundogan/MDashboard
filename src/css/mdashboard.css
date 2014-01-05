@@ -8,6 +8,10 @@ article, aside, details, figcaption, figure, footer, header, hgroup, nav, sectio
   display: block;
 }
 
+body {
+  background: #e1c192 url(images/wood-005.png);
+}
+
 [hidden] {
   display: none;
 }
@@ -36,13 +40,15 @@ article, aside, details, figcaption, figure, footer, header, hgroup, nav, sectio
 .gridster .gs-w {
   background: #FFF;
   cursor: pointer;
-  -webkit-box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  /*-webkit-box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);*/
+  border-radius: 4px;
+  box-shadow: 0 2px 2px rgba(0,0,0,0.2), 0 1px 5px rgba(0,0,0,0.2), 0 0 0 12px rgba(255,255,255,0.4);
 }
 
 .gridster .player {
-  -webkit-box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
-  box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
+  /*-webkit-box-shadow: 3px 3px 5p/x rgba(0, 0, 0, 0.3);
+  box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);*/
 }
 
 .gridster .preview-holder {
@@ -131,4 +137,26 @@ article, aside, details, figcaption, figure, footer, header, hgroup, nav, sectio
 @-webkit-keyframes spin {
 	from { -webkit-transform: rotate(0deg); }
 	to { -webkit-transform: rotate(360deg); }
+}
+
+.settings-table {
+  border-spacing: 10px;
+  border-collapse: separate;
+}
+
+.settings {
+  width: 550px;
+  height: 700px;
+}
+
+#boxer, .resp-vtabs {
+  background-color: #eeeeee;
+}
+
+#boxer.inline {
+  padding: 15px;
+}
+
+.resp-vtabs {
+  border-radius: 0;
 }

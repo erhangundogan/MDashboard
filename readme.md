@@ -6,4 +6,4 @@ Created by Erhan Gundogan <erhan.gundogan@gmail.com>
 
 ### License
 
-MIT
+[MIT](http://opensource.org/licenses/mit-license.php)
