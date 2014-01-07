@@ -8,7 +8,47 @@
 var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 (function (global) {
 
-  var globalUniqueIdLength = 32;
+  var globalUniqueIdLength = 32,
+      classTopContainer = 'mdashboard-container',
+      classToolbar = 'mdashboard-toolbar',
+      classToolbarList = 'mdashboard-toolbar-list',
+      classToolbarButton = 'mdashboard-toolbar-button',
+      classGridster = 'gridster',
+      widgetHandle = 'header',
+      gridsterOptions = {
+        namespace: '',
+        widget_selector: 'li',
+        widget_margins: [10, 10],
+        widget_base_dimensions: [400, 225],
+        extra_rows: 0,
+        extra_cols: 0,
+        min_cols: 1,
+        max_cols: null,
+        min_rows: 15,
+        max_size_x: false,
+        autogenerate_stylesheet: true,
+        avoid_overlapped_widgets: true,
+        serialize_params: function($w, wgd) {
+          return {
+              col: wgd.col,
+              row: wgd.row,
+              size_x: wgd.size_x,
+              size_y: wgd.size_y
+          };
+        },
+        collision: {},
+        draggable: {
+          items: '.gs-w',
+          distance: 4
+        },
+        resize: {
+          enabled: false,
+          axes: ['x', 'y', 'both'],
+          handle_append_to: '',
+          handle_class: 'gs-resize-handle',
+          max_size: [Infinity, Infinity]
+        }
+      };
 
   /**
    * MDashboard
@@ -50,7 +90,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MDashboard.prototype.createCollection = function (_options, callback) {
     var self = this,
-        time = 0;
+      time = 0;
 
     if (_.isFunction(_options)) {
       callback = _options;
@@ -78,7 +118,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   };
 
   /**
-   * MWidgetCollection construstor
+   * MWidgetCollection constructor
    * @ownerDashboard Owner MDashboard
    * @returns {*} MWidgetCollection itself
    * @constructor
@@ -90,25 +130,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.order = ownerDashboard.collections.length + 1;
     this.isInitialized = false;
     this.service = null;
-    this.collectionOptions = {
-      widget_margins:[25, 25],
-      resize:{
-        enabled:true,
-        stop:function (e, ui, $widget) {
+    this.toolbar = $('<div class="toolbar-collapse ' + classToolbar + '"></div>');
+    this.toolbar.mouseover(function() {
+      $(this).removeClass('toolbar-collapse');
+      $('.' + classToolbarList).css('display', 'list-item');
+    }).mouseout(function() {
+      $(this).addClass('toolbar-collapse');
+      $('.' + classToolbarList).css('display', 'none');
+    });
+
+    this.collectionOptions = gridsterOptions;
+
+    _.extend(this.collectionOptions, {
+      widget_margins: [25, 25],
+      resize: {
+        enabled: true,
+        stop: function (e, ui, $widget) {
           var resizedWidgetId = $widget.attr('id'),
-            resizedWidget = _.find(self.widgets, function (item) {
-              return item.id === resizedWidgetId;
-            });
+              resizedWidget = _.find(self.widgets, function (item) {
+                return item.id === resizedWidgetId;
+              });
 
           if (resizedWidget) {
             resizedWidget.invalidate();
           }
         }
       },
-      draggable:{
-        handle:'header'
+      draggable: {
+        handle: widgetHandle
       }
-    };
+    });
+
     this.widgets = [];
 
     _.extend(this, _options);
@@ -116,30 +168,32 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     if (!self.container) {
       self.container = $('body');
       self.height = $(window).height();
-
-      $(window).bind('resize', debouncer(
-        function (event) {
-          if (!self.resizing) {
-            self.resizing = true;
-            self.events.onContainerResize(event, self);
-          }
-        }, 1000
-      ));
     } else {
       self.height = $(self.container).height();
-      $(this.container).bind('resize', debouncer(
-        function (event) {
-          if (!self.resizing) {
-            self.resizing = true;
-            self.events.onContainerResize(event, self);
-          }
-        }, 1000
-      ));
     }
+
+    $(window).bind('resize', debouncer(
+      function (event) {
+        if (!self.resizing) {
+          self.resizing = true;
+          self.events.onContainerResize(event, self);
+        }
+      }, 1000
+    ));
 
     return this;
   };
+
+  /**
+   * Owner dashboard
+   * @type {string}
+   */
   MWidgetCollection.prototype.dashboard = typeof MDashboard;
+
+  /**
+   * Rearrange widget collection
+   * @returns {*} self
+   */
   MWidgetCollection.prototype.invalidate = function () {
     var self = this;
 
@@ -173,10 +227,42 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     return self;
   };
+
+  /**
+   * Render widget collection
+   * @returns {*} self
+   */
   MWidgetCollection.prototype.render = function () {
     var self = this,
-        wrapper = $('<div class="gridster" />').attr('data-uid', self.uid),
+        wrapper = $('<div class="' + classGridster + '" />').attr('data-uid', self.uid),
         list = $('<ul />');
+
+    self.container.addClass(classTopContainer);
+
+    if (self.toolbar) {
+      var buttons = [],
+          addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-plus-square"></i></a>');
+
+      addButton.click(function() {
+        self.events.onAddWidget(self);
+      });
+
+      buttons.push(addButton);
+
+      self.toolbar.empty();
+
+      var buttonContainer = $('<ul style="display:none" class="' + classToolbarList + '"></ul>');
+
+      _.each(buttons, function(button, index) {
+        var buttonElement = $('<li class="' + classToolbarButton + '"></li>');
+
+        buttonContainer.append(
+          buttonElement.append(button));
+      });
+
+      self.toolbar.append(buttonContainer);
+      self.container.append(self.toolbar);
+    }
 
     if (self.widgets.length == 0) return;
 
@@ -188,10 +274,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       list.append(widget.render());
     });
 
-    list.gridster(self.collectionOptions);
+    self.gridster = list.gridster(self.collectionOptions).data('gridster');
     self.isInitialized = true;
+
     return self;
   };
+
+  /**
+   * Add new widget to collection
+   * @param widget MWidget
+   * @returns {*} self
+   */
   MWidgetCollection.prototype.add = function (widget) {
     var self = this;
 
@@ -207,21 +300,42 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     return self;
   };
+
+  /**
+   * Rearrange collection and renders it
+   */
+  MWidgetCollection.prototype.redraw = function() {
+    var self = this,
+        selector = '.' + classGridster + '[data-uid=' + self.uid + ']';
+
+    $(selector).remove();
+
+    self.isInitialized = false;
+
+    self.invalidate().render();
+
+    _.each(self.widgets, function (widget, index) {
+      widget.invalidate();
+    });
+  };
+
+  /**
+   * Widget Collection events
+   * @type {{onCollectionChange: Function, onContainerResize: Function}}
+   */
   MWidgetCollection.prototype.events = {
-    onCollectionChange:function (collection) {
+    onCollectionChange: function (collection) {
       collection.invalidate();
     },
-    onContainerResize:function (event, collection) {
-      var selector = '.gridster[data-uid=' + collection.uid + ']';
-      $(selector).remove();
-      collection.isInitialized = false;
-      collection.invalidate().render();
-      _.each(collection.widgets, function(widget, index) {
-        widget.invalidate();
-      });
+    onContainerResize: function (event, collection) {
+      collection.redraw();
       collection.resizing = false;
+    },
+    onAddWidget: function(collection) {
+      debugger;
     }
   };
+
 
   /**
    *
@@ -237,6 +351,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.settings = true;
     this.collection = ownerCollection;
     this.isInitialized = false;
+    this.isClosable = true;
+    this.isLocked = false;
     this.isRendered = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
@@ -278,6 +394,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     return this;
   };
   MWidget.prototype.collection = typeof MWidgetCollection;
+
+  /**
+   * Renders widget
+   * @returns {*|jQuery}
+   */
   MWidget.prototype.render = function () {
     var self = this,
       item = $('<li></li>').attr('id', this.id),
@@ -305,7 +426,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         case 'header':
           var headerText = (self.header && _.isString(self.header) ? self.header :
             (self.header && self.header instanceof jQuery ? self.header.text() : ''));
-          var header = $('<header>' + headerText + '</header>').attr('id', 'mwidget-header-' + self.order);
+          var header = $('<' + widgetHandle + '>' + headerText + '</' + widgetHandle + '>').attr('id', 'mwidget-header-' + self.order);
           self.header = header;
           item.prepend(header);
           break;
@@ -317,7 +438,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           break;
         case 'settings':
           if (self.settings) {
-            var settingsIcon = $('<i class="fa fa-cog fa-2x fa-white mdashboard-settings-icon"></i>');
+            var settingsIcon = $('<i class="fa fa-cog fa-2x fa-white mwidget-icon icon-settings"></i>');
             self.settingsIcon = settingsIcon;
             settingsIcon.bind('click', function (event) {
               self.events.onSettingsOpen(event, self);
@@ -325,11 +446,25 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
             item.prepend(settingsIcon);
           }
           break;
+        case 'isClosable':
+          if (self.isClosable) {
+            var closeIcon = $('<i class="fa fa-times fa-2x fa-white mwidget-icon icon-close"></i>');
+            self.closeIcon = closeIcon;
+            closeIcon.bind('click', function (event) {
+              self.events.onClose(event, self);
+            });
+            item.prepend(closeIcon);
+          }
+          break;
       }
     });
 
     return item;
   };
+
+  /**
+   * Rearrange widget
+   */
   MWidget.prototype.invalidate = function () {
     var self = this;
     self.isRendered = false;
@@ -370,54 +505,98 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     }
 
   };
+
+  /**
+   * Widget events
+   * @type {{onSettingsOpen: Function, onClose: Function}}
+   */
   MWidget.prototype.events = {
-    onSettingsOpen:function (event, widget) {
+    onSettingsOpen: function (event, widget) {
       widget.createDialog();
+    },
+    onClose: function (event, widget) {
+      for (var i in widget.collection.widgets) {
+        if (widget.collection.widgets.hasOwnProperty(i)) {
+          if (widget.collection.widgets[i].uid === widget.uid) {
+            widget.collection.widgets.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      if (widget.collection.gridster && widget.collection.gridster.$widgets) {
+        _.each(widget.collection.gridster.$widgets, function(item, index) {
+          if ($(item).attr('id') === widget.id) {
+            widget.collection.gridster.remove_widget($(item));
+          }
+        });
+      }
+
+      //widget.collection.events.onCollectionChange(widget.collection);
+      //widget.collection.redraw();
     }
   };
-  MWidget.prototype.service = typeof MService;
-  MWidget.prototype.createDialog = function() {
-    var self = this,
-        form = $('<table class="settings-table"></table>');
 
-    _.each(Object.keys(self), function(key, index) {
+  /**
+   * Owned service
+   * @type {string}
+   */
+  MWidget.prototype.service = typeof MService;
+
+  /**
+   * Crates widget settings dialog
+   */
+  MWidget.prototype.createDialog = function () {
+    var self = this,
+      form = $('<table class="settings-table"></table>');
+
+    _.each(Object.keys(self), function (key, index) {
       var row = $('<tr></tr>'),
-          optionLabel = $('<td class="settings-title"></td>').append(key),
-          optionValueContainer = $('<td class="settings-value"></td>'),
-          optionValue = $('<input type="text" />').attr('value', self[key]);
+        optionLabel = $('<td class="settings-title"></td>').append(key),
+        optionValueContainer = $('<td class="settings-value"></td>'),
+        optionValue = $('<input type="text" />').attr('value', self[key]);
 
       row.append(optionLabel)
-         .append('<td>:</td>')
-         .append(optionValueContainer)
-         .append(optionValue);
+        .append('<td>:</td>')
+        .append(optionValueContainer)
+        .append(optionValue);
 
       form.append(row);
     });
 
     var settingsDialog = $('<div class="settings"></div>'),
-        tabList = $('<ul class="resp-tabs-list"></ul>')
-          .append('<li>Default</li>')
-          .append('<li>Collection</li>')
-          .append('<li>Dashboard</li>'),
-        tabWrapper = $('<div class="resp-tabs-container"></div>'),
-        tabContainer = $('<div></div>');
+      tabList = $('<ul class="resp-tabs-list"></ul>')
+        .append('<li>Default</li>')
+        .append('<li>Collection</li>')
+        .append('<li>Dashboard</li>'),
+      tabWrapper = $('<div class="resp-tabs-container"></div>'),
+      tabContainer = $('<div></div>');
 
     settingsDialog
       .append(tabList)
       .append(tabWrapper.append(
         tabContainer.append(form)));
 
+    // http://formstone.it/components/Boxer/demo/index.html
     $.boxer(settingsDialog);
 
+    // https://github.com/samsono/Easy-Responsive-Tabs-to-Accordion
     settingsDialog.easyResponsiveTabs({
       type: 'vertical',
       width: '500px',
       fit: false,
-      closed: true,
-      activate: function() {}  // Callback function, gets called if tab is switched
+      closed: true
+      //activate: function() {}  // Callback function, gets called if tab is switched
     });
   };
 
+  /**
+   * Chart item would be placed into widget
+   * @param ownerWidget MWidget
+   * @param _options
+   * @returns {*}
+   * @constructor
+   */
   MChart = function (ownerWidget, _options) {
     this.uid = getUniqueId(globalUniqueIdLength);
     this.library = 'highcharts'; // default
@@ -473,28 +652,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     _.extend(this, _options);
 
     this.ajaxOptions = {
-      async:true,
-      cache:true,
-      contentType:'application/x-www-form-urlencoded; charset=UTF-8',
-      crossDomain:false,
-      data:{},
+      async: true,
+      cache: true,
+      contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+      crossDomain: false,
+      data: {},
       //dataType: 'json'
-      global:true,
-      headers:{},
-      ifModified:false,
+      global: true,
+      headers: {},
+      ifModified: false,
       //jsonp: ''
       //jsonpCallback: function() {}
       //password: ''
-      processData:true,
+      processData: true,
       /*statusCode: {
        404: function() {
        alert( "page not found" );
        }
        }*/
-      timeout:30000, // 30sn
-      type:'GET',
+      timeout: 30000, // 30sn
+      type: 'GET',
       //username: ''
-      url:''
+      url: ''
     };
     _.extend(this.ajaxOptions, _ajaxOptions);
 
@@ -511,13 +690,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     function callMeMaybe() {
       var requestItem = {
-        id:getUniqueId(globalUniqueIdLength),
-        time:new Date()
+        id: getUniqueId(globalUniqueIdLength),
+        time: new Date()
       };
 
       self.requests.push(requestItem);
       _.extend(self.ajaxOptions, {
-        context:requestItem
+        context: requestItem
       });
 
       var request = $.ajax(self.ajaxOptions);
@@ -550,13 +729,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   MService.prototype.fail = function (request, status, error) {
     var self = this;
     self.responses.push({
-      id:getUniqueId(globalUniqueIdLength),
-      time:new Date(),
-      requestId:request.id,
-      requestTime:request.time,
-      ajaxRequest:request,
-      status:status,
-      error:error
+      id: getUniqueId(globalUniqueIdLength),
+      time: new Date(),
+      requestId: request.id,
+      requestTime: request.time,
+      ajaxRequest: request,
+      status: status,
+      error: error
     });
     self.isInitialized = true;
   };
@@ -607,7 +786,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     return function () {
       var scope = this,
-          args = arguments;
+        args = arguments;
 
       clearTimeout(timeoutID);
       timeoutID = setTimeout(function () {

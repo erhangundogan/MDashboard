@@ -1,20 +1,5 @@
 
-* {
-  margin: 0;
-  padding: 0;
-}
-
-article, aside, details, figcaption, figure, footer, header, hgroup, nav, section {
-  display: block;
-}
-
-body {
-  background: #e1c192 url(images/wood-005.png);
-}
-
-[hidden] {
-  display: none;
-}
+/* Gridster */
 
 .gridster {
   margin: 0 auto;
@@ -68,6 +53,29 @@ body {
   text-align: center;
 }
 
+.gridster li {
+  overflow: hidden;
+}
+
+/* MDashboard */
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+article, aside, details, figcaption, figure, footer, header, hgroup, nav, section {
+  display: block;
+}
+
+body {
+  background: #e1c192 url(images/wood-005.png);
+}
+
+[hidden] {
+  display: none;
+}
+
 .mr025 {
   margin-right: .25em
 }
@@ -80,18 +88,82 @@ body {
   margin-top: .25em
 }
 
-.mdashboard-settings-icon {
-  color: #BBB;
-  position: absolute;
-  right: 7px;
-  top: 7px;
-  z-index: 1000;
-  opacity: .5;
+.mdashboard-container {
+  position: relative;
 }
 
-.mdashboard-settings-icon:hover {
+.mwidget-icon {
+  color: #BBB;
+  position: absolute;
+  z-index: 10;
+  opacity: .6;
+}
+
+.icon-close {
+  right: 5px;
+  top: 7px;
+}
+
+.icon-settings {
+  right: 27px;
+  top: 7px;
+}
+
+.icon-settings:hover {
+  -webkit-animation: spin 2s infinite linear;
+  -moz-animation: spin 2s infinite linear;
+  -o-animation: spin 2s infinite linear;
+  animation: spin 2s infinite linear;
+}
+
+.mwidget-icon:hover {
   color: #333;
   opacity: 1;
+}
+
+.mdashboard-toolbar .btn {
+  display: inline-block;
+  border-radius: 4px;
+  text-align: center;
+  text-decoration: none;
+  font-weight: bold;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  cursor: pointer;
+  border: none;
+  margin: 3px 0 0 5px;
+}
+
+.mdashboard-toolbar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  display: block;
+  height: 53px;
+  /*padding: 5px 0 0 5px;*/
+  width: 100%;
+  background-color: rgba(0,0,0,0.25);
+  z-index: 3;
+
+  -moz-transition: margin .25s;
+  -webkit-transition: margin .25s;
+  -o-transition: margin .25s;
+  transition: margin .25s;
+}
+
+.toolbar-collapse {
+  margin-top: -40px;
+}
+
+.mdashboard-toolbar .btn {
+  color: rgba(0,0,0,0.5);
+}
+
+.mdashboard-toolbar .btn:hover {
+  color: rgba(0,0,0,1);
 }
 
 .mwidget-content {
@@ -100,10 +172,6 @@ body {
   height: 100%;
   position: relative;
   padding: 0;
-}
-
-.gridster li {
-  overflow: hidden;
 }
 
 .chart {
