@@ -566,7 +566,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
     var settingsDialog = $('<div class="settings"></div>'),
       tabList = $('<ul class="resp-tabs-list"></ul>')
-        .append('<li>Default</li>')
+        .append('<li><i class="fa fa-cog fa-4x fa-white"></i></li>')
         .append('<li>Collection</li>')
         .append('<li>Dashboard</li>'),
       tabWrapper = $('<div class="resp-tabs-container"></div>'),
@@ -583,7 +583,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     // https://github.com/samsono/Easy-Responsive-Tabs-to-Accordion
     settingsDialog.easyResponsiveTabs({
       type: 'vertical',
-      width: '500px',
+      width: '700px',
       fit: false,
       closed: true
       //activate: function() {}  // Callback function, gets called if tab is switched
