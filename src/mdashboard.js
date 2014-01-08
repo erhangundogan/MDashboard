@@ -9,46 +9,46 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 (function (global) {
 
   var globalUniqueIdLength = 32,
-      classTopContainer = 'mdashboard-container',
-      classToolbar = 'mdashboard-toolbar',
-      classToolbarList = 'mdashboard-toolbar-list',
-      classToolbarButton = 'mdashboard-toolbar-button',
-      classGridster = 'gridster',
-      widgetHandle = 'header',
-      gridsterOptions = {
-        namespace: '',
-        widget_selector: 'li',
-        widget_margins: [10, 10],
-        widget_base_dimensions: [400, 225],
-        extra_rows: 0,
-        extra_cols: 0,
-        min_cols: 1,
-        max_cols: null,
-        min_rows: 15,
-        max_size_x: false,
-        autogenerate_stylesheet: true,
-        avoid_overlapped_widgets: true,
-        serialize_params: function($w, wgd) {
-          return {
-              col: wgd.col,
-              row: wgd.row,
-              size_x: wgd.size_x,
-              size_y: wgd.size_y
-          };
-        },
-        collision: {},
-        draggable: {
-          items: '.gs-w',
-          distance: 4
-        },
-        resize: {
-          enabled: false,
-          axes: ['x', 'y', 'both'],
-          handle_append_to: '',
-          handle_class: 'gs-resize-handle',
-          max_size: [Infinity, Infinity]
-        }
-      };
+    classTopContainer = 'mdashboard-container',
+    classToolbar = 'mdashboard-toolbar',
+    classToolbarList = 'mdashboard-toolbar-list',
+    classToolbarButton = 'mdashboard-toolbar-button',
+    classGridster = 'gridster',
+    widgetHandle = 'header',
+    gridsterOptions = {
+      namespace: '',
+      widget_selector: 'li',
+      widget_margins: [10, 10],
+      widget_base_dimensions: [400, 225],
+      extra_rows: 0,
+      extra_cols: 0,
+      min_cols: 1,
+      max_cols: null,
+      min_rows: 15,
+      max_size_x: false,
+      autogenerate_stylesheet: true,
+      avoid_overlapped_widgets: true,
+      serialize_params: function ($w, wgd) {
+        return {
+          col: wgd.col,
+          row: wgd.row,
+          size_x: wgd.size_x,
+          size_y: wgd.size_y
+        };
+      },
+      collision: {},
+      draggable: {
+        items: '.gs-w',
+        distance: 4
+      },
+      resize: {
+        enabled: false,
+        axes: ['x', 'y', 'both'],
+        handle_append_to: '',
+        handle_class: 'gs-resize-handle',
+        max_size: [Infinity, Infinity]
+      }
+    };
 
   /**
    * MDashboard
@@ -57,6 +57,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MDashboard = function () {
     this.uid = getUniqueId(globalUniqueIdLength);
+    this.isAdmin = true;
     this.options = {};
     this.collections = [];
     this.services = [];
@@ -131,13 +132,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isInitialized = false;
     this.service = null;
     this.toolbar = $('<div class="toolbar-collapse ' + classToolbar + '"></div>');
-    this.toolbar.mouseover(function() {
+    this.toolbar.mouseover(function () {
       $(this).removeClass('toolbar-collapse');
       $('.' + classToolbarList).css('display', 'list-item');
-    }).mouseout(function() {
-      $(this).addClass('toolbar-collapse');
-      $('.' + classToolbarList).css('display', 'none');
-    });
+    }).mouseout(function () {
+        $(this).addClass('toolbar-collapse');
+        $('.' + classToolbarList).css('display', 'none');
+      });
 
     this.collectionOptions = gridsterOptions;
 
@@ -147,9 +148,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         enabled: true,
         stop: function (e, ui, $widget) {
           var resizedWidgetId = $widget.attr('id'),
-              resizedWidget = _.find(self.widgets, function (item) {
-                return item.id === resizedWidgetId;
-              });
+            resizedWidget = _.find(self.widgets, function (item) {
+              return item.id === resizedWidgetId;
+            });
 
           if (resizedWidget) {
             resizedWidget.invalidate();
@@ -234,26 +235,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MWidgetCollection.prototype.render = function () {
     var self = this,
-        wrapper = $('<div class="' + classGridster + '" />').attr('data-uid', self.uid),
-        list = $('<ul />');
+      wrapper = $('<div class="' + classGridster + '" />').attr('data-uid', self.uid),
+      list = $('<ul />');
 
     self.container.addClass(classTopContainer);
 
     if (self.toolbar) {
-      var buttons = [],
-          addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-plus-square"></i></a>');
+      var buttons = [];
 
-      addButton.click(function() {
-        self.events.onAddWidget(self);
-      });
-
+      // Add widget button
+      var addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-plus-square"></i></a>')
+        .attr('title', 'Add Widget')
+        .click(function () {
+          self.events.onAddWidget(self);
+        });
       buttons.push(addButton);
+
+      // Add management button
+      if (self.dashboard.isAdmin) {
+        var manageButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-cogs"></i></a>')
+          .attr('title', 'Manage Services')
+          .click(function () {
+            self.events.onManageServices(self);
+          });
+        buttons.push(manageButton);
+      }
 
       self.toolbar.empty();
 
       var buttonContainer = $('<ul style="display:none" class="' + classToolbarList + '"></ul>');
 
-      _.each(buttons, function(button, index) {
+      _.each(buttons, function (button, index) {
         var buttonElement = $('<li class="' + classToolbarButton + '"></li>');
 
         buttonContainer.append(
@@ -304,9 +316,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   /**
    * Rearrange collection and renders it
    */
-  MWidgetCollection.prototype.redraw = function() {
+  MWidgetCollection.prototype.redraw = function () {
     var self = this,
-        selector = '.' + classGridster + '[data-uid=' + self.uid + ']';
+      selector = '.' + classGridster + '[data-uid=' + self.uid + ']';
 
     $(selector).remove();
 
@@ -331,8 +343,64 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       collection.redraw();
       collection.resizing = false;
     },
-    onAddWidget: function(collection) {
+    onAddWidget: function (collection) {
       debugger;
+    },
+    onManageServices: function(collection) {
+      var managementDialog = $('<div class="dialog management"></div>'),
+          serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
+          container = $('<div></div>');
+
+      var products = [{
+        'merlon': {
+          image: '',
+          description: 'Merlon Business Framework',
+          categories: [
+            {
+              task: {
+                description: 'Task management services',
+                image: ''
+              },
+              accounting: {
+                description: 'Accounting services',
+                image: ''
+              }
+            }
+          ]
+        }
+      }];
+
+
+      container.append(
+        $('<div class="dialog-header clearfix"></div>')
+          .append(serviceIcon)
+          .append($('<h1 class="pull-left">Management Services</h1>')));
+
+      var roller = $('<div class="swiper-container"></div>'),
+          wrapper = $('<div class="swiper-wrapper"></div>'),
+          dialogBody = $('<div class="dialog-body"></div>');
+
+      wrapper.append($('<div class="swiper-slide"><div>erhan</div></div>'));
+      wrapper.append($('<div class="swiper-slide"><span>gündoğan</span></div>'));
+      wrapper.append($('<div class="swiper-slide">3</div>'));
+      wrapper.append($('<div class="swiper-slide">4</div>'));
+      wrapper.append($('<div class="swiper-slide">5</div>'));
+
+      container.append(
+        dialogBody.append(
+          roller.append(wrapper)));
+
+      managementDialog.append(container);
+
+      $.boxer(managementDialog);
+
+      var swiper = $('.swiper-container').swiper({
+        cssWidthAndHeight: true,
+        mousewheelControl: true
+      });
+      debugger;
+      container.append($('<a href="#" class="button-prev">Before</a>').click( function() { swiper.swipePrev() }));
+      container.append($('<a href="#" class="button-next">After</a>').click( function() { swiper.swipeNext() }));
     }
   };
 
@@ -525,7 +593,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       }
 
       if (widget.collection.gridster && widget.collection.gridster.$widgets) {
-        _.each(widget.collection.gridster.$widgets, function(item, index) {
+        _.each(widget.collection.gridster.$widgets, function (item, index) {
           if ($(item).attr('id') === widget.id) {
             widget.collection.gridster.remove_widget($(item));
           }
@@ -547,35 +615,36 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    * Crates widget settings dialog
    */
   MWidget.prototype.createDialog = function () {
-    var self = this,
-      form = $('<table class="settings-table"></table>');
+    var self = this;
 
-    _.each(Object.keys(self), function (key, index) {
-      var row = $('<tr></tr>'),
-        optionLabel = $('<td class="settings-title"></td>').append(key),
-        optionValueContainer = $('<td class="settings-value"></td>'),
-        optionValue = $('<input type="text" />').attr('value', self[key]);
+    var settingsDialog = $('<div class="dialog"></div>'),
+      serviceIcon = $('<i class="fa fa-cog fa-4x fa-white pull-left mr05"></i>'),
+      container = $('<div></div>');
 
-      row.append(optionLabel)
-        .append('<td>:</td>')
-        .append(optionValueContainer)
-        .append(optionValue);
 
-      form.append(row);
-    });
+    var products = [{
+      'merlon': {
+        image: '',
+        description: 'Merlon Business Framework',
+        categories: [
+          {
+            task: {
+              description: 'Task management services',
+              image: ''
+            },
+            accounting: {
+              description: 'Accounting services',
+              image: ''
+            }
+          }
+        ]
+      }
+    }];
 
-    var settingsDialog = $('<div class="settings"></div>'),
-      tabList = $('<ul class="resp-tabs-list"></ul>')
-        .append('<li><i class="fa fa-cog fa-4x fa-white"></i></li>')
-        .append('<li>Collection</li>')
-        .append('<li>Dashboard</li>'),
-      tabWrapper = $('<div class="resp-tabs-container"></div>'),
-      tabContainer = $('<div></div>');
+    container.append(serviceIcon);
+    container.append('<h1 class="pull-left header">Choose Service</h1>');
 
-    settingsDialog
-      .append(tabList)
-      .append(tabWrapper.append(
-        tabContainer.append(form)));
+    settingsDialog.append(container);
 
     // http://formstone.it/components/Boxer/demo/index.html
     $.boxer(settingsDialog);
@@ -782,7 +851,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
   function debouncer(fn, timeout) {
     var timeoutID,
-        timeout = timeout || 200;
+      timeout = timeout || 200;
 
     return function () {
       var scope = this,

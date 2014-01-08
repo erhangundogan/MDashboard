@@ -1,4 +1,16 @@
 
+@import url(http://fonts.googleapis.com/css?family=Ubuntu:400,700|Oxygen:400,700|Open+Sans:400,700|Marmelad|Varela&subset=latin,latin-ext);
+/*
+Google Fonts
+http://www.google.com/fonts#UsePlace:use/Collection:Ubuntu:400,700|Oxygen:400,700|Open+Sans:400,700|Marmelad|Varela
+
+font-family: 'Ubuntu', sans-serif;
+font-family: 'Oxygen', sans-serif;
+font-family: 'Open Sans', sans-serif;
+font-family: 'Marmelad', sans-serif;
+font-family: 'Varela', sans-serif;
+*/
+
 /* Gridster */
 
 .gridster {
@@ -58,6 +70,27 @@
 }
 
 /* MDashboard */
+
+.clearfix:after {
+    content: ".";
+    display: block;
+    clear: both;
+    visibility: hidden;
+    line-height: 0;
+    height: 0;
+}
+
+.clearfix {
+    display: inline-block;
+}
+
+html[xmlns] .clearfix {
+    display: block;
+}
+
+* html .clearfix {
+    height: 1%;
+}
 
 * {
   margin: 0;
@@ -122,17 +155,18 @@ body {
 }
 
 .mdashboard-toolbar .btn {
-  display: inline-block;
+  display: block;
   border-radius: 4px;
   text-align: center;
   text-decoration: none;
   font-weight: bold;
+
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   cursor: pointer;
   border: none;
-  margin: 3px 0 0 5px;
+  margin: 3px 0 0 10px;
 }
 
 .mdashboard-toolbar {
@@ -152,6 +186,10 @@ body {
   -webkit-transition: margin .25s;
   -o-transition: margin .25s;
   transition: margin .25s;
+}
+
+.mdashboard-toolbar-list li {
+  display: inline-block;
 }
 
 .toolbar-collapse {
@@ -212,13 +250,35 @@ body {
   border-collapse: separate;
 }
 */
-.settings {
+.dialog {
   width: 750px;
   height: 600px;
+  overflow: auto;
+  padding: .5em;
+  font-family: 'Ubuntu', sans-serif;
+}
+
+.dialog .dialog-header {
+  line-height: 65px;
+  vertical-align: middle;
+  margin: 1em;
+}
+
+.dialog .dialog-body {
+  width: 99%;
+  margin: 1em auto;
+  background-color: #F5F2EF;
+  height: 300px;
+  border-radius: 7px;
+}
+
+.swiper-container, .swiper-slide {
+  width: 64px;
+  height: 64px;
 }
 
 #boxer, .resp-vtabs {
-  background-color: rgba(243,243,232,0.7);
+  /*background-color: rgba(243,243,232,0.7);*/
   border: solid transparent 10px;
   border-radius: 5px;
 }
@@ -230,4 +290,12 @@ body {
 
 .resp-vtabs {
   border-radius: 0;
+}
+
+.pull-left {
+  float:left
+}
+
+.pull-right {
+  float:right
 }
