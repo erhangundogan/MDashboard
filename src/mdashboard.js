@@ -394,6 +394,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
       $.boxer(managementDialog);
 
+      // http://www.idangero.us/sliders/swiper/api.php
       var swiper = $('.swiper-container').swiper({
         cssWidthAndHeight: true,
         mousewheelControl: true
