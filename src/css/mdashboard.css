@@ -102,7 +102,7 @@ article, aside, details, figcaption, figure, footer, header, hgroup, nav, sectio
 }
 
 body {
-  background: #e1c192 url(images/wood-005.png);
+  background: #fff url(images/wood-005.png);
 }
 
 [hidden] {
@@ -113,12 +113,20 @@ body {
   margin-right: .25em
 }
 
+.ml025 {
+  margin-left: .25em
+}
+
 .mr05 {
   margin-right: .5em
 }
 
 .mt025 {
   margin-top: .25em
+}
+
+.mt10 {
+  margin-top: 1em
 }
 
 .mdashboard-container {
@@ -255,6 +263,7 @@ body {
   height: 600px;
   overflow: auto;
   padding: .5em;
+  /*background-color: #e1c192;*/
   font-family: 'Ubuntu', sans-serif;
 }
 
@@ -265,16 +274,45 @@ body {
 }
 
 .dialog .dialog-body {
-  width: 99%;
-  margin: 1em auto;
+  width: 650px;
   background-color: #F5F2EF;
-  height: 300px;
+  height: 125px;
   border-radius: 7px;
+  float:left;
 }
 
-.swiper-container, .swiper-slide {
-  width: 64px;
-  height: 64px;
+.swiper-container {
+  display: inline-block;
+  width: 640px;
+  height: 125px;
+  color: #fff;
+  text-align: center;
+
+  position: relative;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  -ms-backface-visibility: hidden;
+  -o-backface-visibility: hidden;
+  backface-visibility: hidden;
+  z-index: 1;
+}
+
+.swiper-slide {
+  font-size: 32px;
+  vertical-align: middle;
+  color: #333333;
+  cursor: pointer;
+}
+
+.swiper-button {
+  line-height: 140px;
+  display: inline;
+  color: #ccc;
+}
+
+.swiper-button:hover {
+  color: #999;
 }
 
 #boxer, .resp-vtabs {
@@ -298,4 +336,8 @@ body {
 
 .pull-right {
   float:right
+}
+
+.merlon-logo {
+  background: transparent url('images/merlon-logo-small.png') center no-repeat;
 }

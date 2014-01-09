@@ -5,50 +5,50 @@
  MIT License
  */
 
-var MDashboard, MWidgetCollection, MWidget, MChart, MService;
+var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 (function (global) {
 
   var globalUniqueIdLength = 32,
-    classTopContainer = 'mdashboard-container',
-    classToolbar = 'mdashboard-toolbar',
-    classToolbarList = 'mdashboard-toolbar-list',
-    classToolbarButton = 'mdashboard-toolbar-button',
-    classGridster = 'gridster',
-    widgetHandle = 'header',
-    gridsterOptions = {
-      namespace: '',
-      widget_selector: 'li',
-      widget_margins: [10, 10],
-      widget_base_dimensions: [400, 225],
-      extra_rows: 0,
-      extra_cols: 0,
-      min_cols: 1,
-      max_cols: null,
-      min_rows: 15,
-      max_size_x: false,
-      autogenerate_stylesheet: true,
-      avoid_overlapped_widgets: true,
-      serialize_params: function ($w, wgd) {
-        return {
-          col: wgd.col,
-          row: wgd.row,
-          size_x: wgd.size_x,
-          size_y: wgd.size_y
-        };
-      },
-      collision: {},
-      draggable: {
-        items: '.gs-w',
-        distance: 4
-      },
-      resize: {
-        enabled: false,
-        axes: ['x', 'y', 'both'],
-        handle_append_to: '',
-        handle_class: 'gs-resize-handle',
-        max_size: [Infinity, Infinity]
-      }
-    };
+      classTopContainer = 'mdashboard-container',
+      classToolbar = 'mdashboard-toolbar',
+      classToolbarList = 'mdashboard-toolbar-list',
+      classToolbarButton = 'mdashboard-toolbar-button',
+      classGridster = 'gridster',
+      widgetHandle = 'header',
+      gridsterOptions = {
+        namespace: '',
+        widget_selector: 'li',
+        widget_margins: [10, 10],
+        widget_base_dimensions: [400, 225],
+        extra_rows: 0,
+        extra_cols: 0,
+        min_cols: 1,
+        max_cols: null,
+        min_rows: 15,
+        max_size_x: false,
+        autogenerate_stylesheet: true,
+        avoid_overlapped_widgets: true,
+        serialize_params: function($w, wgd) {
+          return {
+              col: wgd.col,
+              row: wgd.row,
+              size_x: wgd.size_x,
+              size_y: wgd.size_y
+          };
+        },
+        collision: {},
+        draggable: {
+          items: '.gs-w',
+          distance: 4
+        },
+        resize: {
+          enabled: false,
+          axes: ['x', 'y', 'both'],
+          handle_append_to: '',
+          handle_class: 'gs-resize-handle',
+          max_size: [Infinity, Infinity]
+        }
+      };
 
   /**
    * MDashboard
@@ -57,10 +57,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MDashboard = function () {
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.isAdmin = true;
+    this.isAdmin = true; // TODO
     this.options = {};
     this.collections = [];
-    this.services = [];
     return this;
   };
 
@@ -132,13 +131,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isInitialized = false;
     this.service = null;
     this.toolbar = $('<div class="toolbar-collapse ' + classToolbar + '"></div>');
-    this.toolbar.mouseover(function () {
+    this.toolbar.mouseover(function() {
       $(this).removeClass('toolbar-collapse');
       $('.' + classToolbarList).css('display', 'list-item');
-    }).mouseout(function () {
-        $(this).addClass('toolbar-collapse');
-        $('.' + classToolbarList).css('display', 'none');
-      });
+    }).mouseout(function() {
+      $(this).addClass('toolbar-collapse');
+      $('.' + classToolbarList).css('display', 'none');
+    });
 
     this.collectionOptions = gridsterOptions;
 
@@ -148,9 +147,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         enabled: true,
         stop: function (e, ui, $widget) {
           var resizedWidgetId = $widget.attr('id'),
-            resizedWidget = _.find(self.widgets, function (item) {
-              return item.id === resizedWidgetId;
-            });
+              resizedWidget = _.find(self.widgets, function (item) {
+                return item.id === resizedWidgetId;
+              });
 
           if (resizedWidget) {
             resizedWidget.invalidate();
@@ -235,8 +234,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
    */
   MWidgetCollection.prototype.render = function () {
     var self = this,
-      wrapper = $('<div class="' + classGridster + '" />').attr('data-uid', self.uid),
-      list = $('<ul />');
+        wrapper = $('<div class="' + classGridster + '" />').attr('data-uid', self.uid),
+        list = $('<ul />');
 
     self.container.addClass(classTopContainer);
 
@@ -265,7 +264,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
       var buttonContainer = $('<ul style="display:none" class="' + classToolbarList + '"></ul>');
 
-      _.each(buttons, function (button, index) {
+      _.each(buttons, function(button, index) {
         var buttonElement = $('<li class="' + classToolbarButton + '"></li>');
 
         buttonContainer.append(
@@ -316,9 +315,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   /**
    * Rearrange collection and renders it
    */
-  MWidgetCollection.prototype.redraw = function () {
+  MWidgetCollection.prototype.redraw = function() {
     var self = this,
-      selector = '.' + classGridster + '[data-uid=' + self.uid + ']';
+        selector = '.' + classGridster + '[data-uid=' + self.uid + ']';
 
     $(selector).remove();
 
@@ -349,11 +348,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
-          container = $('<div></div>');
+          container = $('<div class="mt10" style="width:100%"></div>');
 
       var products = [{
         'merlon': {
-          image: '',
+          image: 'merlon-logo-small.png',
           description: 'Merlon Business Framework',
           categories: [
             {
@@ -370,8 +369,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         }
       }];
 
-
-      container.append(
+      managementDialog.append(
         $('<div class="dialog-header clearfix"></div>')
           .append(serviceIcon)
           .append($('<h1 class="pull-left">Management Services</h1>')));
@@ -380,28 +378,32 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
           wrapper = $('<div class="swiper-wrapper"></div>'),
           dialogBody = $('<div class="dialog-body"></div>');
 
-      wrapper.append($('<div class="swiper-slide"><div>erhan</div></div>'));
-      wrapper.append($('<div class="swiper-slide"><span>gündoğan</span></div>'));
-      wrapper.append($('<div class="swiper-slide">3</div>'));
-      wrapper.append($('<div class="swiper-slide">4</div>'));
-      wrapper.append($('<div class="swiper-slide">5</div>'));
+      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
+      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
+      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
+      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
+      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
 
-      container.append(
-        dialogBody.append(
-          roller.append(wrapper)));
+      container.append($('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>').click( function() { swiper.swipePrev() }));
+      container.append(dialogBody.append(roller.append(wrapper)));
+      container.append($('<a href="#" class="btn pull-left swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>').click( function() { swiper.swipeNext() }));
 
       managementDialog.append(container);
 
       $.boxer(managementDialog);
 
       // http://www.idangero.us/sliders/swiper/api.php
-      var swiper = $('.swiper-container').swiper({
-        cssWidthAndHeight: true,
-        mousewheelControl: true
+      var swiper = roller.swiper({
+        slidesPerView: 2,
+        loop: false,
+        onSlideClick: function(item) {
+          $(item.clickedSlide).attr('data-product');
+        }
       });
-      debugger;
-      container.append($('<a href="#" class="button-prev">Before</a>').click( function() { swiper.swipePrev() }));
-      container.append($('<a href="#" class="button-next">After</a>').click( function() { swiper.swipeNext() }));
+
+      $(window).bind('open.boxer', function(event) {
+        swiper.reInit();
+      });
     }
   };
 
@@ -594,7 +596,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
       }
 
       if (widget.collection.gridster && widget.collection.gridster.$widgets) {
-        _.each(widget.collection.gridster.$widgets, function (item, index) {
+        _.each(widget.collection.gridster.$widgets, function(item, index) {
           if ($(item).attr('id') === widget.id) {
             widget.collection.gridster.remove_widget($(item));
           }
@@ -618,46 +620,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   MWidget.prototype.createDialog = function () {
     var self = this;
 
-    var settingsDialog = $('<div class="dialog"></div>'),
-      serviceIcon = $('<i class="fa fa-cog fa-4x fa-white pull-left mr05"></i>'),
-      container = $('<div></div>');
 
-
-    var products = [{
-      'merlon': {
-        image: '',
-        description: 'Merlon Business Framework',
-        categories: [
-          {
-            task: {
-              description: 'Task management services',
-              image: ''
-            },
-            accounting: {
-              description: 'Accounting services',
-              image: ''
-            }
-          }
-        ]
-      }
-    }];
-
-    container.append(serviceIcon);
-    container.append('<h1 class="pull-left header">Choose Service</h1>');
-
-    settingsDialog.append(container);
-
-    // http://formstone.it/components/Boxer/demo/index.html
-    $.boxer(settingsDialog);
-
-    // https://github.com/samsono/Easy-Responsive-Tabs-to-Accordion
-    settingsDialog.easyResponsiveTabs({
-      type: 'vertical',
-      width: '700px',
-      fit: false,
-      closed: true
-      //activate: function() {}  // Callback function, gets called if tab is switched
-    });
+    createDialog();
   };
 
   /**
@@ -690,6 +654,27 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
   };
   MChart.prototype.widget = typeof MWidget;
 
+  /***********************   Management   **************************/
+  /**
+   * MModule
+   * @param _options
+   * @returns {*}
+   * @constructor
+   */
+  MModule = function(_options) {
+    this.name = "MModule";
+    this.image = null;
+    this.description = null;
+    this.parent = module;
+    this.modules = [];
+    this.tags = [];
+    this.service = null;
+
+    return this;
+  };
+  MModule.prototype.parent = typeof MModule;
+  MModule.prototype.service = typeof MService;
+
   /**
    * Data services for widgets and charts
    * @param ownerDashboard
@@ -710,9 +695,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
     this.isScheduled = false;
 
     switch (owner) {
-      case (typeof MDashboard):
-        self.dashboard = owner;
-        owner.services.push(self);
+      case (typeof MModule):
+        self.module = owner;
+        owner.service.push(self);
         break;
       default:
         owner.service = self;
@@ -852,7 +837,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
 
   function debouncer(fn, timeout) {
     var timeoutID,
-      timeout = timeout || 200;
+        timeout = timeout || 200;
 
     return function () {
       var scope = this,
@@ -863,6 +848,68 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService;
         fn.apply(scope, Array.prototype.slice.call(args));
       }, timeout);
     }
+  }
+
+  /**
+   * Creates and opens dialog.
+   *
+   * @param tabs [jQuery|Array{icon, content}]
+   * @param css [object] Boxer dialog options
+   * @param dialogOptions [object] Boxer options
+   * @param tabOptions [object] Easy-responsive-tabs options
+   */
+  function createDialog(tabs, css, dialogOptions, tabOptions) {
+    var dialog = $('<div class="dialog"></div>'),
+        tabList = $('<ul class="resp-tabs-list"></ul>'),
+        tabWrapper = $('<div class="resp-tabs-container"></div>'),
+        tabOptions = tabOptions || {},
+        cssDefault = {
+          width: '750px',
+          height: '500px',
+          padding: '.5em',
+          overflow: 'hidden'
+        };
+
+    _.extend(cssDefault, css);
+
+    dialog.css(cssDefault);
+
+    if (tabs instanceof jQuery) {
+      dialog.append(tabs);
+    } else {
+      /*
+      tabs = [
+         { icon:'fa-cog', content:'<div></div>' },
+         { icon:'fa-times', content:'<ul><li>Close</li></ul>' }
+       ]*/
+      _.each(tabs, function(tab, index) {
+        tabList.append($('<li></li>').append('<i class="fa fa-4x fa-white ' + tab.icon + '"></i>'));
+
+        if (tab.content && _.isString(tab.content)) {
+          tabWrapper.append($('<div></div>').append($(tab.content)));
+        } else if (tab.content && tab.content instanceof jQuery) {
+          tabWrapper.append($('<div></div>').append(tab.content));
+        }
+      });
+
+      dialog.append(tabList).append(tabWrapper);
+    }
+
+    // dialogOptions.onClose(data)
+    // http://formstone.it/components/Boxer/demo/index.html
+    $.boxer(dialog, dialogOptions);
+
+    _.extend(tabOptions, {
+      type: 'vertical',
+      width: cssDefault.width,
+      fit: false,
+      closed: true
+      //activate: function(a) {}  // Callback function, gets called if tab is switched
+    });
+
+    // tabOptions.activate(event)
+    // https://github.com/samsono/Easy-Responsive-Tabs-to-Accordion
+    dialog.easyResponsiveTabs(tabOptions);
   }
 
 }(this));

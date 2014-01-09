@@ -1,0 +1,71 @@
+{
+  "merlon": {
+    "image": "/images/merlon.jpg",
+    "tag": ["crm", "cost", "purchase", "demand", "hospitality", "hr", "task management", "survey"],
+    "description": "Merlon Business Framework. Business Process Management (BPM)",
+    "category": [{
+      "task": {
+        "connection": {
+          "type": "HTTP",
+          "endpoint": "/Service/Task/TaskService.svc"
+        },
+        "methods": [{
+          "GetTaskAreas": {
+            "description": "Gets task related area list",
+            "method": "GET",
+            "endpoint": "/Service/Task/TaskService.svc/GetTaskAreas?parentId={parentId}",
+            "parameters": [{
+              "parentId": {
+                "type": "int",
+                "description": "AreaId which is area belongs to"
+              }
+            }],
+            "returns":{
+              "type": "array"
+
+            }
+          }
+        }, {
+          "GetLatestTasks": {
+            "description": "Get n tasks recently created",
+            "method": "GET",
+            "endpoint": "/Service/Task/TaskService.svc/GetLatestTasks?count={count}",
+            "parameters": [{
+              "count": {
+                "type": "int",
+                "description": "How many tasks would be included"
+              }
+            }],
+            "returns":{
+              "type": "array",
+              "description": "list of tasks"
+            }
+          }
+        }]
+      },
+      "accounting": {
+        "connection": {
+          "type": "HTTP",
+          "endpoint": "/Service/Accounting/AccountingService.svc"
+        },
+        "methods": [{
+          "GetProductTotalPrices": {
+            "description": "Get n products which is having most expenses since the beginning",
+            "method": "GET",
+            "endpoint": "/Service/Accounting/AccountingService.svc/GetProductTotalPrices?count={count}",
+            "parameters": [{
+              "count": {
+                "type": "int",
+                "description": "How many products will be looking for"
+              }
+            }],
+            "returns": {
+              "type": "array",
+              "description": "list of products"
+            }
+          }
+        }]
+      }
+    }]
+  }
+}
