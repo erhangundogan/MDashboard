@@ -57,11 +57,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    */
   MDashboard = function () {
     this.uid = getUniqueId(globalUniqueIdLength);
+    this.userId = 499;
     this.isAdmin = true; // TODO
     this.options = {};
     this.collections = [];
-    this.config = sessionStorage.mdashboard
-      ? $.parseJSON(sessionStorage.mdashboard)
+    this.modules = [];
+    this.data = localStorage['dashboard' + this.userId]
+      ? $.parseJSON('dashboard' + this.userId)
       : null;
     return this;
   };
@@ -118,6 +120,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
       }, 100);
     }
+  };
+
+  MDashboard.prototype.save = function() {
+
+    var self = this,
+        dataId = 'dashboard' + this.userId;
+
+    function saveImage(itemName) {
+      var img = new Image();
+      img.src = 'mypicture.png';
+      img.load = function() {
+        var canvas = $('<canvas></canvas>');
+        var context = canvas.getContext('2d');
+        context.drawImage(img, 0, 0);
+        var data = context.getImageData(x, y, img.width, img.height).data;
+        localStorage.setItem(itemName, data);
+      };
+    }
+
+    function loadImage(itemName) {
+      var picture = localStorage.getItem(itemName);
+      $('<img />').attr('src', picture);
+    }
+
+    localStorage.setItem(dataId, JSON.stringify(self));
   };
 
   /**
@@ -347,6 +374,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     onAddWidget: function (collection) {
       debugger;
     },
+    onCreateModule: function (collection, container) {
+      container.slideUp(500, function() {
+        var module = new MModule();
+
+        module.dashboard = collection.dashboard;
+        var form = module.createForm();
+
+        container.empty().append(form).slideDown(500);
+      });
+    },
     onCreateService: function (swiper) {
       var moduleId = $(swiper.clickedSlide).attr('data-uid');
       if (!moduleId) {
@@ -356,20 +393,39 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
-          container = $('<div class="mt10" style="width:100%"></div>'),
-          config = collection.dashboard.config;
+          container = $('<div id="dialog-content-id"></div>'),
+          content = $('<div class="mt10 clearfix"></div>'),
+          modules = collection.dashboard.modules,
+          noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
+          createModuleButton = $('<button type="button" class="button">Create Module</button>')
+            .click(function(event) {
+              event.preventDefault();
+              collection.events.onCreateModule(collection, content);
+            })
+            .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>'));
 
+      // header
       managementDialog.append(
         $('<div class="dialog-header clearfix"></div>')
           .append(serviceIcon)
           .append($('<h1 class="pull-left">Management Services</h1>')));
 
+      // no module
+      if (modules.length === 0) {
+        $.boxer(managementDialog.append(
+          container.append(
+            content.append(noModuleMessage)
+                   .append(createModuleButton))));
+        return;
+      }
+
       var roller = $('<div class="swiper-container"></div>'),
           wrapper = $('<div class="swiper-wrapper"></div>'),
           dialogBody = $('<div class="dialog-body"></div>');
 
-      if (config && config.length > 0) {
-        _.each(config, function(module, index) {
+      // adding modules to slider
+      if (modules && modules.length > 0) {
+        _.each(modules, function(module, index) {
           var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
           if (module.css) {
             item.css(module.css)
@@ -384,22 +440,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         });
       }
 
-      var createButton = $('<button type="button" class="button">Create Service</button>').css('margin-left', '45px')
-        .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>'));
-
-      //wrapper.append(newModule);
-
+      // nav buttons
       container.append(
         $('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
         .click( function() { swiper.swipePrev() }));
-
       container.append(dialogBody.append(roller.append(wrapper)));
-
       container.append(
         $('<a href="#" class="btn pull-left swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
         .click( function() { swiper.swipeNext() }));
 
-      container.append(createButton);
+      container.append(createModuleButton.css('margin-left', '45px'));
 
       $.boxer(managementDialog.append(container));
 
@@ -651,13 +701,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
   MChart.prototype.widget = typeof MWidget;
 
   /***********************   Management   **************************/
+
   /**
-   * MModule
-   * @param _options
-   * @returns {*}
+   *
+   * @param _options Module options
+   * @param hasForm Create html form output for input
+   * @return {*}
    * @constructor
    */
-  MModule = function(_options) {
+  MModule = function(_options, module) {
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = "MModule";
     this.image = null;
@@ -666,16 +718,78 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.modules = [];
     this.tags = [];
     this.service = null;
+    this.dashboard = null;
 
     this.css = {};
     this.class = null;
     //this.content = $('<img src="#" />');
 
-
     return this;
   };
   MModule.prototype.parent = typeof MModule;
   MModule.prototype.service = typeof MService;
+  MModule.prototype.dashboard = typeof MDashboard;
+
+  MModule.prototype.createForm = function() {
+    var self = this,
+        formContainer = $('<div class="module-container"></div>'),
+        form = $('<form class="form"></form>'),
+        formRow = $('<form class="form-row"></form>');
+
+    _.each(self, function(value, key) {
+      var propertyRequired = false,
+          label = $('<div class="form-label"></div>'),
+          item = $('<div class="form-item"></div>'),
+          columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
+
+      switch(key) {
+        case 'uid':
+          label.append($('<span>ID</span>'));
+          item.append($('<span class="item-uid">' + value + '</span>'));
+          propertyRequired = true;
+          break;
+        case 'name':
+          label.append($('<span>Name</span>'));
+          item.append($('<input class="item-name" type="text" required autofocus />'));
+          propertyRequired = true;
+          break;
+        case 'tags':
+          label.append($('<span>Tags</span>'));
+          item.append($('<input class="item-tags" type="text" />'));
+          propertyRequired = true;
+          break;
+        case 'description':
+          label.append($('<span>Description</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-textarea" rows="3"></textarea>'));
+          propertyRequired = true;
+          break;
+        case 'image':
+          label.append($('<span>Image</span>'));
+          item.append($('<input class="item-image" type="file" />'));
+          propertyRequired = true;
+          break;
+      }
+
+      if (propertyRequired) {
+        formRow.append(label).append(columnBreak).append(item)
+        form.append(formRow);
+      }
+    });
+
+    var saveModuleButton = $('<button type="button" class="button">Save Module</button>')
+      .click(function(event) {
+        event.preventDefault();
+        debugger;
+        self.dashboard.modules.push(self);
+        self.dashboard.save();
+      })
+      .append($('<i class="fa fa-save fa-2x fa-white pull-left"></i>'));
+
+    formContainer.append(form).append(saveModuleButton);
+
+    return formContainer;
+  };
 
 
   /**
