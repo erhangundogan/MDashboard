@@ -117,6 +117,10 @@ body {
   margin-left: .25em
 }
 
+.ml05 {
+  margin-left: .5em
+}
+
 .mr05 {
   margin-right: .5em
 }
@@ -124,6 +128,15 @@ body {
 .mt025 {
   margin-top: .25em
 }
+
+.mt05 {
+  margin-top: .5em
+}
+
+.mt075 {
+  margin-top: .75em
+}
+
 
 .mt10 {
   margin-top: 1em
@@ -203,6 +216,35 @@ body {
 .toolbar-collapse {
   margin-top: -40px;
 }
+
+.button {
+  color: #333;
+  background-color: #F5F2EF;
+
+  display: inline-block;
+  padding: 1em;
+  margin-bottom: 0;
+  line-height: 180%;
+  font-size: 18px;
+  font-weight: normal;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  background-image: none;
+  border-radius: 6px;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.button:hover {
+  background-color: #ebebeb;
+}
+
 
 .mdashboard-toolbar .btn {
   color: rgba(0,0,0,0.5);
@@ -300,9 +342,11 @@ body {
 
 .swiper-slide {
   font-size: 32px;
-  vertical-align: middle;
+  vertical-align: baseline;
   color: #333333;
   cursor: pointer;
+  width: 325px;
+  height: 125px;
 }
 
 .swiper-button {

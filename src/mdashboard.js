@@ -325,7 +325,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     $(selector).remove();
 
     self.isInitialized = false;
-
     self.invalidate().render();
 
     _.each(self.widgets, function (widget, index) {
@@ -348,29 +347,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     onAddWidget: function (collection) {
       debugger;
     },
+    onCreateService: function (swiper) {
+      var moduleId = $(swiper.clickedSlide).attr('data-uid');
+      if (!moduleId) {
+        debugger;
+      }
+    },
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
-          container = $('<div class="mt10" style="width:100%"></div>');
-
-      var products = [{
-        'merlon': {
-          image: 'merlon-logo-small.png',
-          description: 'Merlon Business Framework',
-          categories: [
-            {
-              task: {
-                description: 'Task management services',
-                image: ''
-              },
-              accounting: {
-                description: 'Accounting services',
-                image: ''
-              }
-            }
-          ]
-        }
-      }];
+          container = $('<div class="mt10" style="width:100%"></div>'),
+          config = collection.dashboard.config;
 
       managementDialog.append(
         $('<div class="dialog-header clearfix"></div>')
@@ -381,27 +368,46 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           wrapper = $('<div class="swiper-wrapper"></div>'),
           dialogBody = $('<div class="dialog-body"></div>');
 
-      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
-      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
-      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
-      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
-      wrapper.append($('<div class="swiper-slide merlon-logo" data-product="merlon"></div>'));
+      if (config && config.length > 0) {
+        _.each(config, function(module, index) {
+          var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
+          if (module.css) {
+            item.css(module.css)
+          }
+          if (module.class) {
+            item.addClass(module.class);
+          }
+          if (module.content) {
+            item.append(module.content);
+          }
+          wrapper.append(item);
+        });
+      }
 
-      container.append($('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>').click( function() { swiper.swipePrev() }));
+      var createButton = $('<button type="button" class="button">Create Service</button>').css('margin-left', '45px')
+        .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>'));
+
+      //wrapper.append(newModule);
+
+      container.append(
+        $('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
+        .click( function() { swiper.swipePrev() }));
+
       container.append(dialogBody.append(roller.append(wrapper)));
-      container.append($('<a href="#" class="btn pull-left swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>').click( function() { swiper.swipeNext() }));
 
-      managementDialog.append(container);
+      container.append(
+        $('<a href="#" class="btn pull-left swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
+        .click( function() { swiper.swipeNext() }));
 
-      $.boxer(managementDialog);
+      container.append(createButton);
+
+      $.boxer(managementDialog.append(container));
 
       // http://www.idangero.us/sliders/swiper/api.php
       var swiper = roller.swiper({
         slidesPerView: 2,
         loop: false,
-        onSlideClick: function(item) {
-          $(item.clickedSlide).attr('data-product');
-        }
+        onSlideClick: collection.events.onCreateService
       });
 
       $(window).bind('open.boxer', function(event) {
@@ -605,9 +611,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           }
         });
       }
-
-      //widget.collection.events.onCollectionChange(widget.collection);
-      //widget.collection.redraw();
     }
   };
 
@@ -616,16 +619,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    * @type {string}
    */
   MWidget.prototype.service = typeof MService;
-
-  /**
-   * Crates widget settings dialog
-   */
-  MWidget.prototype.createDialog = function () {
-    var self = this;
-
-
-    createDialog();
-  };
 
   /**
    * Chart item would be placed into widget
@@ -673,6 +666,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.modules = [];
     this.tags = [];
     this.service = null;
+
+    this.css = {};
+    this.class = null;
+    //this.content = $('<img src="#" />');
+
 
     return this;
   };
@@ -805,19 +803,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    * @param status
    * @param request
    */
-  /*MService.prototype.done = function (data, status, request) {
-   var self = this;
-   self.responses.push({
-   id: getUniqueId(globalUniqueIdLength),
-   time: new Date(),
-   requestId: request.id,
-   requestTime: request.time,
-   request: request,
-   status: status,
-   data: data
-   });
-   self.isInitialized = true;
-   };*/
+  MService.prototype.done = function (data, status, request) {
+    var self = this;
+
+    self.responses.push({
+      id: getUniqueId(globalUniqueIdLength),
+      time: new Date(),
+      requestId: request.id,
+      requestTime: request.time,
+      request: request,
+      status: status,
+      data: data
+    });
+
+    self.isInitialized = true;
+  };
 
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
@@ -853,68 +853,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         fn.apply(scope, Array.prototype.slice.call(args));
       }, timeout);
     }
-  }
-
-  /**
-   * Creates and opens dialog.
-   *
-   * @param tabs [jQuery|Array{icon, content}]
-   * @param css [object] Boxer dialog options
-   * @param dialogOptions [object] Boxer options
-   * @param tabOptions [object] Easy-responsive-tabs options
-   */
-  function createDialog(tabs, css, dialogOptions, tabOptions) {
-    var dialog = $('<div class="dialog"></div>'),
-        tabList = $('<ul class="resp-tabs-list"></ul>'),
-        tabWrapper = $('<div class="resp-tabs-container"></div>'),
-        tabOptions = tabOptions || {},
-        cssDefault = {
-          width: '750px',
-          height: '500px',
-          padding: '.5em',
-          overflow: 'hidden'
-        };
-
-    _.extend(cssDefault, css);
-
-    dialog.css(cssDefault);
-
-    if (tabs instanceof jQuery) {
-      dialog.append(tabs);
-    } else {
-      /*
-      tabs = [
-         { icon:'fa-cog', content:'<div></div>' },
-         { icon:'fa-times', content:'<ul><li>Close</li></ul>' }
-       ]*/
-      _.each(tabs, function(tab, index) {
-        tabList.append($('<li></li>').append('<i class="fa fa-4x fa-white ' + tab.icon + '"></i>'));
-
-        if (tab.content && _.isString(tab.content)) {
-          tabWrapper.append($('<div></div>').append($(tab.content)));
-        } else if (tab.content && tab.content instanceof jQuery) {
-          tabWrapper.append($('<div></div>').append(tab.content));
-        }
-      });
-
-      dialog.append(tabList).append(tabWrapper);
-    }
-
-    // dialogOptions.onClose(data)
-    // http://formstone.it/components/Boxer/demo/index.html
-    $.boxer(dialog, dialogOptions);
-
-    _.extend(tabOptions, {
-      type: 'vertical',
-      width: cssDefault.width,
-      fit: false,
-      closed: true
-      //activate: function(a) {}  // Callback function, gets called if tab is switched
-    });
-
-    // tabOptions.activate(event)
-    // https://github.com/samsono/Easy-Responsive-Tabs-to-Accordion
-    dialog.easyResponsiveTabs(tabOptions);
   }
 
 }(this));
