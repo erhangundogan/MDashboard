@@ -60,6 +60,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.isAdmin = true; // TODO
     this.options = {};
     this.collections = [];
+    this.config = sessionStorage.mdashboard
+      ? $.parseJSON(sessionStorage.mdashboard)
+      : null;
     return this;
   };
 
@@ -662,6 +665,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    * @constructor
    */
   MModule = function(_options) {
+    this.uid = getUniqueId(globalUniqueIdLength);
     this.name = "MModule";
     this.image = null;
     this.description = null;
@@ -674,6 +678,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
   };
   MModule.prototype.parent = typeof MModule;
   MModule.prototype.service = typeof MService;
+
 
   /**
    * Data services for widgets and charts
