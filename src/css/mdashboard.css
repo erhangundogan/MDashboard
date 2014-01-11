@@ -308,9 +308,9 @@ body {
 }
 */
 .dialog {
-  width: 750px;
-  height: 600px;
-  overflow: auto;
+  width: 700px;
+  height: 625px;
+  overflow: hidden;
   padding: .5em;
   /*background-color: #e1c192;*/
   font-family: 'Ubuntu', sans-serif;
@@ -326,9 +326,9 @@ body {
 .dialog .dialog-body {
   width: 650px;
   background-color: #F5F2EF;
-  height: 125px;
   border-radius: 7px;
-  float:left;
+  /*height: 125px;
+  float:left;*/
 }
 
 .swiper-container {
@@ -395,6 +395,7 @@ body {
 }
 
 .module-container {
+  overflow: hidden;
 }
 
 .module-container .form {
@@ -434,18 +435,62 @@ body {
   margin-top: 1em;
   background-color: #F5F2EF;
   border-radius: 7px;
-  height: 450px;
 
   -webkit-box-shadow: inset 0 0 5px -2px rgba(50, 50, 50, 0.3);
   -moz-box-shadow:    inset 0 0 7px -2px rgba(50, 50, 50, 0.3);
   box-shadow:         inset 0 0 7px -2px rgba(50, 50, 50, 0.3);
 }
 
-form.form-row div {
+#dialog-inner-content {
+  width: 100%;
+  /*overflow: auto;*/
+}
+
+form.form, .form-row {
+  width: 100%;
+}
+
+.form-row div {
   display: inline-block;
   margin-bottom: .5em;
 }
 
 .item-uid {
   color: #666;
+}
+
+.item-icons {
+  width: 90%;
+  height: 160px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  border-radius: 4px;
+  padding: .35em;
+  background-color: #fff;
+  border: 1px solid #666;
+}
+
+.item-icons li {
+  list-style: none;
+  float: left;
+  font-weight: normal;
+  line-height: 40px;
+}
+
+.item-icon {
+  color: #333;
+  width: 40px;
+  height: 40px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.item-icon:hover {
+  color: #000;
+  background-color: #CCC;
+  border-radius: 3px;
+}
+
+.item-icon a, .item-icon a:visited {
+  color: #333;
 }
