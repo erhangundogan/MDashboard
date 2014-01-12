@@ -124,9 +124,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.options = {};
     this.collections = [];
     this.modules = [];
-    this.data = localStorage['dashboard' + this.userId]
-      ? $.parseJSON('dashboard' + this.userId)
-      : null;
     return this;
   };
 
@@ -185,7 +182,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
   };
 
   MDashboard.prototype.save = function() {
-
     var self = this,
         dataId = 'dashboard' + this.userId;
 
@@ -194,7 +190,43 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       $('<img />').attr('src', picture);
     }
 
-    localStorage.setItem(dataId, JSON.stringify(self));
+    var dashboard = JSON.stringify(self, function(k, v) {
+      if (v instanceof jQuery) return 'jQuery';
+      console.log(k, ': ', v);
+      switch (k) {
+        case 'dashboard':
+        case 'collection':
+        case 'widget':
+          return undefined;
+        default:
+          return v;
+      }
+    });
+
+    localStorage.setItem(dataId, dashboard);
+  };
+
+  MDashboard.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MDashboard';
+    serialized.uid = self.uid;
+    serialized.userId = self.uid;
+    serialized.isAdmin = self.isAdmin;
+    serialized.options = self.options;
+
+    // modules
+    serialized.modules = _.map(self.modules, function(module, index) {
+      return module.serialize();
+    });
+
+    // widget collections
+    serialized.collections = _.map(self.collections, function(collection, index) {
+      return collection.serialize();
+    });
+
+    return serialized;
   };
 
   /**
@@ -438,9 +470,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           section.empty().append(form);
 
           $('ul.item-icons').on('click', 'li', function(event) {
-            debugger;
-            event.currentTarget.css('background-color', '#600');
-            module.icon = event.currentTarget.attr('data-icon');
+
+            // remove old selected
+            var item = $('ul.item-icons li.selected');
+            if (item && item.length > 0) {
+              item.removeClass('selected');
+            }
+
+            // add new selected icon
+            $(event.currentTarget).addClass('selected');
           });
 
           container.slideDown(400);
@@ -534,6 +572,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         swiper.reInit();
       });
     }
+  };
+
+  MWidgetCollection.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MWidgetCollection';
+    serialized.uid = self.uid;
+    serialized.columnMargin = self.columnMargin;
+    serialized.columnWidth = self.columnWidth;
+    serialized.height = self.height;
+    serialized.order = self.order;
+    serialized.rowHeight = self.rowHeight;
+    serialized.rowMargin = self.rowMargin;
+    serialized.width = self.width;
+
+    // dashboard cannot serialize again. prevents circular json.stringify error
+    serialized.dashboard = self.dashboard.uid;
+
+    // widgets
+    serialized.widgets = _.map(self.widgets, function(widget, index) {
+      return widget.serialize();
+    });
+
+    return serialized;
   };
 
 
@@ -734,6 +797,41 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     }
   };
 
+  MWidget.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MWidget';
+    serialized.contentType = self.contentType;
+    serialized.col = self.col;
+    serialized.height = self.height;
+    serialized.id = self.id;
+    serialized.isClosable = self.isClosable;
+    serialized.isLocked = self.isLocked;
+    serialized.order = self.order;
+    serialized.row = self.row;
+    serialized.settings = self.settings;
+    serialized.uid = self.uid;
+    serialized.width = self.width;
+    serialized.xSize = self.xSize;
+    serialized.ySize = self.ySize;
+
+    // collection
+    serialized.collection = self.collection.uid;
+
+    // html content
+    if (self.html) {
+      serialized.html = JSON.stringify(self.html);
+    }
+
+    // charts
+    if (self.chart) {
+      serialized.chart = self.chart.serialize();
+    }
+
+    return serialized;
+};
+
   /**
    * Owned service
    * @type {string}
@@ -768,6 +866,29 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     return this;
   };
+
+  MChart.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MChart';
+    serialized.library = self.library;
+    serialized.type = self.type;
+    serialized.uid = self.uid;
+    serialized.dataset = JSON.stringify(self.dataset);
+    serialized.render = JSON.stringify(self.render);
+
+    // parent widget
+    serialized.widget = self.widget.uid;
+
+    // if has options
+    if (self.options) {
+      serialized.options = JSON.stringify(self.options);
+    }
+
+    return serialized;
+  };
+
   MChart.prototype.widget = typeof MWidget;
 
   /***********************   Management   **************************/
@@ -791,8 +912,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.service = null;
     this.dashboard = null;
 
-    this.css = {};
-    this.class = null;
+    //this.css = {};
+    //this.class = null;
     //this.content = $('<img src="#" />');
 
     return this;
@@ -801,19 +922,59 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
   MModule.prototype.service = typeof MService;
   MModule.prototype.dashboard = typeof MDashboard;
 
-  MModule.prototype.getFormValues = function() {
-    var self = this;
+  /**
+   * Get form values to put into module
+   * @param callback
+   */
+  MModule.prototype.loadForm = function(callback) {
+    var self = this,
+        message = null;
 
     self.name = $('.form-row .form-item .item-name').val();
-    self.tags = _.map($('.form-row .form-item .item-tags').val().split(','), function(item ,index) {
-      debugger;
-      return $.trim(item);
-    });
-    self.description = $('.form-row .form-item .item-description').val();
-    //self.image =
 
+    // split tags
+    self.tags = _.map( $('.form-row .form-item .item-tags').val().split(','),
+      function(item ,index) {
+        return $.trim(item);
+      });
+    self.description = $('.form-row .form-item .item-description').val();
+
+    // get icon or image
+    var item = $('ul.item-icons li.selected');
+    if (item && item.length > 0) {
+      self.image = null;
+      self.icon = item.attr('data-icon');
+      callback(null, self);
+    } else {
+      var uploadControl = $('.item-image')[0];
+        if (uploadControl.files
+          && uploadControl.files[0]
+          && /image/.test(uploadControl.files[0].type)) {
+            if (uploadControl.files[0].size > 3000000) { // ~3MB
+              message = 'Image file size should be less than 3MB';
+              callback(message);
+            } else {
+              // read image file
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                self.image = e.target.result;
+                self.icon = null;
+                callback(null, self);
+              };
+              reader.readAsDataURL(uploadControl.files[0]);
+            }
+        } else {
+          message = 'File not found or not an image file';
+          callback(message);
+        }
+        //localStorage.setItem('image', data); // save image data
+    }
   };
 
+  /**
+   * Creates module generation form fields
+   * @return {*|jQuery|HTMLElement}
+   */
   MModule.prototype.createForm = function() {
     var self = this,
         formContainer = $('<div class="module-container"></div>'),
@@ -845,7 +1006,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         case 'description':
           label.append($('<span>Description</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-textarea" rows="3"></textarea>'));
+          item.append($('<textarea class="item-description" rows="3"></textarea>'));
           propertyRequired = true;
           break;
         case 'image':
@@ -876,15 +1037,59 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     var saveModuleButton = $('<button type="button" class="button">Save Module</button>')
       .click(function(event) {
         event.preventDefault();
-        debugger;
-        self.dashboard.modules.push(self);
-        self.dashboard.save();
+        self.events.onSave(self);
       })
       .append($('<i class="fa fa-save fa-2x fa-white pull-left"></i>'));
 
     formContainer.append(form.append(saveModuleButton));
 
     return formContainer;
+  };
+
+  MModule.prototype.events = {
+    onSave: function (collection) {
+      collection.loadForm(function(err, result) {
+        if (err) {
+          console.error(err);
+        } else {
+          if (result) {
+            result.dashboard.modules.push(self);
+            result.dashboard.save();
+          } else {
+            console.error('Could not load form values');
+          }
+        }
+      });
+    }
+  };
+
+  MModule.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MModule';
+    serialized.uid = self.uid;
+    serialized.name = self.name;
+    serialized.image = self.image;
+    serialized.icon = self.icon;
+    serialized.description = self.description;
+    serialized.tags = self.tags;
+
+    // parent module
+    serialized.parent = self.parent.uid;
+
+    // parent dashboard
+    serialized.dashboard = self.dashboard.uid;
+
+    // service
+    serialized.service = self.service.serialize();
+
+    // modules
+    serialized.modules = _.map(self.modules, function(module, index) {
+      return module.serialize();
+    });
+
+    return serialized;
   };
 
 
@@ -906,15 +1111,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.responses = [];
     this.isInitialized = false;
     this.isScheduled = false;
+    this.module = null;
 
-    switch (owner) {
-      case (typeof MModule):
-        self.module = owner;
-        owner.service.push(self);
-        break;
-      default:
-        owner.service = self;
-        break;
+    if (owner) {
+      owner.service = self;
     }
 
     _.extend(this, _options);
@@ -948,6 +1148,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     return self;
   };
   MService.prototype.dashboard = typeof MDashboard;
+
+  /**
+   * Serialization
+   */
+  MService.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.mType = 'MService';
+    serialized.uid = self.uid;
+    serialized.name = self.name;
+    serialized.schedule = self.schedule;
+    serialized.isScheduled = self.isScheduled;
+    serialized.ajaxOptions = self.ajaxOptions;
+
+    // parent module
+    serialized.module = self.module ? self.module.uid : null;
+
+    return serialized;
+  };
 
   /**
    * Here we go to get it

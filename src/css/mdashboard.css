@@ -229,9 +229,9 @@ body {
   background-color: #e5e5e5;
 
   display: inline-block;
-  padding: 1em;
-  margin: 1em;
-  line-height: 180%;
+  padding: .75em;
+  margin: .75em;
+  line-height: 170%;
   font-size: 18px;
   font-weight: normal;
   text-align: center;
@@ -239,7 +239,7 @@ body {
   vertical-align: middle;
   cursor: pointer;
   background-image: none;
-  border-radius: 6px;
+  border-radius: 8px;
 
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -475,9 +475,6 @@ form.form, .form-row {
   float: left;
   font-weight: normal;
   line-height: 40px;
-}
-
-.item-icon {
   color: #333;
   width: 40px;
   height: 40px;
@@ -485,12 +482,19 @@ form.form, .form-row {
   text-align: center;
 }
 
+.item-icons li.selected {
+  color: #FFF;
+  background-color: #900;
+  border-radius: 4px;
+}
+
 .item-icon:hover {
   color: #000;
   background-color: #CCC;
-  border-radius: 3px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .item-icon a, .item-icon a:visited {
-  color: #333;
+  color: inherit;
 }
