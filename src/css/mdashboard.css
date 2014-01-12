@@ -316,6 +316,11 @@ body {
   font-family: 'Ubuntu', sans-serif;
 }
 
+.passive-dialog {
+  background-color: #fff;
+  opacity: .25;
+}
+
 .dialog .dialog-header {
   display: block;
   line-height: 65px;
