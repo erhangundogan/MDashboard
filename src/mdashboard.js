@@ -263,7 +263,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     return self;
   };
-
   MDashboard.prototype.events = {
     onSaved: function(error, config) {
       if (error) {
@@ -535,11 +534,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
       });
     },
-    onCreateService: function (swiper) {
-      var moduleId = $(swiper.clickedSlide).attr('data-uid');
-      if (!moduleId) {
-        debugger;
-      }
+    onCreateService: function (collection, container) {
+      // TODO MService interface
+      debugger;
     },
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
@@ -547,13 +544,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           container = $('<div id="dialog-content-id"></div>'),
           content = $('<div id="dialog-inner-content" class="mt10 clearfix"></div>'),
           modules = collection.dashboard.modules,
+          activeModule = null,
           noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
           createModuleButton = $('<button type="button" class="button">Create Module</button>')
             .click(function(event) {
               event.preventDefault();
               collection.events.onCreateModule(collection, container);
             })
-            .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>'));
+            .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>')),
+          createServiceButton = $('<button type="button" class="button disable" disabled="disabled">Create Service</button>')
+            .click(function(event) {
+              event.preventDefault();
+              collection.events.onCreateService(collection, container);
+            })
+            .append($('<i class="fa fa-cloud-download fa-2x fa-white pull-left"></i>'));
 
       // header
       managementDialog.append(
@@ -577,37 +581,36 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         return;
       }
 
+      //container.css('height', '130px');
       var roller = $('<div class="swiper-container"></div>'),
-          wrapper = $('<div class="swiper-wrapper"></div>'),
-          dialogBody = $('<div class="dialog-body"></div>');
+          wrapper = $('<div class="swiper-wrapper"></div>');
+          //dialogBody = $('<div class="dialog-body"></div>');
 
       // adding modules to slider
       if (modules && modules.length > 0) {
         _.each(modules, function(module, index) {
           var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
-          if (module.css) {
-            item.css(module.css)
+          if (module.icon) {
+            item.append( $('<i class="fa fa-3x ' + module.icon + '"></i>') );
+          } else if (module.image) {
+            item.append( $('<img src="' + module.image + '"></img>') );
           }
-          if (module.class) {
-            item.addClass(module.class);
-          }
-          if (module.content) {
-            item.append(module.content);
-          }
+          item.append($('<div style="clear:left;">' + module.name + '</div>'));
           wrapper.append(item);
         });
       }
 
+      container.append(content);
       // nav buttons
-      container.append(
+      content.append(
         $('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
         .click( function() { swiper.swipePrev() }));
-      container.append(dialogBody.append(roller.append(wrapper)));
-      container.append(
-        $('<a href="#" class="btn pull-left swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
+      content.append(roller.append(wrapper));
+      content.append(
+        $('<a href="#" class="btn pull-right swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
         .click( function() { swiper.swipeNext() }));
 
-      container.append(createModuleButton.css('margin-left', '45px'));
+      content.append(createModuleButton).append(createServiceButton);
 
       $.boxer(managementDialog.append(container));
 
@@ -615,8 +618,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       var swiper = roller.swiper({
         slidesPerView: 2,
         loop: false,
-        onSlideClick: collection.events.onCreateService
+        onSlideClick: function(swiperItem) {
+          $('.swiper-slide .selected').removeClass('selected');
+          var selectedModule = $(swiperItem.clickedSlide),
+              selectedModuleId = selectedModule.attr('data-uid');
+
+          selectedModule.addClass('selected');
+          activeModule = selectedModuleId;
+        }
       });
+
 
       $(window).bind('open.boxer', function(event) {
         var dialogHeight = $('.boxer-container').height();
@@ -694,6 +705,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     _.extend(this, _options);
 
     if (this.contentType === "chart") {
+      if (this.chart.widget) delete this.chart.widget;
       this.chart = new MChart(this, this.chart);
     }
 
@@ -701,13 +713,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     var collectionInitialized = setInterval(function () {
       if (self.collection.isInitialized) {
         clearInterval(collectionInitialized);
-        if (self.header) {
-          var headerHeight = self.header.height();
+        if (self.headerItem) {
+          var headerHeight = self.headerItem.height();
           self.height = self.height - headerHeight;
 
-          if (self.header.css) {
-            var headerPaddingTop = parseInt(self.header.css('padding-top')) || 0;
-            var headerPaddingBottom = parseInt(self.header.css('padding-bottom')) || 0;
+          if (self.headerItem.css) {
+            var headerPaddingTop = parseInt(self.headerItem.css('padding-top')) || 0;
+            var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom')) || 0;
             self.height -= (headerPaddingTop + headerPaddingBottom);
           }
 
@@ -756,11 +768,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           item.attr('data-sizey', self.ySize);
           break;
         case 'header':
-          var headerText = (self.header && _.isString(self.header) ? self.header :
-            (self.header && self.header instanceof jQuery ? self.header.text() : ''));
-          var header = $('<' + widgetHandle + '>' + headerText + '</' + widgetHandle + '>').attr('id', 'mwidget-header-' + self.order);
-          self.header = header;
-          item.prepend(header);
+          if (self.header) {
+            var headerText = (self.header && _.isString(self.header)
+              ? self.header
+              : (self.headerItem && self.headerItem instanceof jQuery
+                ? self.headerItem.text()
+                : 'Header'));
+            var headerItem = $('<' + widgetHandle + '>' + headerText + '</' + widgetHandle + '>')
+              .attr('id', 'mwidget-header-' + self.order);
+            self.headerItem = headerItem;
+            item.prepend(headerItem);
+          }
           break;
         case 'html':
           if (self.contentType === "html" && self.html.render) {
@@ -810,13 +828,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     self.height = (self.ySize * (self.collection.rowHeight)) +
       (2 * ((self.ySize - 1) * self.collection.rowMargin));
 
-    if (self.header) {
-      var headerHeight = self.header.height();
+    if (self.headerItem) {
+      var headerHeight = self.headerItem.height();
       self.height = self.height - headerHeight;
 
-      if (self.header.css) {
-        var headerPaddingTop = parseInt(self.header.css('padding-top')) || 0;
-        var headerPaddingBottom = parseInt(self.header.css('padding-bottom')) || 0;
+      if (self.headerItem.css) {
+        var headerPaddingTop = parseInt(self.headerItem.css('padding-top')) || 0;
+        var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom')) || 0;
         self.height -= (headerPaddingTop + headerPaddingBottom);
       }
     }
@@ -870,6 +888,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     serialized.mType = 'MWidget';
     serialized.contentType = self.contentType;
     serialized.col = self.col;
+    serialized.header = self.header;
     serialized.height = self.height;
     serialized.id = self.id;
     serialized.isClosable = self.isClosable;
@@ -885,14 +904,30 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     // collection
     serialized.collection = self.collection.uid;
 
-    // html content
-    if (self.html) {
-      serialized.html = JSON.stringify(self.html);
-    }
+    switch (self.contentType) {
+      case 'html':
+        serialized.html = {};
+        if (self.html.dataset) {
+          serialized.html.dataset = _.isFunction(self.html.dataset)
+            ? self.html.dataset.toString()
+            : JSON.stringify(self.html.dataset);
+        }
 
-    // charts
-    if (self.chart) {
-      serialized.chart = self.chart.serialize();
+        if (self.html.render) {
+          serialized.html.render = _.isFunction(self.html.render)
+            ? self.html.render.toString()
+            : JSON.stringify(self.html.render);
+        }
+
+        if (self.html.style) {
+          serialized.html.style = _.isFunction(self.html.style)
+            ? self.html.style.toString()
+            : JSON.stringify(self.html.style);
+        }
+        break;
+      case 'chart':
+        serialized.chart = self.chart.serialize();
+        break;
     }
 
     return serialized;
@@ -902,6 +937,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     self.contentType = data.contentType;
     self.col = data.col;
+    self.header = data.header;
     self.height = data.height;
     self.id = data.id;
     self.isClosable = data.isClosable;
@@ -915,13 +951,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     self.ySize = data.ySize;
     self.collection = owner;
 
-    if (data.html) {
-      self.html = $.parseJSON(data.html);
-    }
+    switch (data.contentType) {
+      case 'html':
+        self.html = {};
+        if (data.html.dataset) {
+          if (/function/.test(data.html.dataset)) {
+            self.html.dataset = getSource(data.html.dataset, ['widget']);
+          } else {
+            self.html.dataset = $.parseJSON(data.html.dataset);
+          }
+        }
 
-    if (data.chart) {
-      var newChart = new MChart(self);
-      self.chart = newChart.deserialize(data.chart, self);
+        if (data.html.render) {
+          if (/function/.test(data.html.render)) {
+            self.html.render = getSource(data.html.render, ['widget', 'callback']);
+          } else {
+            self.html.render = $.parseJSON(data.html.render);
+          }
+        }
+
+        if (data.html.style) {
+          if (/function/.test(data.html.style)) {
+            self.html.style = getSource(data.html.style, ['widget']);
+          } else {
+            self.html.style = $.parseJSON(data.html.style);
+          }
+        }
+        break;
+      case 'chart':
+        var newChart = new MChart(self);
+        self.chart = newChart.deserialize(data.chart, self);
+        break;
     }
 
     return self;
@@ -1008,32 +1068,38 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     self.uid = data.uid;
     self.widget = owner;
 
-    if (data.dataset && /function/.test(data.dataset)) {
-      self.dataset = new Function(['widget'], data.dataset);
-    } else {
-      self.dataset = $.parseJSON(data.dataset);
+    if (data.dataset) {
+      if (/function/.test(data.dataset)) {
+        self.dataset = getSource(data.dataset, ['widget']);
+      } else {
+        self.dataset = $.parseJSON(data.dataset);
+      }
     }
 
-    if (data.render && /function/.test(data.render)) {
-      self.render = new Function(['widget', 'callback'], data.render);
-    } else {
-      self.render = $.parseJSON(data.render);
+    if (data.render) {
+      if (/function/.test(data.render)) {
+        self.render = getSource(data.render, ['widget', 'callback']);
+      } else {
+        self.render = $.parseJSON(data.render);
+      }
     }
 
-    if (data.style && /function/.test(data.style)) {
-      self.style = new Function(['widget'], data.style);
-    } else {
-      self.style = $.parseJSON(data.style);
+    if (data.style) {
+      if (/function/.test(data.style)) {
+        self.style = getSource(data.style, ['widget']);
+      } else {
+        self.style = $.parseJSON(data.style);
+      }
     }
 
     if (data.config) {
-      self.options = $.parseJSON(data.config);
+      var config = $.parseJSON(data.config);
+      _.extend(self, config);
     }
 
     return self;
   };
   MChart.prototype.widget = typeof MWidget;
-
 
   /***********************   Management   **************************/
 
@@ -1469,6 +1535,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         fn.apply(scope, Array.prototype.slice.call(args));
       }, timeout);
     }
+  }
+  /**
+   * toSource
+   * @param fn string function
+   * @param args {Array} function arguments
+   * @return {*|void}
+   */
+  function getSource(fn, args) {
+    fn = fn.replace(/function[ ]?.*\(.*\)[ ]?\{/, '').replace(/}$/, '');
+    args = args || [];
+    args.push(fn);
+    return Function.prototype.constructor.apply(null, args);
   }
 
 }(this));

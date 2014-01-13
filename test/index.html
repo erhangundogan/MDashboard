@@ -33,14 +33,13 @@
   <script src="widgets.js"></script>
   <script>
     var dashboard = new MDashboard().init();
-    var dashboardCollection = dashboard.createCollection(function(err, collection) {
-      if (collection.dashboard.isLoaded) {
-        var loadedWidgets = dashboard.collections[0].widgets;
-        collection.add(loadedWidgets).render();
-      } else {
+    if (dashboard.isLoaded) {
+      dashboard.collections[0].invalidate().render();
+    } else {
+      dashboard.createCollection(function(err, collection) {
         collection.add(widgets).render();
-      }
-    });
+      });
+    }
   </script>
   <!-- site specific scripts end -->
 </body>

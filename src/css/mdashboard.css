@@ -117,6 +117,10 @@ body {
   margin-left: .25em
 }
 
+.ml01 {
+  margin-left: .1em;
+}
+
 .ml05 {
   margin-left: .5em
 }
@@ -127,6 +131,10 @@ body {
 
 .mr05 {
   margin-right: .5em
+}
+
+.mr01 {
+  margin-right: .1em;
 }
 
 .mt025 {
@@ -252,6 +260,11 @@ body {
   background-color: #ebebeb;
 }
 
+.button .disable {
+  background-color: #f5f5f5;
+  color: #999;
+  opacity: .4;
+}
 
 .mdashboard-toolbar .btn {
   color: rgba(0,0,0,0.5);
@@ -314,6 +327,7 @@ body {
   padding: .5em;
   /*background-color: #e1c192;*/
   font-family: 'Ubuntu', sans-serif;
+  text-align: left;
 }
 
 .passive-dialog {
@@ -338,10 +352,12 @@ body {
 
 .swiper-container {
   display: inline-block;
-  width: 640px;
+  width: 610px;
   height: 125px;
   color: #fff;
   text-align: center;
+  background-color: #dcd9d6;;
+  border-radius: 6px;
 
   position: relative;
   overflow: hidden;
@@ -354,16 +370,21 @@ body {
 }
 
 .swiper-slide {
-  font-size: 32px;
+  font-size: 24px;
   vertical-align: baseline;
   color: #333333;
   cursor: pointer;
-  width: 325px;
+  width: 305px;
   height: 125px;
 }
 
+.swiper-slide .selected {
+  color: #fff;
+  background-color: #600;
+}
+
 .swiper-button {
-  line-height: 140px;
+  line-height: 130px;
   display: inline;
   color: #ccc;
 }
