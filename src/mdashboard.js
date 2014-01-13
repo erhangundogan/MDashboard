@@ -543,9 +543,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         service.module = collection.activeModule;
 
         // creates management dialog new service form
-        var form = service.createForm();
+        var form = service.createForm(),
+            section = container.find('#dialog-inner-content');
 
-        var section = container.find('#dialog-inner-content');
         if (section) {
           section.empty().append(form);
 
@@ -567,6 +567,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
       });
     },
+    onManageModuleSelected: function(collection, swiperItem) {
+      $('.swiper-slide .selected').removeClass('selected');
+      var selectedModule = $(swiperItem.clickedSlide),
+          selectedModuleId = selectedModule.attr('data-uid');
+
+      selectedModule.addClass('selected');
+      collection.activeModule = selectedModuleId;
+      $('#service-create-button').prop('disabled', false).removeClass('disabled');
+    },
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
@@ -574,18 +583,24 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           content = $('<div id="dialog-inner-content" class="mt10 clearfix"></div>'),
           modules = collection.dashboard.modules,
           noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
-          createModuleButton = $('<button type="button" class="button">Create Module</button>')
+          createModuleButton = $('<button id="module-create-button" type="button" class="button pull-left"></button>')
             .click(function(event) {
               event.preventDefault();
               collection.events.onCreateModule(collection, container);
             })
-            .append($('<i class="fa fa-puzzle-piece fa-2x fa-white pull-left"></i>')),
-          createServiceButton = $('<button type="button" class="button disable" disabled="disabled">Create Service</button>')
+            .append($('<div class="pull-left"><i class="fa fa-puzzle-piece fa-3x fa-white"></i></div>'))
+            .append($('<div class="button-text pull-left">Create Module</div>')),
+          createServiceButton = $('<button id="service-create-button" type="button" class="button pull-left disabled" disabled="disabled"></button>')
             .click(function(event) {
               event.preventDefault();
-              collection.events.onCreateService(collection, container);
+              if (collection.activeModule) {
+                collection.events.onCreateService(collection, container);
+              } else {
+                console.error('Module not specified.');
+              }
             })
-            .append($('<i class="fa fa-cloud-download fa-2x fa-white pull-left"></i>'));
+            .append($('<div class="pull-left"><i class="fa fa-cloud-download fa-3x fa-white"></i></div>'))
+            .append($('<div class="button-text pull-left">Create Service</div>'));
 
       // header
       managementDialog.append(
@@ -648,12 +663,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         slidesPerView: 2,
         loop: false,
         onSlideClick: function(swiperItem) {
-          $('.swiper-slide .selected').removeClass('selected');
-          var selectedModule = $(swiperItem.clickedSlide),
-              selectedModuleId = selectedModule.attr('data-uid');
-
-          selectedModule.addClass('selected');
-          collection.activeModule = selectedModuleId;
+          collection.events.onManageModuleSelected(collection, swiperItem);
         }
       });
 
@@ -1150,6 +1160,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.tags = [];
     this.service = null;
     this.dashboard = null;
+    this.params = [];
 
     //this.css = {};
     //this.class = null;
@@ -1271,7 +1282,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     });
 
-    var saveModuleButton = $('<button type="button" class="button">Save Module</button>')
+    var saveModuleButton = $('<button id="module-save-button" type="button" class="button pull-left"></button>')
       .click(function(event) {
         event.preventDefault();
         $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
@@ -1279,7 +1290,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         // Save dashboard
         self.events.onSave(self);
       })
-      .append($('<i class="fa fa-save fa-2x fa-white pull-left"></i>'));
+      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Save Module</div>'));
 
     formContainer.append(form.append(saveModuleButton));
 
@@ -1312,6 +1324,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     serialized.icon = self.icon;
     serialized.description = self.description;
     serialized.tags = self.tags;
+    serialized.params = self.params;
 
     // parent module
     serialized.parent = self.parent ? self.parent.uid : null;
@@ -1338,6 +1351,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     self.icon = data.icon;
     self.description = data.description;
     self.tags = data.tags;
+    self.params = data.params;
 
     self.dashboard = dashboard;
 
@@ -1378,11 +1392,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MService';
     this.schedule = null; // https://raw.github.com/erhangundogan/MDashboard/master/cron.md
+    this.image = null;
+    this.icon = null;
     this.requests = [];
     this.responses = [];
     this.isInitialized = false;
     this.isScheduled = false;
     this.module = null;
+    this.params = [];
 
     if (owner) {
       owner.service = self;
@@ -1431,7 +1448,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     serialized.name = self.name;
     serialized.schedule = self.schedule;
     serialized.isScheduled = self.isScheduled;
+    serialized.image = self.image;
+    serialized.icon = self.icon;
     serialized.ajaxOptions = self.ajaxOptions;
+    serialized.params = self.params;
 
     // parent module
     serialized.module = self.module ? self.module.uid : null;
@@ -1445,7 +1465,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     self.name = data.name;
     self.schedule = data.schedule;
     self.isScheduled = data.isScheduled;
+    self.image = data.image;
+    self.icon = data.icon;
     self.ajaxOptions = data.ajaxOptions;
+    self.params = data.params;
     self.module = owner;
 
     return self;
@@ -1557,13 +1580,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           break;
         case 'schedule':
           label.append($('<span>Schedule</span>'));
-          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (5 dakikada bir)" />'));
+          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (5 dakikada bir, cron string)" />'));
           propertyRequired = true;
           order = 4;
           break;
         case 'isScheduled':
-          label.append($('<span>Scheduled</span>')).css('vertical-align', 'top');
-          item.append($('<input class="item-scheduled" type="check" />'));
+          label.append($('<span>Scheduled</span>'));
+          item.append($('<input class="item-scheduled" type="checkbox" />'));
           propertyRequired = true;
           order = 5;
           break;
@@ -1595,27 +1618,54 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
 
       if (propertyRequired) {
-        var rowItem = {};
-        rowItem[order] = {
+        rows[order] = {
           label: label,
           columnBreak: columnBreak,
           item: item
         };
-        rows.push(rowItem);
       }
     });
 
-    for (var count = 1; count <= rows.length; count++) {
-      var rowItem = rows[count],
+    for (var count = 0; count < rows.length; count++) {
+      var currentRowItem = rows[count],
           formRow = $('<div class="form-row"></div>');
 
-      if (rowItem) {
-        formRow.append(rowItem.label).append(rowItem.columnBreak).append(rowItem.item);
+      if (currentRowItem) {
+        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
         form.append(formRow);
       }
     }
 
-    var saveModuleButton = $('<button type="button" class="button">Save Module</button>')
+    var paramOrder = 1;
+    var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
+      .click(function(event) {
+        event.preventDefault();
+
+        var keyValueLabel = $('<div class="form-label"></div>'),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+            keyValueItem = $('<div class="form-item"></div>'),
+            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+              .attr('data-order', paramOrder)
+              .click(function(event) {
+                var itemId = $(this).attr('data-order');
+                $('div.form-row[data-order=' + itemId + ']').remove();
+              }),
+            formRow = $('<div class="form-row"></div>');
+
+        keyValueLabel.append($('<input class="param-key" type="text" />'));
+        keyValueItem.append($('<input class="param-value" type="text" />'));
+        formRow.append(keyValueLabel)
+               .append(keyValueColumnBreak)
+               .append(keyValueItem)
+               .append(removeButton)
+               .attr('data-order', paramOrder);
+        form.append(formRow);
+        ++paramOrder;
+      })
+      .append($('<div class="pull-left"><i class="fa fa-key fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Add Key/Value</div>'));
+
+    var saveServiceButton = $('<button id="service-save-button" type="button" class="button pull-left"></button>')
       .click(function(event) {
         event.preventDefault();
         $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
@@ -1623,11 +1673,29 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         // Save dashboard
         self.events.onSave(self);
       })
-      .append($('<i class="fa fa-save fa-2x fa-white pull-left"></i>'));
+      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Save Service</div>'));
 
-    formContainer.append(form.append(saveModuleButton));
+    formContainer.append(form).append(keyValueButton).append(saveServiceButton);
 
     return formContainer;
+  };
+  MService.prototype.events = {
+    onSave: function (collection) {
+      debugger;
+      collection.loadForm(function(err, result) {
+        if (err) {
+          console.error(err);
+        } else {
+          if (result) {
+            result.dashboard.modules.push(collection);
+            result.dashboard.save(result.dashboard.events.onSaved);
+          } else {
+            console.error('Could not load form values');
+          }
+        }
+      });
+    }
   };
 
   /**

@@ -237,13 +237,13 @@ body {
   background-color: #e5e5e5;
 
   display: inline-block;
-  padding: .75em;
-  margin: .75em;
-  line-height: 170%;
+  padding: .5em .3em .1em .5em;
+  margin: .5em;
+  /*line-height: 170%;*/
   font-size: 18px;
   font-weight: normal;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   vertical-align: middle;
   cursor: pointer;
   background-image: none;
@@ -260,7 +260,11 @@ body {
   background-color: #ebebeb;
 }
 
-.button .disable {
+.button-text {
+  width: 90px;
+}
+
+.disabled {
   background-color: #f5f5f5;
   color: #999;
   opacity: .4;
@@ -322,7 +326,7 @@ body {
 */
 .dialog {
   width: 700px;
-  height: 625px;
+  height: 620px;
   overflow: hidden;
   padding: .5em;
   /*background-color: #e1c192;*/
@@ -421,39 +425,59 @@ body {
   background: transparent url('images/merlon-logo-small.png') center no-repeat;
 }
 
-.module-container {
+.module-container, .service-container {
   overflow: hidden;
 }
 
-.module-container .form {
+.module-container .form, .service-container .form {
   display: block;
   width: 100%;
   font-size: 12pt;
 }
 
-.module-container .form-label {
+.module-container .form-label, .service-container .form-label {
   width: 14%;
   display: inline-block;
   text-align: right;
   font-weight: bold;
 }
 
-.module-container .form-break {
+.module-container .form-break, .service-container .form-break {
   text-align: center;
   display: inline-block;
 }
 
-.module-container .form-item {
-  width: 84%;
+.module-container .form-item, .service-container .form-item {
   display: inline-block;
   text-align: left;
 }
 
-.form-item input , .form-item textarea {
-  width: 400px;
+.module-container .form-button, .service-container .form-button {
+  display: inline-block;
+  margin-left: .5em;
+  vertical-align: middle;
+  line-height: 30px;
+}
+
+.form-label input[type=text]  {
+  width: 75px;
   border-radius: 4px;
   padding: .35em;
   background-color: #fff;
+  border: 1px solid #666;
+}
+
+.form-item input[type=text] , .form-item textarea {
+  width: 500px;
+  border-radius: 4px;
+  padding: .35em;
+  background-color: #fff;
+  border: 1px solid #666;
+}
+
+.form-item input[type=checkbox] {
+  border-radius: 4px;
+  padding: .5em;
   border: 1px solid #666;
 }
 
@@ -470,7 +494,7 @@ body {
 
 #dialog-inner-content {
   width: 100%;
-  /*overflow: auto;*/
+  overflow: auto;
 }
 
 form.form, .form-row {
@@ -487,7 +511,7 @@ form.form, .form-row {
 }
 
 .item-icons {
-  width: 90%;
+  width: 500px;
   height: 160px;
   overflow-y: scroll;
   overflow-x: hidden;
@@ -524,4 +548,8 @@ form.form, .form-row {
 
 .item-icon a, .item-icon a:visited {
   color: inherit;
+}
+
+.red {
+  color: #900;
 }
