@@ -1,7 +1,7 @@
 Minute	Hour	Day	Month	WeekDay (* - / ,)
 0-59	0-23	0-31	0-12	0-7
 
-5	*	*	*	* 	(5 dakikada bir)
+*/5	*	*	*	* 	(5 dakikada bir)
 15	14	1	*	* 	(Her ayın ilk günü saat 14:15'de)
 0	22	*	*	1-5	(Hafta içi gece 22:00'de)
 23	0-23/2	*	*	*	(00:23, 02:23, 04:23,.. everyday)

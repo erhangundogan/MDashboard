@@ -378,9 +378,10 @@ body {
   height: 125px;
 }
 
-.swiper-slide .selected {
+.selected {
   color: #fff;
-  background-color: #600;
+  background-color: #999;
+  border-radius: 6px;
 }
 
 .swiper-button {

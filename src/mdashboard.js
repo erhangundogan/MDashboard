@@ -535,8 +535,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       });
     },
     onCreateService: function (collection, container) {
-      // TODO MService interface
-      debugger;
+      container.slideUp(400, function() {
+        var service = new MService();
+
+        $('#dialog-inner-content').height($('.boxer-container').height() - 150);
+
+        service.module = collection.activeModule;
+
+        // creates management dialog new service form
+        var form = service.createForm();
+
+        var section = container.find('#dialog-inner-content');
+        if (section) {
+          section.empty().append(form);
+
+          $('ul.item-icons').on('click', 'li', function(event) {
+
+            // remove old selected
+            var item = $('ul.item-icons li.selected');
+            if (item && item.length > 0) {
+              item.removeClass('selected');
+            }
+
+            // add new selected icon
+            if (event.currentTarget != item[0]) {
+              $(event.currentTarget).addClass('selected');
+            }
+          });
+
+          container.slideDown(400);
+        }
+      });
     },
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
@@ -544,7 +573,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           container = $('<div id="dialog-content-id"></div>'),
           content = $('<div id="dialog-inner-content" class="mt10 clearfix"></div>'),
           modules = collection.dashboard.modules,
-          activeModule = null,
           noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
           createModuleButton = $('<button type="button" class="button">Create Module</button>')
             .click(function(event) {
@@ -610,6 +638,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         $('<a href="#" class="btn pull-right swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
         .click( function() { swiper.swipeNext() }));
 
+      // adding module, service buttons
       content.append(createModuleButton).append(createServiceButton);
 
       $.boxer(managementDialog.append(container));
@@ -624,7 +653,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
               selectedModuleId = selectedModule.attr('data-uid');
 
           selectedModule.addClass('selected');
-          activeModule = selectedModuleId;
+          collection.activeModule = selectedModuleId;
         }
       });
 
@@ -1421,7 +1450,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     return self;
   };
-
   /**
    * Here we go to get it
    * @param _params service parameters
@@ -1500,6 +1528,106 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     });
 
     self.isInitialized = true;
+  };
+  MService.prototype.createForm = function() {
+    var self = this,
+        formContainer = $('<div class="service-container"></div>'),
+        rows = [],
+        form = $('<form class="form"></form>');
+
+    _.each(self, function(value, key) {
+      var propertyRequired = false,
+          order = null,
+          label = $('<div class="form-label"></div>'),
+          item = $('<div class="form-item"></div>'),
+          columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
+
+      switch(key) {
+        case 'uid':
+          label.append($('<span>ID</span>'));
+          item.append($('<span class="item-uid">' + value + '</span>'));
+          propertyRequired = true;
+          order = 2;
+          break;
+        case 'name':
+          label.append($('<span>Name</span>'));
+          item.append($('<input class="item-name" type="text" required autofocus />'));
+          propertyRequired = true;
+          order = 3;
+          break;
+        case 'schedule':
+          label.append($('<span>Schedule</span>'));
+          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (5 dakikada bir)" />'));
+          propertyRequired = true;
+          order = 4;
+          break;
+        case 'isScheduled':
+          label.append($('<span>Scheduled</span>')).css('vertical-align', 'top');
+          item.append($('<input class="item-scheduled" type="check" />'));
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'module':
+          label.append($('<span>Module</span>'));
+          item.append($('<span class="item-module">' + value + '</span>'));
+          propertyRequired = true;
+          order = 1;
+          break;
+        case 'image':
+          label.append($('<span>Image</span>'));
+          item.append($('<input class="item-image" type="file" />'));
+          propertyRequired = true;
+          order = 6;
+          break;
+        case 'icon':
+          label.append($('<span>Icon</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          var itemIcons = $('<ul class="item-icons"></ul>');
+          _.each(faIcons, function(faIcon, index) {
+            var listItem = $('<li class="item-icon" data-icon="' + faIcon + '"></li>');
+            listItem.append($('<i class="fa fa-2x fa-white ' + faIcon + '"></i>'));
+            itemIcons.append(listItem);
+          });
+          item.append(itemIcons);
+          propertyRequired = true;
+          order = 7;
+          break;
+      }
+
+      if (propertyRequired) {
+        var rowItem = {};
+        rowItem[order] = {
+          label: label,
+          columnBreak: columnBreak,
+          item: item
+        };
+        rows.push(rowItem);
+      }
+    });
+
+    for (var count = 1; count <= rows.length; count++) {
+      var rowItem = rows[count],
+          formRow = $('<div class="form-row"></div>');
+
+      if (rowItem) {
+        formRow.append(rowItem.label).append(rowItem.columnBreak).append(rowItem.item);
+        form.append(formRow);
+      }
+    }
+
+    var saveModuleButton = $('<button type="button" class="button">Save Module</button>')
+      .click(function(event) {
+        event.preventDefault();
+        $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+
+        // Save dashboard
+        self.events.onSave(self);
+      })
+      .append($('<i class="fa fa-save fa-2x fa-white pull-left"></i>'));
+
+    formContainer.append(form.append(saveModuleButton));
+
+    return formContainer;
   };
 
   /**
