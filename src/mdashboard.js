@@ -279,6 +279,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     }
   };
+  /**
+   * Finds module specified by module.uid
+   * @param moduleId
+   * @return {*}
+   */
   MDashboard.prototype.getModuleById = function(moduleId) {
     var self = this,
         allModules = [];
@@ -291,7 +296,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
       });
     }
-
     getModules(self.modules);
 
     var requestedModule = _.find(allModules, function(item) {
@@ -300,6 +304,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     return requestedModule;
   };
+  /**
+   * Finds module if is stored in dashboard modules
+   * @param module
+   * @return {*}
+   */
+  MDashboard.prototype.replaceModule = function(searchModule) {
+    var self = this,
+        found = false;
+
+    // get one module everytime
+    function getModules(moduleArray) {
+
+      // look child modules
+      _.each(moduleArray, function(module, index) {
+
+        // already found module?
+        if (!found) {
+
+          // found module
+          if (module.uid === searchModule.uid) {
+
+            // existing module has child modules?
+            if (module.modules && module.modules.length > 0) {
+
+              // merge existing child modules with replacing child modules
+              var childModules = module.modules.concat(searchModule.modules);
+              searchModule.modules = childModules;
+              moduleArray[index] = searchModule;
+            } else {
+
+              // replace module
+              moduleArray[index] = searchModule;
+            }
+            // module replaced, getting out of loop
+            found = true;
+          }
+          if (module.modules && module.modules.length > 0 && !found) {
+            getModules(module.modules);
+          }
+        }
+      });
+    }
+    getModules(self.modules);
+
+    // true: found and replaced module
+    // false: module not exist
+    return found;
+  };
+
 
   /**
    * MWidgetCollection constructor
@@ -531,7 +584,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         if (collection.selectedModule) {
           var selectedModule = collection.dashboard.getModuleById(collection.selectedModule);
           if (selectedModule) {
-            selectedModule.modules.push(module);
             module.parent = selectedModule;
           }
         }
@@ -669,46 +721,91 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         return;
       }
 
-      //container.css('height', '130px');
-      var roller = $('<div class="swiper-container"></div>'),
-          wrapper = $('<div class="swiper-wrapper"></div>');
-          //dialogBody = $('<div class="dialog-body"></div>');
+      function renderSwiper(modules) {
+        var wrapper = $('<div class="swiper-wrapper"></div>');
 
-      // adding modules to slider
-      if (modules && modules.length > 0) {
-        _.each(modules, function(module, index) {
-          var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
-          if (module.icon) {
-            item.append( $('<i class="fa fa-3x ' + module.icon + '"></i>') );
-          } else if (module.image) {
-            item.append( $('<img src="' + module.image + '"></img>') );
+        // adding modules to slider
+        if (modules && modules.length > 0) {
+          _.each(modules, function(module, index) {
+            var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
+            if (module.icon) {
+              item.append( $('<i class="fa fa-3x ' + module.icon + '"></i>') );
+            } else if (module.image) {
+              item.append( $('<img src="' + module.image + '"></img>') );
+            }
+            item.append($('<div style="clear:left;">' + module.name + '</div>'));
+            wrapper.append(item);
+          });
+        }
+        return wrapper;
+      }
+
+      function renderArrows(activeIndex) {
+        var displayMatrix = [];
+        switch(activeIndex) {
+          case 0:
+            displayMatrix = [0, 1, 0, 0];
+            break;
+          case 1:
+            displayMatrix = [0, 0, 1, 1];
+            break;
+        }
+
+        _.each(displayMatrix, function(value, key) {
+          switch (key) {
+            case 0: // top
+              if (value) $('.swiper-container .top').removeClass('hide');
+              else $('.swiper-container .top').addClass('hide');
+              break;
+            case 1: // right
+              if (value) $('.swiper-container .right').removeClass('hide');
+              else $('.swiper-container .right').addClass('hide');
+              break;
+            case 2: // bottom
+              if (value) $('.swiper-container .bottom').removeClass('hide');
+              else $('.swiper-container .bottom').addClass('hide');
+              break;
+            case 3: // left
+              if (value) $('.swiper-container .left').removeClass('hide');
+              else $('.swiper-container .left').addClass('hide');
+              break;
           }
-          item.append($('<div style="clear:left;">' + module.name + '</div>'));
-          wrapper.append(item);
         });
       }
 
+      var roller = $('<div class="swiper-container"></div>');
+      roller
+        .append($('<div class="left"></div>').click( function() { swiper.swipePrev() }))
+        .append($('<div class="right"></div>').click( function() { swiper.swipeNext() }))
+        .append($('<div class="top"></div>').click( function() { swiper.swipePrev() }))
+        .append($('<div class="bottom"></div>').click( function() { swiper.swipeNext() }));
+
       container.append(content);
-      // nav buttons
-      content.append(
-        $('<a href="#" class="btn pull-left swiper-button"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
-        .click( function() { swiper.swipePrev() }));
-      content.append(roller.append(wrapper));
-      content.append(
-        $('<a href="#" class="btn pull-right swiper-button"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
-        .click( function() { swiper.swipeNext() }));
+      content.append(roller.append(renderSwiper(modules)));
 
       // adding module, service buttons
-      content.append(createModuleButton).append(createServiceButton);
+      content.append(
+        $('<div class="clearfix"></div>').append(createModuleButton).append(createServiceButton));
 
       $.boxer(managementDialog.append(container));
 
       // http://www.idangero.us/sliders/swiper/api.php
       var swiper = roller.swiper({
-        slidesPerView: 2,
+        slidesPerView: 1,
         loop: false,
+        centeredSlides: true,
+        grabCursor: true,
         onSlideClick: function(swiperItem) {
           collection.events.onManageModuleSelected(collection, swiperItem);
+        },
+        onSlidePrev: function(swiperItem) {
+          var activeModule = $(swiper.activeSlide()).attr('data-uid');
+          var result = renderArrows(swiper.activeIndex);
+
+        },
+        onSlideNext: function(swiperItem) {
+          var activeModule = $(swiper.activeSlide()).attr('data-uid');
+          renderArrows(swiper.activeIndex);
         }
       });
 
@@ -1271,8 +1368,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
               reader.readAsDataURL(uploadControl.files[0]);
             }
         } else {
-          message = 'File not found or not an image file';
-          callback(message);
+          self.image = null;
+          self.icon = 'fa-question';
+          callback(null, self);
         }
     }
   };
@@ -1423,8 +1521,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         if (err) {
           console.error(err);
         } else {
+          debugger;
           if (result) {
-            result.dashboard.modules.push(module);
+            // if we have this module replace it otherwise push
+            var replaced = result.dashboard.replaceModule(module);
+            if (!replaced) {
+              if (module.parent) { // put child module under it's parent module
+                module.parent.modules.push(module);
+              } else { // it is top module
+                result.dashboard.modules.push(module);
+              }
+            }
             result.dashboard.save(result.dashboard.events.onSaved);
           } else {
             console.error('Could not load module form values');
@@ -1675,7 +1782,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     self.isInitialized = true;
   };
-
   /**
    * Get connection form values to put into service ajax properties
    * @param callback
@@ -1899,8 +2005,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
               reader.readAsDataURL(uploadControl.files[0]);
             }
         } else {
-          message = 'File not found or not an image file';
-          callback(message);
+          self.image = null;
+          self.icon = 'fa-question';
+          callback(null, self);
         }
     }
   };
@@ -2113,9 +2220,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    * @return {*|void}
    */
   function getSource(fn, args) {
-    fn = fn.replace(/function[ ]?.*\(.*\)[ ]?\{/, '').replace(/}$/, '');
+    //fn = fn.replace(/function[ ]?.*\(.*\)[ ]?\{/, '').replace(/}$/, '');
+    var decompiled = fn.substring(fn.indexOf("{")+1, fn.lastIndexOf("}"));
     args = args || [];
-    args.push(fn);
+    args.push(decompiled);
     return Function.prototype.constructor.apply(null, args);
   }
 
