@@ -279,6 +279,27 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     }
   };
+  MDashboard.prototype.getModuleById = function(moduleId) {
+    var self = this,
+        allModules = [];
+
+    function getModules(moduleArray) {
+      _.each(moduleArray, function(module, index) {
+        allModules.push(module);
+        if (module.modules && module.modules.length > 0) {
+          getModules(module.modules);
+        }
+      });
+    }
+
+    getModules(self.modules);
+
+    var requestedModule = _.find(allModules, function(item) {
+      return item.uid === moduleId;
+    });
+
+    return requestedModule;
+  };
 
   /**
    * MWidgetCollection constructor
@@ -540,7 +561,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
         $('#dialog-inner-content').height($('.boxer-container').height() - 150);
 
-        service.module = collection.activeModule;
+        debugger;
+        service.module = collection.dashboard.getModuleById(collection.selectedModule);
 
         // creates management dialog new service form
         var form = service.createForm(),
@@ -568,13 +590,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       });
     },
     onManageModuleSelected: function(collection, swiperItem) {
-      $('.swiper-slide .selected').removeClass('selected');
-      var selectedModule = $(swiperItem.clickedSlide),
-          selectedModuleId = selectedModule.attr('data-uid');
+      var selectedModule = $('.swiper-slide .selected');
 
-      selectedModule.addClass('selected');
-      collection.activeModule = selectedModuleId;
-      $('#service-create-button').prop('disabled', false).removeClass('disabled');
+      // if module is selected, clicking again removes selection
+      if (selectedModule && selectedModule.length > 0) {
+        $('#service-create-button').prop('disabled', true).addClass('disabled');
+        selectedModule.removeClass('selected');
+        collection.selectedModule = null;
+      } else {
+        var currentSelectedModule = $(swiperItem.clickedSlide),
+            currentSelectedModuleId = currentSelectedModule.attr('data-uid');
+
+        currentSelectedModule.addClass('selected');
+        collection.selectedModule = currentSelectedModuleId;
+        $('#service-create-button').prop('disabled', false).removeClass('disabled');
+      }
     },
     onManageServices: function(collection) {
       var managementDialog = $('<div class="dialog management"></div>'),
@@ -593,7 +623,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           createServiceButton = $('<button id="service-create-button" type="button" class="button pull-left disabled" disabled="disabled"></button>')
             .click(function(event) {
               event.preventDefault();
-              if (collection.activeModule) {
+              if (collection.selectedModule) {
                 collection.events.onCreateService(collection, container);
               } else {
                 console.error('Module not specified.');
@@ -1199,8 +1229,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         if (uploadControl.files
           && uploadControl.files[0]
           && /image/.test(uploadControl.files[0].type)) {
-            if (uploadControl.files[0].size > 3000000) { // ~3MB
-              message = 'Image file size should be less than 3MB';
+            if (uploadControl.files[0].size > 1000000) { // ~1MB
+              message = 'Image file size should be less than 1MB';
               callback(message);
             } else {
               // read image file
@@ -1216,7 +1246,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           message = 'File not found or not an image file';
           callback(message);
         }
-        //localStorage.setItem('image', data); // save image data
     }
   };
   /**
@@ -1298,16 +1327,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     return formContainer;
   };
   MModule.prototype.events = {
-    onSave: function (collection) {
-      collection.loadForm(function(err, result) {
+    onSave: function (module) {
+      module.loadForm(function(err, result) {
         if (err) {
           console.error(err);
         } else {
           if (result) {
-            result.dashboard.modules.push(collection);
+            result.dashboard.modules.push(module);
             result.dashboard.save(result.dashboard.events.onSaved);
           } else {
-            console.error('Could not load form values');
+            console.error('Could not load module form values');
           }
         }
       });
@@ -1394,6 +1423,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     this.schedule = null; // https://raw.github.com/erhangundogan/MDashboard/master/cron.md
     this.image = null;
     this.icon = null;
+    this.description = null;
     this.requests = [];
     this.responses = [];
     this.isInitialized = false;
@@ -1446,6 +1476,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     serialized.mType = 'MService';
     serialized.uid = self.uid;
     serialized.name = self.name;
+    serialized.description = self.description;
     serialized.schedule = self.schedule;
     serialized.isScheduled = self.isScheduled;
     serialized.image = self.image;
@@ -1463,6 +1494,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     self.uid = data.uid;
     self.name = data.name;
+    self.description = data.description;
     self.schedule = data.schedule;
     self.isScheduled = data.isScheduled;
     self.image = data.image;
@@ -1552,6 +1584,62 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     self.isInitialized = true;
   };
+  /**
+   * Get form values to put into module
+   * @param callback
+   */
+  MService.prototype.loadForm = function(callback) {
+    var self = this,
+        message = null;
+
+    self.name = $('.form-row .form-item .item-name').val();
+    self.description = $('.form-row .form-item .item-description').val();
+    self.schedule = $('.form-row .form-item .item-schedule').val();
+    self.isScheduled = $('.form-row .form-item .item-scheduled').prop('checked');
+
+    $('.param-key').each(function() {
+      var param = {},
+          key = $(this).val();
+
+      if (key) {
+          var orderId = $(this).attr('data-order'),
+              value = $('.param-value[data-order=' + orderId + ']').val();
+
+        param[key] = value;
+        self.params.push(param);
+      }
+    });
+
+    // get icon or image
+    var item = $('ul.item-icons li.selected');
+    if (item && item.length > 0) {
+      self.image = null;
+      self.icon = item.attr('data-icon');
+      callback(null, self);
+    } else {
+      var uploadControl = $('.item-image')[0];
+        if (uploadControl.files
+          && uploadControl.files[0]
+          && /image/.test(uploadControl.files[0].type)) {
+            if (uploadControl.files[0].size > 1000000) { // ~1MB
+              message = 'Image file size should be less than 1MB';
+              callback(message);
+            } else {
+              // read image file
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                self.image = e.target.result;
+                self.icon = null;
+                callback(null, self);
+              };
+              reader.readAsDataURL(uploadControl.files[0]);
+            }
+        } else {
+          message = 'File not found or not an image file';
+          callback(message);
+        }
+    }
+  };
   MService.prototype.createForm = function() {
     var self = this,
         formContainer = $('<div class="service-container"></div>'),
@@ -1572,6 +1660,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           propertyRequired = true;
           order = 2;
           break;
+        case 'description':
+          label.append($('<span>Description</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-description" rows="2"></textarea>'));
+          propertyRequired = true;
+          order = 4;
+          break;
         case 'name':
           label.append($('<span>Name</span>'));
           item.append($('<input class="item-name" type="text" required autofocus />'));
@@ -1580,19 +1675,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           break;
         case 'schedule':
           label.append($('<span>Schedule</span>'));
-          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (5 dakikada bir, cron string)" />'));
+          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />'));
           propertyRequired = true;
-          order = 4;
+          order = 5;
           break;
         case 'isScheduled':
           label.append($('<span>Scheduled</span>'));
           item.append($('<input class="item-scheduled" type="checkbox" />'));
           propertyRequired = true;
-          order = 5;
+          order = 6;
           break;
         case 'module':
           label.append($('<span>Module</span>'));
-          item.append($('<span class="item-module">' + value + '</span>'));
+          item.append($('<span class="item-module">' + (value.name ? value.name : '') + '</span>'));
           propertyRequired = true;
           order = 1;
           break;
@@ -1600,7 +1695,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           label.append($('<span>Image</span>'));
           item.append($('<input class="item-image" type="file" />'));
           propertyRequired = true;
-          order = 6;
+          order = 7;
           break;
         case 'icon':
           label.append($('<span>Icon</span>')).css('vertical-align', 'top');
@@ -1613,7 +1708,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           });
           item.append(itemIcons);
           propertyRequired = true;
-          order = 7;
+          order = 8;
           break;
       }
 
@@ -1652,8 +1747,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
               }),
             formRow = $('<div class="form-row"></div>');
 
-        keyValueLabel.append($('<input class="param-key" type="text" />'));
-        keyValueItem.append($('<input class="param-value" type="text" />'));
+        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
         formRow.append(keyValueLabel)
                .append(keyValueColumnBreak)
                .append(keyValueItem)
@@ -1681,15 +1776,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     return formContainer;
   };
   MService.prototype.events = {
-    onSave: function (collection) {
-      debugger;
-      collection.loadForm(function(err, result) {
+    onSave: function (service) {
+      service.loadForm(function(err, result) {
         if (err) {
           console.error(err);
         } else {
           if (result) {
-            result.dashboard.modules.push(collection);
-            result.dashboard.save(result.dashboard.events.onSaved);
+            debugger;
+            result.module.service = service;
+            result.module.dashboard.save(result.module.dashboard.events.onSaved);
           } else {
             console.error('Could not load form values');
           }
