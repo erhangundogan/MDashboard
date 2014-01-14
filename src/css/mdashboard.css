@@ -157,6 +157,11 @@ body {
   margin: 1em;
 }
 
+.mtb05 {
+  margin-top: .5em;
+  margin-bottom: .5em;
+}
+
 .mdashboard-container {
   position: relative;
 }
@@ -356,7 +361,7 @@ body {
 
 .swiper-container {
   display: inline-block;
-  width: 610px;
+  width: 600px;
   height: 125px;
   color: #fff;
   text-align: center;
@@ -378,8 +383,13 @@ body {
   vertical-align: baseline;
   color: #333333;
   cursor: pointer;
-  width: 305px;
+  width: 300px;
   height: 125px;
+}
+
+.swiper-slide img {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .selected {
@@ -425,11 +435,11 @@ body {
   background: transparent url('images/merlon-logo-small.png') center no-repeat;
 }
 
-.module-container, .service-container {
+.module-container, .service-container, .service-ajax-container {
   overflow: hidden;
 }
 
-.module-container .form, .service-container .form {
+.module-container .form, .service-container .form, .service-ajax-container .form {
   display: block;
   width: 100%;
   font-size: 12pt;
@@ -442,17 +452,24 @@ body {
   font-weight: bold;
 }
 
-.module-container .form-break, .service-container .form-break {
+.service-ajax-container .form-label {
+  width: 24%;
+  display: inline-block;
+  text-align: right;
+  font-weight: bold;
+}
+
+.module-container .form-break, .service-container .form-break, .service-ajax-container form-break {
   text-align: center;
   display: inline-block;
 }
 
-.module-container .form-item, .service-container .form-item {
+.module-container .form-item, .service-container .form-item, .service-ajax-container .form-item {
   display: inline-block;
   text-align: left;
 }
 
-.module-container .form-button, .service-container .form-button {
+.module-container .form-button, .service-container .form-button, .service-ajax-container .form-button {
   display: inline-block;
   margin-left: .5em;
   vertical-align: middle;
@@ -462,24 +479,29 @@ body {
 .form-label input[type=text]  {
   width: 75px;
   border-radius: 4px;
-  padding: .35em;
+  padding: .25em;
   background-color: #fff;
   border: 1px solid #666;
 }
 
-.form-item input[type=text] , .form-item textarea {
-  width: 500px;
+.form-item input[type=text] , .form-item textarea, .form-item select {
+  width: 475px;
+  border-radius: 4px;
+  padding: .25em;
+  background-color: #fff;
+  border: 1px solid #666;
+}
+/*
+.service-ajax-container .form-item input[type=text],
+.service-ajax-container .form-item textarea,
+.service-ajax-container .form-item select {
+  width: 400px;
   border-radius: 4px;
   padding: .35em;
   background-color: #fff;
   border: 1px solid #666;
 }
-
-.form-item input[type=checkbox] {
-  border-radius: 4px;
-  padding: .5em;
-  border: 1px solid #666;
-}
+*/
 
 #dialog-content-id {
   padding: 0;
@@ -511,7 +533,7 @@ form.form, .form-row {
 }
 
 .item-icons {
-  width: 500px;
+  width: 475px;
   height: 115px;
   overflow-y: scroll;
   overflow-x: hidden;
@@ -552,4 +574,8 @@ form.form, .form-row {
 
 .red {
   color: #900;
+}
+
+.fa {
+  margin-right: .1em;
 }

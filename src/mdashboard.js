@@ -424,7 +424,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       var buttons = [];
 
       // Add widget button
-      var addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-plus-square"></i></a>')
+      var addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-bar-chart-o"></i></a>')
         .attr('title', 'Add Widget')
         .click(function () {
           self.events.onAddWidget(self);
@@ -526,9 +526,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       container.slideUp(400, function() {
         var module = new MModule();
 
-        $('#dialog-inner-content').height($('.boxer-container').height() - 150);
-
         module.dashboard = collection.dashboard;
+
+        if (collection.selectedModule) {
+          var selectedModule = collection.dashboard.getModuleById(collection.selectedModule);
+          if (selectedModule) {
+            selectedModule.modules.push(module);
+            module.parent = selectedModule;
+          }
+        }
 
         // creates management dialog new module form
         var form = module.createForm();
@@ -559,13 +565,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       container.slideUp(400, function() {
         var service = new MService();
 
-        $('#dialog-inner-content').height($('.boxer-container').height() - 150);
-
-        debugger;
         service.module = collection.dashboard.getModuleById(collection.selectedModule);
 
         // creates management dialog new service form
-        var form = service.createForm(),
+        var form = service.createForm(collection, container),
             section = container.find('#dialog-inner-content');
 
         if (section) {
@@ -589,8 +592,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
       });
     },
+    onCreateServiceConnection: function (collection, container, service) {
+      container.slideUp(400, function() {
+
+       var form = service.createConnectionForm(collection, container, service),
+           section = container.find('#dialog-inner-content');
+
+       if (section) {
+         section.empty().append(form);
+         container.slideDown(400);
+       }
+      });
+    },
     onManageModuleSelected: function(collection, swiperItem) {
-      var selectedModule = $('.swiper-slide .selected');
+      var selectedModule = $('.swiper-slide.selected');
 
       // if module is selected, clicking again removes selection
       if (selectedModule && selectedModule.length > 0) {
@@ -676,11 +691,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       container.append(content);
       // nav buttons
       content.append(
-        $('<a href="#" class="btn pull-left swiper-button mr025"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
+        $('<a href="#" class="btn pull-left swiper-button"><i class="fa fa-3x fa-chevron-circle-left"></i></a>')
         .click( function() { swiper.swipePrev() }));
       content.append(roller.append(wrapper));
       content.append(
-        $('<a href="#" class="btn pull-right swiper-button ml025"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
+        $('<a href="#" class="btn pull-right swiper-button"><i class="fa fa-3x fa-chevron-circle-right"></i></a>')
         .click( function() { swiper.swipeNext() }));
 
       // adding module, service buttons
@@ -1218,6 +1233,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       });
     self.description = $('.form-row .form-item .item-description').val();
 
+    $('.param-key').each(function() {
+      var param = {},
+          key = $(this).val();
+
+      if (key) {
+          var orderId = $(this).attr('data-order'),
+              value = $('.param-value[data-order=' + orderId + ']').val();
+
+        param[key] = value;
+        self.params.push(param);
+      }
+    });
+
     // get icon or image
     var item = $('ul.item-icons li.selected');
     if (item && item.length > 0) {
@@ -1255,6 +1283,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
   MModule.prototype.createForm = function() {
     var self = this,
         formContainer = $('<div class="module-container"></div>'),
+        rows = [],
+        orderOffset = 0,
         form = $('<form class="form"></form>');
 
     _.each(self, function(value, key) {
@@ -1265,31 +1295,45 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
 
       switch(key) {
+        case 'parent':
+          if (value && value.name) {
+            label.append($('<span>Parent</span>'));
+            item.append($('<span class="item-parent">' + value.name + '</span>'));
+            propertyRequired = true;
+            order = 1;
+            orderOffset = 1;
+          }
+          break;
         case 'uid':
           label.append($('<span>ID</span>'));
           item.append($('<span class="item-uid">' + value + '</span>'));
           propertyRequired = true;
+          order = 1 + orderOffset;
           break;
         case 'name':
           label.append($('<span>Name</span>'));
           item.append($('<input class="item-name" type="text" required autofocus />'));
           propertyRequired = true;
+          order = 2 + orderOffset;
           break;
         case 'tags':
           label.append($('<span>Tags</span>'));
           item.append($('<input class="item-tags" type="text" />'));
           propertyRequired = true;
+          order = 3 + orderOffset;
           break;
         case 'description':
           label.append($('<span>Description</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
           item.append($('<textarea class="item-description" rows="3"></textarea>'));
           propertyRequired = true;
+          order = 4 + orderOffset;
           break;
         case 'image':
           label.append($('<span>Image</span>'));
           item.append($('<input class="item-image" type="file" />'));
           propertyRequired = true;
+          order = 5 + orderOffset;
           break;
         case 'icon':
           label.append($('<span>Icon</span>')).css('vertical-align', 'top');
@@ -1302,14 +1346,57 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           });
           item.append(itemIcons);
           propertyRequired = true;
+          order = 6 + orderOffset;
           break;
       }
 
       if (propertyRequired) {
-        formRow.append(label).append(columnBreak).append(item);
-        form.append(formRow);
+        rows[order] = {
+          label: label,
+          columnBreak: columnBreak,
+          item: item
+        };
       }
     });
+
+    for (var count = 0; count < rows.length; count++) {
+      var currentRowItem = rows[count],
+          formRow = $('<div class="form-row"></div>');
+
+      if (currentRowItem) {
+        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
+        form.append(formRow);
+      }
+    }
+
+    var paramOrder = 1;
+    var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
+      .click(function(event) {
+        event.preventDefault();
+
+        var keyValueLabel = $('<div class="form-label"></div>'),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+            keyValueItem = $('<div class="form-item"></div>'),
+            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+              .attr('data-order', paramOrder)
+              .click(function(event) {
+                var itemId = $(this).attr('data-order');
+                $('div.form-row[data-order=' + itemId + ']').remove();
+              }),
+            formRow = $('<div class="form-row"></div>');
+
+        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+        formRow.append(keyValueLabel)
+               .append(keyValueColumnBreak)
+               .append(keyValueItem)
+               .append(removeButton)
+               .attr('data-order', paramOrder);
+        form.append(formRow);
+        ++paramOrder;
+      })
+      .append($('<div class="pull-left"><i class="fa fa-key fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Add Key/Values</div>'));
 
     var saveModuleButton = $('<button id="module-save-button" type="button" class="button pull-left"></button>')
       .click(function(event) {
@@ -1322,7 +1409,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
       .append($('<div class="button-text pull-left">Save Module</div>'));
 
-    formContainer.append(form.append(saveModuleButton));
+    formContainer
+      .append(form)
+      .append('<hr class="mtb05" />')
+      .append(keyValueButton)
+      .append(saveModuleButton);
 
     return formContainer;
   };
@@ -1584,8 +1675,181 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
     self.isInitialized = true;
   };
+
   /**
-   * Get form values to put into module
+   * Get connection form values to put into service ajax properties
+   * @param callback
+   */
+  MService.prototype.loadConnectionForm = function() {
+    var self = this,
+        message = null;
+
+    self.ajaxOptions.url = $('.form-row .form-item .item-url').val();
+    self.ajaxOptions.type = $('.form-row .form-item .item-type').val();
+
+    var dataValue = $('.form-row .form-item .item-data').val();
+    self.ajaxOptions.data = dataValue ? $.parseJSON(dataValue) : {};
+
+    self.ajaxOptions.crossDomain  = $('.form-row .form-item .item-crossDomain').prop('checked');
+    self.ajaxOptions.async        = $('.form-row .form-item .item-async').prop('checked');
+    self.ajaxOptions.cache        = $('.form-row .form-item .item-cache').prop('checked');
+    self.ajaxOptions.processData  = $('.form-row .form-item .item-processData').prop('checked');
+    self.ajaxOptions.global       = $('.form-row .form-item .item-global').prop('checked');
+    self.ajaxOptions.ifModified   = $('.form-row .form-item .item-ifModified').prop('checked');
+
+    self.ajaxOptions.contentType = $('.form-row .form-item .item-contentType').val();
+
+    var timeoutValue = $('.form-row .form-item .item-timeout').val();
+    self.ajaxOptions.timeout = timeoutValue ? parseInt(timeoutValue) : 30000;
+
+    var headersValue = $('.form-row .form-item .item-headers').val();
+    self.ajaxOptions.headers = headersValue ? $.parseJSON(headersValue) : {};
+
+    return self;
+  };
+  MService.prototype.createConnectionForm = function(collection, container, service) {
+    var self = service,
+        formContainer = $('<div class="service-ajax-container"></div>'),
+        rows = [],
+        form = $('<form class="form"></form>');
+
+    _.each(self.ajaxOptions, function(value, key) {
+      var propertyRequired = false,
+          order = null,
+          label = $('<div class="form-label"></div>'),
+          item = $('<div class="form-item"></div>'),
+          columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
+
+      switch(key) {
+        case 'url':
+          label.append($('<span>Url</span>'));
+          item.append($('<input class="item-url" type="text" required placeholder="http://test.merlon.com.tr/Service/Task/TaskService.svc/GetLatestTasks" />'));
+          propertyRequired = true;
+          order = 2;
+          break;
+        case 'type':
+          label.append($('<span>Method</span>'));
+          var types = $('<select class="item-type"></select>')
+            .append($('<option value="GET" selected>GET</option>'))
+            .append($('<option value="POST">POST</option>'));
+          item.append(types);
+          propertyRequired = true;
+          order = 1;
+          break;
+        case 'data':
+          label.append($('<span>Arguments</span>'));
+          item.append($('<input class="item-data" type="text" placeholder="{ count:10 }" />'));
+          propertyRequired = true;
+          order = 3;
+          break;
+        case 'crossDomain':
+          label.append($('<span>Cross Domain</span>'));
+          item.append($('<input class="item-crossDomain" type="checkbox" />'));
+          propertyRequired = true;
+          order = 4;
+          break;
+        case 'async':
+          label.append($('<span>Asynchronous</span>'));
+          item.append($('<input class="item-async" type="checkbox" checked="checked" />'));
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'cache':
+          label.append($('<span>Cache Results</span>'));
+          item.append($('<input class="item-cache" type="checkbox" checked="checked" />'));
+          propertyRequired = true;
+          order = 6;
+          break;
+        case 'processData':
+          label.append($('<span>Process Arguments</span>'));
+          item.append($('<input class="item-processData" type="checkbox" />'));
+          propertyRequired = true;
+          order = 7;
+          break;
+        case 'global':
+          label.append($('<span>Global</span>'));
+          item.append($('<input class="item-global" type="checkbox" checked="checked" />'));
+          propertyRequired = true;
+          order = 8;
+          break;
+        case 'ifModified':
+          label.append($('<span>If Modified</span>'));
+          item.append($('<input class="item-ifModified" type="checkbox" />'));
+          propertyRequired = true;
+          order = 9;
+          break;
+        case 'contentType':
+          label.append($('<span>Content Type</span>'));
+          item.append($('<input class="item-contentType" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
+            .val('application/x-www-form-urlencoded; charset=UTF-8'));
+          propertyRequired = true;
+          order = 10;
+          break;
+        case 'timeout':
+          label.append($('<span>Timeout</span>'));
+          item.append($('<input class="item-timeout" type="text" placeholder="30000 (30 seconds)" />'));
+          propertyRequired = true;
+          order = 12;
+          break;
+        case 'headers':
+          label.append($('<span>Headers</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea rows="2" class="item-headers" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>'));
+          propertyRequired = true;
+          order = 11;
+          break;
+      }
+
+      if (propertyRequired) {
+        rows[order] = {
+          label: label,
+          columnBreak: columnBreak,
+          item: item
+        };
+      }
+    });
+
+    for (var count = 0; count < rows.length; count++) {
+      var currentRowItem = rows[count],
+          formRow = $('<div class="form-row"></div>');
+
+      if (currentRowItem) {
+        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
+        form.append(formRow);
+      }
+    }
+
+    var saveConnectionButton = $('<button id="connection-save-button" type="button" class="button pull-left"></button>')
+      .click(function(event) {
+        event.preventDefault();
+
+        if (self.ajaxOptions.url) {
+          self.events.onConnectionSave(self);
+        }
+      })
+      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Save Connection</div>'));
+
+    var testConnectionButton = $('<button id="connection-test-button" type="button" class="button pull-left""></button>')
+      .click(function(event) {
+        event.preventDefault();
+        //$('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+        self.events.onConnectionTest(self);
+      })
+      .append($('<div class="pull-left"><i class="fa fa-bolt fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Test Connection</div>'));
+
+    formContainer
+      .append(form)
+      .append('<hr class="mtb05" />')
+      .append(saveConnectionButton)
+      .append(testConnectionButton);
+
+    return formContainer;
+
+  };
+  /**
+   * Get form values to put into service properties
    * @param callback
    */
   MService.prototype.loadForm = function(callback) {
@@ -1640,7 +1904,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         }
     }
   };
-  MService.prototype.createForm = function() {
+  MService.prototype.createForm = function(collection, container) {
     var self = this,
         formContainer = $('<div class="service-container"></div>'),
         rows = [],
@@ -1731,6 +1995,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     }
 
+    var createConnectionButton = $('<button id="add-connection-button" type="button" class="button pull-left"></button>')
+      .click(function(event) {
+        event.preventDefault();
+        collection.events.onCreateServiceConnection(collection, container, self);
+      })
+      .append($('<div class="pull-left"><i class="fa fa-chain fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Create Connection</div>'));
+
     var paramOrder = 1;
     var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
       .click(function(event) {
@@ -1758,9 +2030,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
         ++paramOrder;
       })
       .append($('<div class="pull-left"><i class="fa fa-key fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Add Key/Value</div>'));
+      .append($('<div class="button-text pull-left">Add Key/Values</div>'));
 
-    var saveServiceButton = $('<button id="service-save-button" type="button" class="button pull-left"></button>')
+    var saveServiceButton = $('<button id="service-save-button" type="button" class="button pull-left disabled" disabled="disabled"></button>')
       .click(function(event) {
         event.preventDefault();
         $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
@@ -1771,7 +2043,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
       .append($('<div class="button-text pull-left">Save Service</div>'));
 
-    formContainer.append(form).append(keyValueButton).append(saveServiceButton);
+    formContainer
+      .append(form)
+      .append('<hr class="mtb05" />')
+      .append(createConnectionButton)
+      .append(keyValueButton)
+      .append(saveServiceButton);
 
     return formContainer;
   };
@@ -1782,7 +2059,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           console.error(err);
         } else {
           if (result) {
-            debugger;
             result.module.service = service;
             result.module.dashboard.save(result.module.dashboard.events.onSaved);
           } else {
@@ -1790,6 +2066,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
           }
         }
       });
+    },
+    onConnectionSave: function (service) {
+      service = service.loadConnectionForm();
     }
   };
 
