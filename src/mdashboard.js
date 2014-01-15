@@ -8,109 +8,110 @@
 var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, MDialogPage;
 (function (global) {
 
-  var globalUniqueIdLength = 32,
-      classTopContainer = 'mdashboard-container',
-      classToolbar = 'mdashboard-toolbar',
-      classToolbarList = 'mdashboard-toolbar-list',
-      classToolbarButton = 'mdashboard-toolbar-button',
-      classGridster = 'gridster',
-      widgetHandle = 'header',
-      gridsterOptions = {
-        namespace: '',
-        widget_selector: 'li',
-        widget_margins: [10, 10],
-        widget_base_dimensions: [400, 225],
-        extra_rows: 0,
-        extra_cols: 0,
-        min_cols: 1,
-        max_cols: null,
-        min_rows: 15,
-        max_size_x: false,
-        autogenerate_stylesheet: true,
-        avoid_overlapped_widgets: true,
-        serialize_params: function($w, wgd) {
-          return {
-              col: wgd.col,
-              row: wgd.row,
-              size_x: wgd.size_x,
-              size_y: wgd.size_y
-          };
-        },
-        collision: {},
-        draggable: {
-          items: '.gs-w',
-          distance: 4
-        },
-        resize: {
-          enabled: false,
-          axes: ['x', 'y', 'both'],
-          handle_append_to: '',
-          handle_class: 'gs-resize-handle',
-          max_size: [Infinity, Infinity]
-        }
+  var managementDialog = null,
+    globalUniqueIdLength = 32,
+    classTopContainer = 'mdashboard-container',
+    classToolbar = 'mdashboard-toolbar',
+    classToolbarList = 'mdashboard-toolbar-list',
+    classToolbarButton = 'mdashboard-toolbar-button',
+    classGridster = 'gridster',
+    widgetHandle = 'header',
+    gridsterOptions = {
+      namespace: '',
+      widget_selector: 'li',
+      widget_margins: [10, 10],
+      widget_base_dimensions: [400, 225],
+      extra_rows: 0,
+      extra_cols: 0,
+      min_cols: 1,
+      max_cols: null,
+      min_rows: 15,
+      max_size_x: false,
+      autogenerate_stylesheet: true,
+      avoid_overlapped_widgets: true,
+      serialize_params: function($w, wgd) {
+        return {
+            col: wgd.col,
+            row: wgd.row,
+            size_x: wgd.size_x,
+            size_y: wgd.size_y
+        };
       },
-      faIcons = ['fa-glass', 'fa-music', 'fa-search', 'fa-envelope-o', 'fa-heart', 'fa-star', 'fa-star-o', 'fa-user',
-        'fa-film', 'fa-th-large', 'fa-th', 'fa-th-list', 'fa-check', 'fa-times', 'fa-search-plus', 'fa-search-minus',
-        'fa-power-off', 'fa-signal', 'fa-gear', 'fa-cog', 'fa-trash-o', 'fa-home', 'fa-file-o', 'fa-clock-o', 'fa-road',
-        'fa-download', 'fa-arrow-circle-o-down', 'fa-arrow-circle-o-up', 'fa-inbox', 'fa-play-circle-o',
-        'fa-rotate-right', 'fa-repeat', 'fa-refresh', 'fa-list-alt', 'fa-lock', 'fa-flag', 'fa-headphones',
-        'fa-volume-off', 'fa-volume-down', 'fa-volume-up', 'fa-qrcode', 'fa-barcode', 'fa-tag', 'fa-tags', 'fa-book',
-        'fa-bookmark', 'fa-print', 'fa-camera', 'fa-font', 'fa-bold', 'fa-italic', 'fa-text-height', 'fa-text-width',
-        'fa-align-left', 'fa-align-center', 'fa-align-right', 'fa-align-justify', 'fa-list', 'fa-dedent', 'fa-outdent',
-        'fa-indent', 'fa-video-camera', 'fa-picture-o', 'fa-pencil', 'fa-map-marker', 'fa-adjust', 'fa-tint', 'fa-edit',
-        'fa-pencil-square-o', 'fa-share-square-o', 'fa-check-square-o', 'fa-arrows', 'fa-step-backward',
-        'fa-fast-backward', 'fa-backward', 'fa-play', 'fa-pause', 'fa-stop', 'fa-forward', 'fa-fast-forward',
-        'fa-step-forward', 'fa-eject', 'fa-chevron-left', 'fa-chevron-right', 'fa-plus-circle', 'fa-minus-circle',
-        'fa-times-circle', 'fa-check-circle', 'fa-question-circle', 'fa-info-circle', 'fa-crosshairs',
-        'fa-times-circle-o', 'fa-check-circle-o', 'fa-ban', 'fa-arrow-left', 'fa-arrow-right', 'fa-arrow-up',
-        'fa-arrow-down', 'fa-mail-forward', 'fa-share', 'fa-expand', 'fa-compress', 'fa-plus', 'fa-minus',
-        'fa-asterisk', 'fa-exclamation-circle', 'fa-gift', 'fa-leaf', 'fa-fire', 'fa-eye', 'fa-eye-slash',
-        'fa-warning', 'fa-exclamation-triangle', 'fa-plane', 'fa-calendar', 'fa-random', 'fa-comment', 'fa-magnet',
-        'fa-chevron-up', 'fa-chevron-down', 'fa-retweet', 'fa-shopping-cart', 'fa-folder', 'fa-folder-open',
-        'fa-arrows-v', 'fa-arrows-h', 'fa-bar-chart-o', 'fa-twitter-square', 'fa-facebook-square', 'fa-camera-retro',
-        'fa-key', 'fa-gears', 'fa-cogs', 'fa-comments', 'fa-thumbs-o-up', 'fa-thumbs-o-down', 'fa-star-half',
-        'fa-heart-o', 'fa-sign-out', 'fa-linkedin-square', 'fa-thumb-tack', 'fa-external-link', 'fa-sign-in',
-        'fa-trophy', 'fa-github-square', 'fa-upload', 'fa-lemon-o', 'fa-phone', 'fa-square-o', 'fa-bookmark-o',
-        'fa-phone-square', 'fa-twitter', 'fa-facebook', 'fa-github', 'fa-unlock', 'fa-credit-card', 'fa-rss',
-        'fa-hdd-o', 'fa-bullhorn', 'fa-bell', 'fa-certificate', 'fa-hand-o-right', 'fa-hand-o-left', 'fa-hand-o-up',
-        'fa-hand-o-down', 'fa-arrow-circle-left', 'fa-arrow-circle-right', 'fa-arrow-circle-up', 'fa-arrow-circle-down',
-        'fa-globe', 'fa-wrench', 'fa-tasks', 'fa-filter', 'fa-briefcase', 'fa-arrows-alt', 'fa-group', 'fa-users',
-        'fa-chain', 'fa-link', 'fa-cloud', 'fa-flask', 'fa-cut', 'fa-scissors', 'fa-copy', 'fa-files-o', 'fa-paperclip',
-        'fa-save', 'fa-floppy-o', 'fa-square', 'fa-bars', 'fa-list-ul', 'fa-list-ol', 'fa-strikethrough',
-        'fa-underline', 'fa-table', 'fa-magic', 'fa-truck', 'fa-pinterest', 'fa-pinterest-square',
-        'fa-google-plus-square', 'fa-google-plus', 'fa-money', 'fa-caret-down', 'fa-caret-up', 'fa-caret-left',
-        'fa-caret-right', 'fa-columns', 'fa-unsorted', 'fa-sort', 'fa-sort-down', 'fa-sort-asc', 'fa-sort-up',
-        'fa-sort-desc', 'fa-envelope', 'fa-linkedin', 'fa-rotate-left', 'fa-undo', 'fa-legal', 'fa-gavel',
-        'fa-dashboard', 'fa-tachometer', 'fa-comment-o', 'fa-comments-o', 'fa-flash', 'fa-bolt', 'fa-sitemap',
-        'fa-umbrella', 'fa-paste', 'fa-clipboard', 'fa-lightbulb-o', 'fa-exchange', 'fa-cloud-download',
-        'fa-cloud-upload', 'fa-user-md', 'fa-stethoscope', 'fa-suitcase', 'fa-bell-o', 'fa-coffee', 'fa-cutlery',
-        'fa-file-text-o', 'fa-building-o', 'fa-hospital-o', 'fa-ambulance', 'fa-medkit', 'fa-fighter-jet', 'fa-beer',
-        'fa-h-square', 'fa-plus-square', 'fa-angle-double-left', 'fa-angle-double-right', 'fa-angle-double-up',
-        'fa-angle-double-down', 'fa-angle-left', 'fa-angle-right', 'fa-angle-up', 'fa-angle-down', 'fa-desktop',
-        'fa-laptop', 'fa-tablet', 'fa-mobile-phone', 'fa-mobile', 'fa-circle-o', 'fa-quote-left', 'fa-quote-right',
-        'fa-spinner', 'fa-circle', 'fa-mail-reply', 'fa-reply', 'fa-github-alt', 'fa-folder-o', 'fa-folder-open-o',
-        'fa-smile-o', 'fa-frown-o', 'fa-meh-o', 'fa-gamepad', 'fa-keyboard-o', 'fa-flag-o', 'fa-flag-checkered',
-        'fa-terminal', 'fa-code', 'fa-reply-all', 'fa-mail-reply-all', 'fa-star-half-empty', 'fa-star-half-full',
-        'fa-star-half-o', 'fa-location-arrow', 'fa-crop', 'fa-code-fork', 'fa-unlink', 'fa-chain-broken', 'fa-question',
-        'fa-info', 'fa-exclamation', 'fa-superscript', 'fa-subscript', 'fa-eraser', 'fa-puzzle-piece', 'fa-microphone',
-        'fa-microphone-slash', 'fa-shield', 'fa-calendar-o', 'fa-fire-extinguisher', 'fa-rocket', 'fa-maxcdn',
-        'fa-chevron-circle-left', 'fa-chevron-circle-right', 'fa-chevron-circle-up', 'fa-chevron-circle-down',
-        'fa-html5', 'fa-css3', 'fa-anchor', 'fa-unlock-alt', 'fa-bullseye', 'fa-ellipsis-h', 'fa-ellipsis-v',
-        'fa-rss-square', 'fa-play-circle', 'fa-ticket', 'fa-minus-square', 'fa-minus-square-o', 'fa-level-up',
-        'fa-level-down', 'fa-check-square', 'fa-pencil-square', 'fa-external-link-square', 'fa-share-square',
-        'fa-compass', 'fa-toggle-down', 'fa-caret-square-o-down', 'fa-toggle-up', 'fa-caret-square-o-up',
-        'fa-toggle-right', 'fa-caret-square-o-right', 'fa-euro', 'fa-eur', 'fa-gbp', 'fa-dollar', 'fa-usd',
-        'fa-rupee', 'fa-inr', 'fa-cny', 'fa-rmb', 'fa-yen', 'fa-jpy', 'fa-ruble', 'fa-rouble', 'fa-rub', 'fa-won',
-        'fa-krw', 'fa-bitcoin', 'fa-btc', 'fa-file', 'fa-file-text', 'fa-sort-alpha-asc', 'fa-sort-alpha-desc',
-        'fa-sort-amount-asc', 'fa-sort-amount-desc', 'fa-sort-numeric-asc', 'fa-sort-numeric-desc', 'fa-thumbs-up',
-        'fa-thumbs-down', 'fa-youtube-square', 'fa-youtube', 'fa-xing', 'fa-xing-square', 'fa-youtube-play',
-        'fa-dropbox', 'fa-stack-overflow', 'fa-instagram', 'fa-flickr', 'fa-adn', 'fa-bitbucket', 'fa-bitbucket-square',
-        'fa-tumblr', 'fa-tumblr-square', 'fa-long-arrow-down', 'fa-long-arrow-up', 'fa-long-arrow-left',
-        'fa-long-arrow-right', 'fa-apple', 'fa-windows', 'fa-android', 'fa-linux', 'fa-dribbble', 'fa-skype',
-        'fa-foursquare', 'fa-trello', 'fa-female', 'fa-male', 'fa-gittip', 'fa-sun-o', 'fa-moon-o', 'fa-archive',
-        'fa-bug', 'fa-vk', 'fa-weibo', 'fa-renren', 'fa-pagelines', 'fa-stack-exchange', 'fa-arrow-circle-o-right',
-        'fa-arrow-circle-o-left', 'fa-toggle-left', 'fa-caret-square-o-left', 'fa-dot-circle-o', 'fa-wheelchair',
-        'fa-vimeo-square', 'fa-turkish-lira', 'fa-try', 'fa-plus-square-o'];
+      collision: {},
+      draggable: {
+        items: '.gs-w',
+        distance: 4
+      },
+      resize: {
+        enabled: false,
+        axes: ['x', 'y', 'both'],
+        handle_append_to: '',
+        handle_class: 'gs-resize-handle',
+        max_size: [Infinity, Infinity]
+      }
+    },
+    faIcons = ['fa-glass', 'fa-music', 'fa-search', 'fa-envelope-o', 'fa-heart', 'fa-star', 'fa-star-o', 'fa-user',
+      'fa-film', 'fa-th-large', 'fa-th', 'fa-th-list', 'fa-check', 'fa-times', 'fa-search-plus', 'fa-search-minus',
+      'fa-power-off', 'fa-signal', 'fa-gear', 'fa-cog', 'fa-trash-o', 'fa-home', 'fa-file-o', 'fa-clock-o', 'fa-road',
+      'fa-download', 'fa-arrow-circle-o-down', 'fa-arrow-circle-o-up', 'fa-inbox', 'fa-play-circle-o',
+      'fa-rotate-right', 'fa-repeat', 'fa-refresh', 'fa-list-alt', 'fa-lock', 'fa-flag', 'fa-headphones',
+      'fa-volume-off', 'fa-volume-down', 'fa-volume-up', 'fa-qrcode', 'fa-barcode', 'fa-tag', 'fa-tags', 'fa-book',
+      'fa-bookmark', 'fa-print', 'fa-camera', 'fa-font', 'fa-bold', 'fa-italic', 'fa-text-height', 'fa-text-width',
+      'fa-align-left', 'fa-align-center', 'fa-align-right', 'fa-align-justify', 'fa-list', 'fa-dedent', 'fa-outdent',
+      'fa-indent', 'fa-video-camera', 'fa-picture-o', 'fa-pencil', 'fa-map-marker', 'fa-adjust', 'fa-tint', 'fa-edit',
+      'fa-pencil-square-o', 'fa-share-square-o', 'fa-check-square-o', 'fa-arrows', 'fa-step-backward',
+      'fa-fast-backward', 'fa-backward', 'fa-play', 'fa-pause', 'fa-stop', 'fa-forward', 'fa-fast-forward',
+      'fa-step-forward', 'fa-eject', 'fa-chevron-left', 'fa-chevron-right', 'fa-plus-circle', 'fa-minus-circle',
+      'fa-times-circle', 'fa-check-circle', 'fa-question-circle', 'fa-info-circle', 'fa-crosshairs',
+      'fa-times-circle-o', 'fa-check-circle-o', 'fa-ban', 'fa-arrow-left', 'fa-arrow-right', 'fa-arrow-up',
+      'fa-arrow-down', 'fa-mail-forward', 'fa-share', 'fa-expand', 'fa-compress', 'fa-plus', 'fa-minus',
+      'fa-asterisk', 'fa-exclamation-circle', 'fa-gift', 'fa-leaf', 'fa-fire', 'fa-eye', 'fa-eye-slash',
+      'fa-warning', 'fa-exclamation-triangle', 'fa-plane', 'fa-calendar', 'fa-random', 'fa-comment', 'fa-magnet',
+      'fa-chevron-up', 'fa-chevron-down', 'fa-retweet', 'fa-shopping-cart', 'fa-folder', 'fa-folder-open',
+      'fa-arrows-v', 'fa-arrows-h', 'fa-bar-chart-o', 'fa-twitter-square', 'fa-facebook-square', 'fa-camera-retro',
+      'fa-key', 'fa-gears', 'fa-cogs', 'fa-comments', 'fa-thumbs-o-up', 'fa-thumbs-o-down', 'fa-star-half',
+      'fa-heart-o', 'fa-sign-out', 'fa-linkedin-square', 'fa-thumb-tack', 'fa-external-link', 'fa-sign-in',
+      'fa-trophy', 'fa-github-square', 'fa-upload', 'fa-lemon-o', 'fa-phone', 'fa-square-o', 'fa-bookmark-o',
+      'fa-phone-square', 'fa-twitter', 'fa-facebook', 'fa-github', 'fa-unlock', 'fa-credit-card', 'fa-rss',
+      'fa-hdd-o', 'fa-bullhorn', 'fa-bell', 'fa-certificate', 'fa-hand-o-right', 'fa-hand-o-left', 'fa-hand-o-up',
+      'fa-hand-o-down', 'fa-arrow-circle-left', 'fa-arrow-circle-right', 'fa-arrow-circle-up', 'fa-arrow-circle-down',
+      'fa-globe', 'fa-wrench', 'fa-tasks', 'fa-filter', 'fa-briefcase', 'fa-arrows-alt', 'fa-group', 'fa-users',
+      'fa-chain', 'fa-link', 'fa-cloud', 'fa-flask', 'fa-cut', 'fa-scissors', 'fa-copy', 'fa-files-o', 'fa-paperclip',
+      'fa-save', 'fa-floppy-o', 'fa-square', 'fa-bars', 'fa-list-ul', 'fa-list-ol', 'fa-strikethrough',
+      'fa-underline', 'fa-table', 'fa-magic', 'fa-truck', 'fa-pinterest', 'fa-pinterest-square',
+      'fa-google-plus-square', 'fa-google-plus', 'fa-money', 'fa-caret-down', 'fa-caret-up', 'fa-caret-left',
+      'fa-caret-right', 'fa-columns', 'fa-unsorted', 'fa-sort', 'fa-sort-down', 'fa-sort-asc', 'fa-sort-up',
+      'fa-sort-desc', 'fa-envelope', 'fa-linkedin', 'fa-rotate-left', 'fa-undo', 'fa-legal', 'fa-gavel',
+      'fa-dashboard', 'fa-tachometer', 'fa-comment-o', 'fa-comments-o', 'fa-flash', 'fa-bolt', 'fa-sitemap',
+      'fa-umbrella', 'fa-paste', 'fa-clipboard', 'fa-lightbulb-o', 'fa-exchange', 'fa-cloud-download',
+      'fa-cloud-upload', 'fa-user-md', 'fa-stethoscope', 'fa-suitcase', 'fa-bell-o', 'fa-coffee', 'fa-cutlery',
+      'fa-file-text-o', 'fa-building-o', 'fa-hospital-o', 'fa-ambulance', 'fa-medkit', 'fa-fighter-jet', 'fa-beer',
+      'fa-h-square', 'fa-plus-square', 'fa-angle-double-left', 'fa-angle-double-right', 'fa-angle-double-up',
+      'fa-angle-double-down', 'fa-angle-left', 'fa-angle-right', 'fa-angle-up', 'fa-angle-down', 'fa-desktop',
+      'fa-laptop', 'fa-tablet', 'fa-mobile-phone', 'fa-mobile', 'fa-circle-o', 'fa-quote-left', 'fa-quote-right',
+      'fa-spinner', 'fa-circle', 'fa-mail-reply', 'fa-reply', 'fa-github-alt', 'fa-folder-o', 'fa-folder-open-o',
+      'fa-smile-o', 'fa-frown-o', 'fa-meh-o', 'fa-gamepad', 'fa-keyboard-o', 'fa-flag-o', 'fa-flag-checkered',
+      'fa-terminal', 'fa-code', 'fa-reply-all', 'fa-mail-reply-all', 'fa-star-half-empty', 'fa-star-half-full',
+      'fa-star-half-o', 'fa-location-arrow', 'fa-crop', 'fa-code-fork', 'fa-unlink', 'fa-chain-broken', 'fa-question',
+      'fa-info', 'fa-exclamation', 'fa-superscript', 'fa-subscript', 'fa-eraser', 'fa-puzzle-piece', 'fa-microphone',
+      'fa-microphone-slash', 'fa-shield', 'fa-calendar-o', 'fa-fire-extinguisher', 'fa-rocket', 'fa-maxcdn',
+      'fa-chevron-circle-left', 'fa-chevron-circle-right', 'fa-chevron-circle-up', 'fa-chevron-circle-down',
+      'fa-html5', 'fa-css3', 'fa-anchor', 'fa-unlock-alt', 'fa-bullseye', 'fa-ellipsis-h', 'fa-ellipsis-v',
+      'fa-rss-square', 'fa-play-circle', 'fa-ticket', 'fa-minus-square', 'fa-minus-square-o', 'fa-level-up',
+      'fa-level-down', 'fa-check-square', 'fa-pencil-square', 'fa-external-link-square', 'fa-share-square',
+      'fa-compass', 'fa-toggle-down', 'fa-caret-square-o-down', 'fa-toggle-up', 'fa-caret-square-o-up',
+      'fa-toggle-right', 'fa-caret-square-o-right', 'fa-euro', 'fa-eur', 'fa-gbp', 'fa-dollar', 'fa-usd',
+      'fa-rupee', 'fa-inr', 'fa-cny', 'fa-rmb', 'fa-yen', 'fa-jpy', 'fa-ruble', 'fa-rouble', 'fa-rub', 'fa-won',
+      'fa-krw', 'fa-bitcoin', 'fa-btc', 'fa-file', 'fa-file-text', 'fa-sort-alpha-asc', 'fa-sort-alpha-desc',
+      'fa-sort-amount-asc', 'fa-sort-amount-desc', 'fa-sort-numeric-asc', 'fa-sort-numeric-desc', 'fa-thumbs-up',
+      'fa-thumbs-down', 'fa-youtube-square', 'fa-youtube', 'fa-xing', 'fa-xing-square', 'fa-youtube-play',
+      'fa-dropbox', 'fa-stack-overflow', 'fa-instagram', 'fa-flickr', 'fa-adn', 'fa-bitbucket', 'fa-bitbucket-square',
+      'fa-tumblr', 'fa-tumblr-square', 'fa-long-arrow-down', 'fa-long-arrow-up', 'fa-long-arrow-left',
+      'fa-long-arrow-right', 'fa-apple', 'fa-windows', 'fa-android', 'fa-linux', 'fa-dribbble', 'fa-skype',
+      'fa-foursquare', 'fa-trello', 'fa-female', 'fa-male', 'fa-gittip', 'fa-sun-o', 'fa-moon-o', 'fa-archive',
+      'fa-bug', 'fa-vk', 'fa-weibo', 'fa-renren', 'fa-pagelines', 'fa-stack-exchange', 'fa-arrow-circle-o-right',
+      'fa-arrow-circle-o-left', 'fa-toggle-left', 'fa-caret-square-o-left', 'fa-dot-circle-o', 'fa-wheelchair',
+      'fa-vimeo-square', 'fa-turkish-lira', 'fa-try', 'fa-plus-square-o'];
 
   /**
    * MDashboard
@@ -576,43 +577,102 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       debugger;
     },
     onCreateModule: function (collection, container) {
-      container.slideUp(400, function() {
-        var module = new MModule();
+      debugger;
+      var module = new MModule();
+      module.dashboard = collection.dashboard;
 
-        module.dashboard = collection.dashboard;
+      if (collection.selectedModule) {
+        var selectedModule = collection.dashboard.getModuleById(collection.selectedModule);
+        if (selectedModule) {
+          module.parent = selectedModule;
+        }
+      }
 
-        if (collection.selectedModule) {
-          var selectedModule = collection.dashboard.getModuleById(collection.selectedModule);
-          if (selectedModule) {
-            module.parent = selectedModule;
-          }
+      // creates management dialog new module form
+      var form = module.createForm();
+      var footer = module.createFormFooter();
+
+      $('ul.item-icons').on('click', 'li', function(event) {
+        // remove old selected
+        var item = $('ul.item-icons li.selected');
+        if (item && item.length > 0) {
+          item.removeClass('selected');
         }
 
-        // creates management dialog new module form
-        var form = module.createForm();
-        var footer = module.createFormFooter();
-
-        var section = container.find('#dialog-inner-content');
-        if (section) {
-          section.empty().append(form);
-
-          $('ul.item-icons').on('click', 'li', function(event) {
-
-            // remove old selected
-            var item = $('ul.item-icons li.selected');
-            if (item && item.length > 0) {
-              item.removeClass('selected');
-            }
-
-            // add new selected icon
-            if (event.currentTarget != item[0]) {
-              $(event.currentTarget).addClass('selected');
-            }
-          });
-
-          container.slideDown(400);
+        // add new selected icon
+        if (event.currentTarget != item[0]) {
+          $(event.currentTarget).addClass('selected');
         }
       });
+
+      var paramOrder = 1;
+      var editModulePage = {
+        name: 'module|edit',
+        headerOptions: {
+          name: 'Create/Edit Module',
+          //description: subHeader,
+          icon: 'fa-puzzle-piece',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: false,
+          hasWell: true,
+          setContent: function(dialog) {
+
+          }
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Add Key/Value',
+            icon: 'fa-key',
+            click: function(event) {
+              event.preventDefault();
+
+              var keyValueLabel = $('<div class="form-label"></div>'),
+                  keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+                  keyValueItem = $('<div class="form-item"></div>'),
+                  removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+                    .attr('data-order', paramOrder)
+                    .click(function(event) {
+                      var itemId = $(this).attr('data-order');
+                      $('div.form-row[data-order=' + itemId + ']').remove();
+                    }),
+                  formRow = $('<div class="form-row"></div>');
+
+              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+              formRow.append(keyValueLabel)
+                     .append(keyValueColumnBreak)
+                     .append(keyValueItem)
+                     .append(removeButton)
+                     .attr('data-order', paramOrder);
+              form.append(formRow);
+              ++paramOrder;
+            }
+          }, {
+            name: 'Save Module',
+            icon: 'fa-save',
+            click: function(event) {
+              event.preventDefault();
+              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+
+              // Save dashboard
+              self.events.onSave(self);
+            }
+          }, {
+            name: 'Back',
+            icon: 'fa-sign-out',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.getPage('module|main');
+            }
+          }]
+        }
+      };
+
+      managementDialog.dashboard = collection.dashboard;
+      managementDialog.pages.push(new MDialogPage(editModulePage, managementDialog));
+      managementDialog.getPage('module|edit');
     },
     onCreateService: function (collection, container) {
       container.slideUp(400, function() {
@@ -676,65 +736,60 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     },
     onManageServices: function(collection) {
-      managementDialog.getPage('module|main');
+      var subHeader = 'Please add, remove or modify your modules and connections from this dialog.' +
+        ' <strong>You can create new module clicking button below.</strong> When you have saved your new module, it would' +
+        ' be placed in scroller section as you may see below. Create modules as many as you like. ' +
+        ' It is possible to create child modules and/or services. When you have finished creating services,' +
+        ' you may gather data for your widgets and charts.';
 
-      /*var modules = collection.dashboard.modules,
-          managementDialog = $('<div class="dialog management"></div>'),
-          serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
-          container = $('<div id="dialog-content-id"></div>'),
-          content = $('<div id="dialog-inner-content" class="mt10 clearfix"></div>'),
-          noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
-          roller = $('<div id="scroller-container"></div>'),
-          createModuleButton = $('<button id="module-create-button" type="button" class="button pull-left"></button>')
-            .click(function(event) {
+      var entrancePage = {
+        name: 'module|main',
+        headerOptions: {
+          name: 'Management Section',
+          //description: subHeader,
+          icon: 'fa-cogs',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: true,
+          hasWell: true
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Create Module',
+            icon: 'fa-puzzle-piece',
+            click: function(event) {
               event.preventDefault();
+              var container = $('#dialog-content-id');
               collection.events.onCreateModule(collection, container);
-            })
-            .append($('<div class="pull-left"><i class="fa fa-puzzle-piece fa-3x fa-white"></i></div>'))
-            .append($('<div class="button-text pull-left">Create Module</div>')),
-          createServiceButton = $('<button id="service-create-button" type="button" class="button pull-left disabled" disabled="disabled"></button>')
-            .click(function(event) {
+            }
+          }, {
+            name: 'Create Service',
+            icon: 'fa-cloud-download',
+            disabled: true,
+            click: function(event) {
               event.preventDefault();
+              var container = $('#dialog-content-id');
               if (collection.selectedModule) {
                 collection.events.onCreateService(collection, container);
               } else {
                 console.error('Module not specified.');
               }
-            })
-            .append($('<div class="pull-left"><i class="fa fa-cloud-download fa-3x fa-white"></i></div>'))
-            .append($('<div class="button-text pull-left">Create Service</div>')),
-          footerContainer = $('<div class="dialog-footer clearfix" id="button-container"></div>')
-            .append(createModuleButton)
-            .append(createServiceButton);
+            }
+          }, {
+            name: 'Close Dialog',
+            icon: 'fa-sign-out',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.close();
+            }
+          }]
+        }
+      };
 
-      // header
-      managementDialog.append(
-        $('<div class="dialog-header clearfix"></div>')
-          .append(serviceIcon)
-          .append($('<h1 class="pull-left">Management Services</h1>')));
-
-      // no module
-      if (modules.length === 0) {
-        $.boxer(managementDialog
-          .append(container.append(content.append(noModuleMessage)))
-          .append(footerContainer));
-
-        $(window).bind('open.boxer', function(event) {
-          var dialogHeight = $('.boxer-container').height();
-          $('#dialog-inner-content').height(dialogHeight - 150);
-        });
-
-        return;
-      }
-
-      container.append(content.append(roller));
-
-      $.boxer(managementDialog.append(container).append(footerContainer));
-
-      $(window).bind('open.boxer', function(event) {
-        var dialogHeight = $('.boxer-container').height();
-        $('#dialog-inner-content').height(dialogHeight - 220);
-      });*/
+      managementDialog.dashboard = collection.dashboard;
+      managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
+      managementDialog.getPage('module|main');
     }
   };
   MWidgetCollection.prototype.serialize = function() {
@@ -1387,10 +1442,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     }
 
-    formContainer.append(form)
+    formContainer.append(form);/*
       .append('<hr class="mtb05" />')
       .append(keyValueButton)
-      .append(saveModuleButton);
+      .append(saveModuleButton);*/
 
     return formContainer;
   };
@@ -2114,14 +2169,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     }
   };
 
-  MDialog = function(_options) {
+  MDialog = function(_options, owner) {
+    var self = this;
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MDialog';
+    this.dashboard = null;
     this.activePage = null;
     this.container = null;
     this.pages = [];
 
     _.extend(this, _options);
+
+    if (owner) {
+      if (owner instanceof MWidgetCollection) {
+        self.dashboard = owner.dashboard;
+      }
+    }
 
     return this;
   };
@@ -2205,22 +2268,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     })(this);
 
-    var container = document.getElementById("scroller-container");
-   	var content = document.getElementById("scroller-content");
+    var container = document.getElementById("scroller-container"),
+        content = document.getElementById("scroller-content"),
+        self = this;
 
    	// Content Generator
-   	var size = 100;
+   	var size = 200;
    	var frag = document.createDocumentFragment();
-   	for (var row=0, rl=content.clientHeight/size; row<rl; row++) {
-   		for (var cell=0, cl=content.clientWidth/size; cell<cl; cell++) {
+   	for (var row = 0, rl = content.clientHeight/size; row < rl; row++) {
+   		for (var cell = 0, cl = content.clientWidth/size; cell < cl; cell++) {
    			elem = document.createElement("div");
    			elem.className = "scroller-cell";
-   			elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ddd" : "";
-   			elem.innerHTML = row+","+cell;
+   			elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ccc" : "";
+   			elem.innerHTML = '&nbsp;';
    			frag.appendChild(elem);
    		}
    	}
    	content.appendChild(frag);
+
+
+    if (self.dashboard.modules.length === 0) {
+      content.append($('<div class="scroller-message">Please create a module to begin</div>'))
+    }
 
    	// Initialize Scroller
    	var scroller = new Scroller(render, {
@@ -2362,7 +2431,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
           .append($('<h1 style="margin:0; line-height:32px"></h1>').append(self.headerOptions.name))
           .append($('<span class="dialog-header-text"></span>').append(self.headerOptions.description)));
     } else {
-      headerClass.append($('<h1 class="pull-left"></h1>').append(self.headerOptions.name));
+      headerClass.append($('<h1 class="pull-left mb10" style="line-height:65px;"></h1>').append(self.headerOptions.name));
     }
 
     switch(self.headerOptions.align) {
@@ -2431,6 +2500,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
           case 'click':
             btn.click(button.click);
             break;
+          case 'disabled':
+            if (button.disabled === true) {
+              btn.addClass('disabled');
+              btn.prop('disabled', true);
+            }
+            break;
         }
       });
 
@@ -2468,37 +2543,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     });
   };
 
-  var subHeader = 'Please add, remove or modify your modules and connections from this dialog.' +
-    ' You can create new module clicking button below. When you have saved your new module, it would' +
-    ' be placed in scroller section as you may see below. Create modules as many as you like. ' +
-    ' It is possible to create child modules and/or services. When you have finished creating services,' +
-    ' you may gather data for your widgets and charts.';
-
-  var managementDialog = new MDialog(),
-      entrancePage = {
-        name: 'module|main',
-        headerOptions: {
-          name: 'Management Section',
-          description: subHeader,
-          icon: 'fa-cogs',
-          align: 'left'
-        },
-        bodyOptions: {
-          hasScroller: true,
-          hasWell: true
-        },
-        footerOptions: {
-          buttons: [{
-            name: 'Close Dialog',
-            icon: 'fa-sign-out',
-            click: function() {
-              managementDialog.close();
-            }
-          }]
-        }
-      };
-
-  managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
+  managementDialog = new MDialog();
 
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137

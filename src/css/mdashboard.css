@@ -149,6 +149,15 @@ body {
   margin-top: 1em
 }
 
+.mb10 {
+  margin-bottom: 1em;
+}
+
+.mtb10 {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
 .m10 {
   margin: 1em;
 }
@@ -239,8 +248,7 @@ body {
 
   display: inline-block;
   padding: .5em .3em .1em .5em;
-  margin: .5em;
-  /*line-height: 170%;*/
+  margin: 0 .5em 0 0;
   font-size: 18px;
   font-weight: normal;
   text-align: center;
@@ -354,6 +362,7 @@ body {
   font-size: 9pt;
   line-height: 13px;
   display: inline-block;
+  color: #999;
 }
 
 .dialog .dialog-footer {
@@ -405,8 +414,8 @@ body {
 
 #scroller-content {
   background: transparent;
-  width: 3000px;
-  height: 1500px;
+  width: 4000px;
+  height: 2000px;
 
   -webkit-transform-origin: left top;
   -webkit-transform: translateZ(0);
@@ -421,11 +430,27 @@ body {
 }
 
 .scroller-cell {
-  width: 100px;
-  height: 100px;
+  width: 200px;
+  height: 200px;
   display: inline-block;
-  text-align: center;
-  line-height: 100px;
+  margin: 0;
+  padding: 0;
+  line-height: 20px;
+  /*text-align: center;
+
+  opacity: .25;
+  width: 300px;
+  height: 300px;
+  background: transparent url('images/seamless-bamboo-pattern-842.png') no-repeat top left;*/
+}
+
+.scroller-cell:after {
+  content: ''
+}
+
+.scroller-message {
+  font-size: 24pt;
+  color: #CCC;
 }
 
 #boxer, .resp-vtabs {
