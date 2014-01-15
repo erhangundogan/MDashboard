@@ -5,7 +5,7 @@
  MIT License
  */
 
-var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
+var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, MDialogPage;
 (function (global) {
 
   var globalUniqueIdLength = 32,
@@ -590,6 +590,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
         // creates management dialog new module form
         var form = module.createForm();
+        var footer = module.createFormFooter();
 
         var section = container.find('#dialog-inner-content');
         if (section) {
@@ -657,7 +658,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       });
     },
     onManageModuleSelected: function(collection, swiperItem) {
-      var selectedModule = $('.swiper-slide.selected');
+      debugger;
+      //var selectedModule = $('.swiper-slide.selected');
 
       // if module is selected, clicking again removes selection
       if (selectedModule && selectedModule.length > 0) {
@@ -674,12 +676,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     },
     onManageServices: function(collection) {
-      var managementDialog = $('<div class="dialog management"></div>'),
+      var modules = collection.dashboard.modules,
+          managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
           container = $('<div id="dialog-content-id"></div>'),
           content = $('<div id="dialog-inner-content" class="mt10 clearfix"></div>'),
-          modules = collection.dashboard.modules,
           noModuleMessage = $('<div class="ml10">Please add some modules, services and bind your data to widgets and charts.</div>'),
+          roller = $('<div id="scroller-container"></div>'),
           createModuleButton = $('<button id="module-create-button" type="button" class="button pull-left"></button>')
             .click(function(event) {
               event.preventDefault();
@@ -697,7 +700,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
               }
             })
             .append($('<div class="pull-left"><i class="fa fa-cloud-download fa-3x fa-white"></i></div>'))
-            .append($('<div class="button-text pull-left">Create Service</div>'));
+            .append($('<div class="button-text pull-left">Create Service</div>')),
+          footerContainer = $('<div class="dialog-footer clearfix" id="button-container"></div>')
+            .append(createModuleButton)
+            .append(createServiceButton);
 
       // header
       managementDialog.append(
@@ -707,113 +713,25 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
 
       // no module
       if (modules.length === 0) {
-        $.boxer(managementDialog.append(
-          container.append(
-            content.append(noModuleMessage)
-                   .append(createModuleButton))));
+        $.boxer(managementDialog
+          .append(container.append(content.append(noModuleMessage)))
+          .append(footerContainer));
 
         $(window).bind('open.boxer', function(event) {
           var dialogHeight = $('.boxer-container').height();
           $('#dialog-inner-content').height(dialogHeight - 150);
-          if (swiper) swiper.reInit();
         });
 
         return;
       }
 
-      function renderSwiper(modules) {
-        var wrapper = $('<div class="swiper-wrapper"></div>');
+      container.append(content.append(roller));
 
-        // adding modules to slider
-        if (modules && modules.length > 0) {
-          _.each(modules, function(module, index) {
-            var item = $('<div class="swiper-slide"></div>').attr('data-uid', module.uid);
-            if (module.icon) {
-              item.append( $('<i class="fa fa-3x ' + module.icon + '"></i>') );
-            } else if (module.image) {
-              item.append( $('<img src="' + module.image + '"></img>') );
-            }
-            item.append($('<div style="clear:left;">' + module.name + '</div>'));
-            wrapper.append(item);
-          });
-        }
-        return wrapper;
-      }
-
-      function renderArrows(activeIndex) {
-        var displayMatrix = [];
-        switch(activeIndex) {
-          case 0:
-            displayMatrix = [0, 1, 0, 0];
-            break;
-          case 1:
-            displayMatrix = [0, 0, 1, 1];
-            break;
-        }
-
-        _.each(displayMatrix, function(value, key) {
-          switch (key) {
-            case 0: // top
-              if (value) $('.swiper-container .top').removeClass('hide');
-              else $('.swiper-container .top').addClass('hide');
-              break;
-            case 1: // right
-              if (value) $('.swiper-container .right').removeClass('hide');
-              else $('.swiper-container .right').addClass('hide');
-              break;
-            case 2: // bottom
-              if (value) $('.swiper-container .bottom').removeClass('hide');
-              else $('.swiper-container .bottom').addClass('hide');
-              break;
-            case 3: // left
-              if (value) $('.swiper-container .left').removeClass('hide');
-              else $('.swiper-container .left').addClass('hide');
-              break;
-          }
-        });
-      }
-
-      var roller = $('<div class="swiper-container"></div>');
-      roller
-        .append($('<div class="left"></div>').click( function() { swiper.swipePrev() }))
-        .append($('<div class="right"></div>').click( function() { swiper.swipeNext() }))
-        .append($('<div class="top"></div>').click( function() { swiper.swipePrev() }))
-        .append($('<div class="bottom"></div>').click( function() { swiper.swipeNext() }));
-
-      container.append(content);
-      content.append(roller.append(renderSwiper(modules)));
-
-      // adding module, service buttons
-      content.append(
-        $('<div class="clearfix"></div>').append(createModuleButton).append(createServiceButton));
-
-      $.boxer(managementDialog.append(container));
-
-      // http://www.idangero.us/sliders/swiper/api.php
-      var swiper = roller.swiper({
-        slidesPerView: 1,
-        loop: false,
-        centeredSlides: true,
-        grabCursor: true,
-        onSlideClick: function(swiperItem) {
-          collection.events.onManageModuleSelected(collection, swiperItem);
-        },
-        onSlidePrev: function(swiperItem) {
-          var activeModule = $(swiper.activeSlide()).attr('data-uid');
-          var result = renderArrows(swiper.activeIndex);
-
-        },
-        onSlideNext: function(swiperItem) {
-          var activeModule = $(swiper.activeSlide()).attr('data-uid');
-          renderArrows(swiper.activeIndex);
-        }
-      });
-
+      $.boxer(managementDialog.append(container).append(footerContainer));
 
       $(window).bind('open.boxer', function(event) {
         var dialogHeight = $('.boxer-container').height();
-        $('#dialog-inner-content').height(dialogHeight - 150);
-        if (swiper) swiper.reInit();
+        $('#dialog-inner-content').height(dialogHeight - 220);
       });
     }
   };
@@ -1467,7 +1385,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       }
     }
 
-    var paramOrder = 1;
+    formContainer.append(form);
+      .append('<hr class="mtb05" />')
+      .append(keyValueButton)
+      .append(saveModuleButton);
+
+    return formContainer;
+  };
+  MModule.prototype.createFormFooter = function() {
+    var paramOrder = 1,
+        form = $('form.form'),
+        footerContainer = $('<div class="dialog-footer clearfix" id="button-container"></div>');
+
+    var backButton = $('<button id="module-save-button" type="button" class="button pull-left"></button>')
+      .click(function(event) {
+        event.preventDefault();
+        self.events.onSave(self);
+      })
+      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
+      .append($('<div class="button-text pull-left">Save Module</div>'));
+
     var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
       .click(function(event) {
         event.preventDefault();
@@ -1507,21 +1444,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
       .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
       .append($('<div class="button-text pull-left">Save Module</div>'));
 
-    formContainer
-      .append(form)
-      .append('<hr class="mtb05" />')
-      .append(keyValueButton)
-      .append(saveModuleButton);
+    footerContainer.append(keyValueButton).append(saveModuleButton);
 
-    return formContainer;
-  };
+  }
+
+
   MModule.prototype.events = {
     onSave: function (module) {
       module.loadForm(function(err, result) {
         if (err) {
           console.error(err);
         } else {
-          debugger;
           if (result) {
             // if we have this module replace it otherwise push
             var replaced = result.dashboard.replaceModule(module);
@@ -2179,6 +2112,156 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
     }
   };
 
+  MDialog = function(_options) {
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.name = 'MDialog';
+    this.activePage = null;
+    this.pages = [];
+
+    _.extend(this, _options);
+
+    return this;
+  };
+  MDialog.prototype.getPage = function(index) {
+    var self = this;
+
+    if (self.pages && self.pages.length > index) {
+      return self.pages[index].build();
+    } else {
+      return null;
+    }
+  };
+
+  MDialogPage = function(_options, _ownerDialog) {
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.name = 'MDialogPage';
+    this.dialog = _ownerDialog;
+    this.indexNumber = null;
+    this.headerOptions = {
+      name: 'Header',
+      icon: 'fa-question',
+      align: 'left'
+    };
+    this.bodyOptions = {
+      hasScroller: false,
+      hasWell: false,
+      sections: {
+        container: $('<div id="dialog-content-id"></div>'),
+        content: $('<div id="dialog-inner-content"></div>'),
+        scroller: $('<div id="scroller-container"></div>')
+      }
+    };
+    this.footerOptions = {
+      buttons: [{
+        name: 'Close Dialog',
+        icon: 'fa-close'
+      }]
+    };
+    return this;
+  };
+  MDialogPage.prototype.dialog = typeof MDialog;
+  MDialogPage.prototype.setHeader = function(_options) {
+    var self = this,
+        headerClass = $('<div class="dialog-header clearfix"></div>');
+
+    _.extend(self.headerOptions, _options);
+
+    headerClass
+      .append($('<i class="fa fa-4x fa-white pull-left mr05 ' + self.headerOptions.icon + '"></i>'))
+      .append($('<h1></h1>').append(self.headerOptions.name));
+
+    switch(self.headerOptions.align) {
+      case 'left':
+        headerClass.addClass('pull-left');
+        break;
+      case 'right':
+        headerClass.addClass('pull-right');
+        break;
+      case 'center':
+        headerClass.css('text-align', 'center');
+        break;
+    }
+    return headerClass;
+  };
+  MDialogPage.prototype.setBody = function(_options) {
+    var self = this,
+        container = self.bodyOptions.sections.container,
+        content = self.bodyOptions.sections.content.addClass('mt10 clearfix'),
+        scroller = self.bodyOptions.sections.scroller;
+
+    _.extend(self.bodyOptions, _options);
+
+    if (self.bodyOptions.hasWell) {
+      content.addClass('dialog-well');
+    }
+    if (self.bodyOptions.hasScroller) {
+      content.append(scroller);
+    }
+    return container.append(content);
+  };
+  MDialogPage.prototype.setFooter = function(_options) {
+    var self = this,
+        buttons = [],
+        footerContainer = $('<div class="dialog-footer clearfix"></div>');
+
+    _.extend(self.footerOptions, _options);
+
+    _.each(self.footerOptions.buttons, function(button, index) {
+      var btn = $('<button type="button" class="button"></button>'),
+          keys = Object.keys(button);
+
+      _.each(keys, function(key, index) {
+        switch (keys) {
+          case 'id':
+            btn.attr('id', button.id);
+            break;
+          case 'icon':
+            var buttonIcon = button.icon || icon;
+            btn.append(
+              $('<div class="pull-left"></div>').append(
+                $('<i class="fa fa-3x fa-white ' + buttonIcon + '"></i>')));
+            break;
+          case 'name':
+            btn.append(
+              $('<div class="button-text pull-left"></div>')
+                .append(button.name || label));
+            break;
+          case 'class':
+            btn.addClass(button.class);
+            break;
+          case 'align':
+            if (button.align === 'left') btn.addClass('pull-left');
+            else if (button.align === 'center') footerContainer.css('text-align', 'center');
+            else if (button.align === 'right') btn.addClass('pull-right');
+            break;
+          case 'click':
+            btn.click(button.click);
+            break;
+        }
+      });
+
+      buttons.push(btn);
+    });
+
+    return buttons;
+  };
+  MDialogPage.prototype.build = function() {
+    var self = this,
+        header = self.setHeader(),
+        body = self.setBody(),
+        footer = self.setfooter(),
+        dialogContainer = $('<div class="dialog"></div>');
+
+    return dialogContainer
+      .append(header)
+      .append(body)
+      .append(footer);
+  };
+
+  var managementDialog = new MDialog();
+  var entrancePage = new MDialogPage(null, managementDialog);
+
+
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
    * @param len
@@ -2220,7 +2303,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule;
    * @return {*|void}
    */
   function getSource(fn, args) {
-    //fn = fn.replace(/function[ ]?.*\(.*\)[ ]?\{/, '').replace(/}$/, '');
     var decompiled = fn.substring(fn.indexOf("{")+1, fn.lastIndexOf("}"));
     args = args || [];
     args.push(decompiled);
