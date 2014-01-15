@@ -676,7 +676,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     },
     onManageServices: function(collection) {
-      var modules = collection.dashboard.modules,
+      managementDialog.getPage('module|main');
+
+      /*var modules = collection.dashboard.modules,
           managementDialog = $('<div class="dialog management"></div>'),
           serviceIcon = $('<i class="fa fa-cogs fa-4x fa-white pull-left mr05"></i>'),
           container = $('<div id="dialog-content-id"></div>'),
@@ -732,7 +734,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       $(window).bind('open.boxer', function(event) {
         var dialogHeight = $('.boxer-container').height();
         $('#dialog-inner-content').height(dialogHeight - 220);
-      });
+      });*/
     }
   };
   MWidgetCollection.prototype.serialize = function() {
@@ -1385,7 +1387,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     }
 
-    formContainer.append(form);
+    formContainer.append(form)
       .append('<hr class="mtb05" />')
       .append(keyValueButton)
       .append(saveModuleButton);
@@ -2116,27 +2118,195 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MDialog';
     this.activePage = null;
+    this.container = null;
     this.pages = [];
 
     _.extend(this, _options);
 
     return this;
   };
-  MDialog.prototype.getPage = function(index) {
+  MDialog.prototype.getPage = function(identifier) {
     var self = this;
 
-    if (self.pages && self.pages.length > index) {
-      return self.pages[index].build();
-    } else {
-      return null;
+    if (identifier && _.isNumber(identifier)) {
+      if (self.pages && self.pages.length > identifier) {
+        return self.pages[index].build();
+      } else {
+        return null;
+      }
+    } else if (identifier && _.isString(identifier)) {
+      if (self.pages && self.pages.length > 0) {
+        var page = _.find(self.pages, function(page) {
+          return page.name === identifier;
+        });
+
+        if (page) {
+          return page.build();
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
     }
+  };
+  MDialog.prototype.close = function() {
+    var self = this,
+        dialogContainer = self.container ? self.container : $('.dialog');
+
+    dialogContainer.prop('disabled', false).removeClass('passive-dialog loading');
+    $.boxer("destroy");
+  };
+  MDialog.prototype.activateScroller = function() {
+
+    /* DOM-based rendering (Uses 3D when available,
+       falls back on margin when transform not available) */
+    var render = (function(global) {
+      var docStyle = document.documentElement.style;
+
+      var engine;
+      if (global.opera && Object.prototype.toString.call(opera) === '[object Opera]') {
+        engine = 'presto';
+      } else if ('MozAppearance' in docStyle) {
+        engine = 'gecko';
+      } else if ('WebkitAppearance' in docStyle) {
+        engine = 'webkit';
+      } else if (typeof navigator.cpuClass === 'string') {
+        engine = 'trident';
+      }
+
+      var vendorPrefix = {
+        trident: 'ms',
+        gecko: 'Moz',
+        webkit: 'Webkit',
+        presto: 'O'
+      }[engine];
+
+      var helperElem = document.createElement("div");
+      var undef;
+
+      var perspectiveProperty = vendorPrefix + "Perspective";
+      var transformProperty = vendorPrefix + "Transform";
+
+      if (helperElem.style[perspectiveProperty] !== undef) {
+        return function(left, top, zoom) {
+          content.style[transformProperty] = 'translate3d(' + (-left) + 'px,' + (-top) + 'px,0) scale(' + zoom + ')';
+        };
+      } else if (helperElem.style[transformProperty] !== undef) {
+        return function(left, top, zoom) {
+          content.style[transformProperty] = 'translate(' + (-left) + 'px,' + (-top) + 'px) scale(' + zoom + ')';
+        };
+      } else {
+        return function(left, top, zoom) {
+          content.style.marginLeft = left ? (-left/zoom) + 'px' : '';
+          content.style.marginTop = top ? (-top/zoom) + 'px' : '';
+          content.style.zoom = zoom || '';
+        };
+      }
+    })(this);
+
+    var container = document.getElementById("scroller-container");
+   	var content = document.getElementById("scroller-content");
+
+   	// Content Generator
+   	var size = 100;
+   	var frag = document.createDocumentFragment();
+   	for (var row=0, rl=content.clientHeight/size; row<rl; row++) {
+   		for (var cell=0, cl=content.clientWidth/size; cell<cl; cell++) {
+   			elem = document.createElement("div");
+   			elem.className = "scroller-cell";
+   			elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ddd" : "";
+   			elem.innerHTML = row+","+cell;
+   			frag.appendChild(elem);
+   		}
+   	}
+   	content.appendChild(frag);
+
+   	// Initialize Scroller
+   	var scroller = new Scroller(render, {
+   		snapping: true
+   	});
+
+   	// Setup Scroller
+   	var rect = container.getBoundingClientRect();
+
+   	scroller.setPosition(rect.left+container.clientLeft, rect.top+container.clientTop);
+   	scroller.setDimensions(container.clientWidth, container.clientHeight, content.offsetWidth, content.offsetHeight);
+   	scroller.setSnapSize(100, 100);
+
+   	// Event Handler
+   	if ('ontouchstart' in window) {
+   		container.addEventListener("touchstart", function(e) {
+   			// Don't react if initial down happens on a form element
+   			if (e.target.tagName.match(/input|textarea|select/i)) {
+   				return;
+   			}
+
+   			scroller.doTouchStart(e.touches, e.timeStamp);
+   			e.preventDefault();
+   		}, false);
+
+   		document.addEventListener("touchmove", function(e) {
+   			scroller.doTouchMove(e.touches, e.timeStamp);
+   		}, false);
+
+   		document.addEventListener("touchend", function(e) {
+   			scroller.doTouchEnd(e.timeStamp);
+   		}, false);
+
+   	} else {
+   		var mousedown = false;
+
+   		container.addEventListener("mousedown", function(e) {
+   			// Don't react if initial down happens on a form element
+   			if (e.target.tagName.match(/input|textarea|select/i)) {
+   				return;
+   			}
+
+   			scroller.doTouchStart([{
+   				pageX: e.pageX,
+   				pageY: e.pageY
+   			}], e.timeStamp);
+
+   			mousedown = true;
+   		}, false);
+
+   		document.addEventListener("mousemove", function(e) {
+   			if (!mousedown) {
+   				return;
+   			}
+
+   			scroller.doTouchMove([{
+   				pageX: e.pageX,
+   				pageY: e.pageY
+   			}], e.timeStamp);
+
+   			mousedown = true;
+   		}, false);
+
+   		document.addEventListener("mouseup", function(e) {
+   			if (!mousedown) {
+   				return;
+   			}
+
+   			scroller.doTouchEnd(e.timeStamp);
+   			mousedown = false;
+   		}, false);
+   	}
   };
 
   MDialogPage = function(_options, _ownerDialog) {
+    var self = this;
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MDialogPage';
     this.dialog = _ownerDialog;
-    this.indexNumber = null;
+    _options = _options || {};
+
+    if (this.dialog) {
+      this.indexNumber = this.dialog.pages.length + 1;
+    } else {
+      this.indexNumber = null;
+    }
     this.headerOptions = {
       name: 'Header',
       icon: 'fa-question',
@@ -2145,30 +2315,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     this.bodyOptions = {
       hasScroller: false,
       hasWell: false,
-      sections: {
-        container: $('<div id="dialog-content-id"></div>'),
-        content: $('<div id="dialog-inner-content"></div>'),
-        scroller: $('<div id="scroller-container"></div>')
-      }
+      container: $('<div id="dialog-content-id"></div>'),
+      content: $('<div id="dialog-inner-content"></div>'),
+      scroller: $('<div id="scroller-container"><div id="scroller-content"></div></div>')
     };
     this.footerOptions = {
       buttons: [{
         name: 'Close Dialog',
-        icon: 'fa-close'
+        icon: 'fa-sign-out'
       }]
     };
+
+    _.each(_options, function(option, key) {
+      switch(key) {
+        case 'name':
+          self.name = option;
+          break;
+        case 'headerOptions':
+          _.extend(self.headerOptions, option);
+          break;
+        case 'bodyOptions':
+          _.extend(self.bodyOptions, option);
+          break;
+        case 'footerOptions':
+          _.extend(self.footerOptions, option);
+          break;
+      }
+    });
+    _.extend(this.headerOptions, _options.headerOptions);
+
     return this;
   };
   MDialogPage.prototype.dialog = typeof MDialog;
   MDialogPage.prototype.setHeader = function(_options) {
     var self = this,
+        _options = _options || {},
         headerClass = $('<div class="dialog-header clearfix"></div>');
 
-    _.extend(self.headerOptions, _options);
+    _.extend(_options, self.headerOptions);
 
-    headerClass
-      .append($('<i class="fa fa-4x fa-white pull-left mr05 ' + self.headerOptions.icon + '"></i>'))
-      .append($('<h1></h1>').append(self.headerOptions.name));
+    headerClass.append($('<i class="fa fa-4x fa-white pull-left mr05 ' + self.headerOptions.icon + '"></i>'));
+
+    if (self.headerOptions.description) {
+      headerClass.append(
+        $('<div class="clearfix" style="float:left; display:inline-block; width:85%"></div>')
+          .append($('<h1 style="margin:0; line-height:32px"></h1>').append(self.headerOptions.name))
+          .append($('<span class="dialog-header-text"></span>').append(self.headerOptions.description)));
+    } else {
+      headerClass.append($('<h1 class="pull-left"></h1>').append(self.headerOptions.name));
+    }
 
     switch(self.headerOptions.align) {
       case 'left':
@@ -2185,11 +2380,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
   };
   MDialogPage.prototype.setBody = function(_options) {
     var self = this,
-        container = self.bodyOptions.sections.container,
-        content = self.bodyOptions.sections.content.addClass('mt10 clearfix'),
-        scroller = self.bodyOptions.sections.scroller;
+        _options = _options || {},
+        container = self.bodyOptions.container,
+        content = self.bodyOptions.content ? self.bodyOptions.content.addClass('clearfix') : null,
+        scroller = self.bodyOptions.scroller;
 
-    _.extend(self.bodyOptions, _options);
+    _.extend(_options, self.bodyOptions);
 
     if (self.bodyOptions.hasWell) {
       content.addClass('dialog-well');
@@ -2202,29 +2398,27 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
   MDialogPage.prototype.setFooter = function(_options) {
     var self = this,
         buttons = [],
+        _options = _options || {},
         footerContainer = $('<div class="dialog-footer clearfix"></div>');
 
-    _.extend(self.footerOptions, _options);
+    _.extend(_options, self.footerOptions);
 
     _.each(self.footerOptions.buttons, function(button, index) {
       var btn = $('<button type="button" class="button"></button>'),
           keys = Object.keys(button);
 
       _.each(keys, function(key, index) {
-        switch (keys) {
+        switch (key) {
           case 'id':
             btn.attr('id', button.id);
             break;
           case 'icon':
-            var buttonIcon = button.icon || icon;
             btn.append(
               $('<div class="pull-left"></div>').append(
-                $('<i class="fa fa-3x fa-white ' + buttonIcon + '"></i>')));
+                $('<i class="fa fa-3x fa-white ' + button.icon + '"></i>')));
             break;
           case 'name':
-            btn.append(
-              $('<div class="button-text pull-left"></div>')
-                .append(button.name || label));
+            btn.append($('<div class="button-text pull-right">' + button.name + '</div>'));
             break;
           case 'class':
             btn.addClass(button.class);
@@ -2241,26 +2435,70 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       });
 
       buttons.push(btn);
+      footerContainer.append(btn);
     });
 
-    return buttons;
+    return footerContainer;
   };
   MDialogPage.prototype.build = function() {
     var self = this,
         header = self.setHeader(),
         body = self.setBody(),
-        footer = self.setfooter(),
+        footer = self.setFooter(),
         dialogContainer = $('<div class="dialog"></div>');
 
-    return dialogContainer
+    self.dialog.container = dialogContainer;
+    var render = dialogContainer
       .append(header)
       .append(body)
       .append(footer);
+
+    self.dialog.boxer = $.boxer(render);
+
+    $(window).bind('open.boxer', function(event) {
+      var contentHeight = $('.boxer-container').height() - 215;
+          contentWidth = $('.boxer-container').width() - 15;
+
+      $('#dialog-inner-content').width(contentWidth).height(contentHeight);
+      $('#scroller-container').width(contentWidth).height(contentHeight);
+
+      if (self.bodyOptions.hasScroller) {
+        self.dialog.activateScroller();
+      }
+    });
   };
 
-  var managementDialog = new MDialog();
-  var entrancePage = new MDialogPage(null, managementDialog);
+  var subHeader = 'Please add, remove or modify your modules and connections from this dialog.' +
+    ' You can create new module clicking button below. When you have saved your new module, it would' +
+    ' be placed in scroller section as you may see below. Create modules as many as you like. ' +
+    ' It is possible to create child modules and/or services. When you have finished creating services,' +
+    ' you may gather data for your widgets and charts.';
 
+  var managementDialog = new MDialog(),
+      entrancePage = {
+        name: 'module|main',
+        headerOptions: {
+          name: 'Management Section',
+          description: subHeader,
+          icon: 'fa-cogs',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: true,
+          hasWell: true
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Close Dialog',
+            icon: 'fa-sign-out',
+            click: function() {
+              managementDialog.close();
+            }
+          }]
+        }
+      };
+
+  managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
 
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
