@@ -395,7 +395,7 @@ body {
 
 #dialog-inner-content {
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
   z-index: 11;
 }
 
@@ -416,6 +416,7 @@ body {
   background: transparent;
   width: 4000px;
   height: 2000px;
+  position: relative;
 
   -webkit-transform-origin: left top;
   -webkit-transform: translateZ(0);
@@ -429,19 +430,35 @@ body {
   transform: translateZ(0);
 }
 
+#scroller-panel {
+  background: transparent;
+  width: 4000px;
+  height: 2000px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 1;
+  color: #000;
+;
+}
+
 .scroller-cell {
+  /*width: 300px;
+  height: 300px;
+  background: transparent url('images/seamless-bamboo-pattern-842.png') no-repeat top left;*/
+  /*width: 120px;
+  height: 120px;
+  background: transparent url('images/subtle-mosaic-pattern1507.png') no-repeat top left;*/
   width: 200px;
-  height: 200px;
+  height: 177px;
+  background: transparent url('images/seamless-brick-wall-pattern.png') no-repeat top left;
   display: inline-block;
   margin: 0;
   padding: 0;
   line-height: 20px;
-  /*text-align: center;
+  z-index: 5;
 
-  opacity: .25;
-  width: 300px;
-  height: 300px;
-  background: transparent url('images/seamless-bamboo-pattern-842.png') no-repeat top left;*/
+  /*text-align: center;*/
 }
 
 .scroller-cell:after {
@@ -490,7 +507,7 @@ body {
 }
 
 .module-container .form-label, .service-container .form-label {
-  width: 14%;
+  width: 16%;
   display: inline-block;
   text-align: right;
   font-weight: bold;
@@ -521,7 +538,7 @@ body {
 }
 
 .form-label input[type=text]  {
-  width: 75px;
+  width: 90px;
   border-radius: 4px;
   padding: .25em;
   background-color: #fff;

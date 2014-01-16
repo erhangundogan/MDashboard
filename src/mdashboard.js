@@ -576,8 +576,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     onAddWidget: function (collection) {
       debugger;
     },
-    onCreateModule: function (collection, container) {
-      debugger;
+    onCreateModule: function (collection) {
       var module = new MModule();
       module.dashboard = collection.dashboard;
 
@@ -590,39 +589,33 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
       // creates management dialog new module form
       var form = module.createForm();
-      var footer = module.createFormFooter();
-
-      $('ul.item-icons').on('click', 'li', function(event) {
-        // remove old selected
-        var item = $('ul.item-icons li.selected');
-        if (item && item.length > 0) {
-          item.removeClass('selected');
-        }
-
-        // add new selected icon
-        if (event.currentTarget != item[0]) {
-          $(event.currentTarget).addClass('selected');
-        }
-      });
 
       var paramOrder = 1;
       var editModulePage = {
         name: 'module|edit',
         headerOptions: {
           name: 'Create/Edit Module',
-          //description: subHeader,
+          description: 'You can specify options for your module here. When you saved your module, it would be possible to create service from another dialog screen',
           icon: 'fa-puzzle-piece',
           align: 'left'
         },
         bodyOptions: {
           hasScroller: false,
           hasWell: true,
-          setContent: function(dialog) {
-
-          }
+          container: $('<div id="dialog-content-id"></div>'),
+          content: $('<div id="dialog-inner-content"></div>')
+            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .append(form)
         },
         footerOptions: {
           buttons: [{
+            name: 'Go<br/>Back',
+            icon: 'fa-arrow-left',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.getPage('module|main', 'slideUpDown');
+            }
+          }, {
             name: 'Add Key/Value',
             icon: 'fa-key',
             click: function(event) {
@@ -657,22 +650,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
               $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
 
               // Save dashboard
-              self.events.onSave(self);
-            }
-          }, {
-            name: 'Back',
-            icon: 'fa-sign-out',
-            click: function(event) {
-              event.preventDefault();
-              managementDialog.getPage('module|main');
+              module.events.onSave(module);
             }
           }]
         }
       };
 
+      managementDialog.events.onPageReady = function(page) {
+        $('ul.item-icons').on('click', 'li', function(event) {
+          // remove old selected
+          var item = $('ul.item-icons li.selected');
+          if (item && item.length > 0) {
+            item.removeClass('selected');
+          }
+
+          // add new selected icon
+          if (event.currentTarget != item[0]) {
+            $(event.currentTarget).addClass('selected');
+          }
+        });
+      };
+
       managementDialog.dashboard = collection.dashboard;
       managementDialog.pages.push(new MDialogPage(editModulePage, managementDialog));
-      managementDialog.getPage('module|edit');
+      managementDialog.getPage('module|edit', 'slideUpDown');
+
     },
     onCreateService: function (collection, container) {
       container.slideUp(400, function() {
@@ -718,7 +720,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       });
     },
     onManageModuleSelected: function(collection, swiperItem) {
-      debugger;
       //var selectedModule = $('.swiper-slide.selected');
 
       // if module is selected, clicking again removes selection
@@ -746,7 +747,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
         name: 'module|main',
         headerOptions: {
           name: 'Management Section',
-          //description: subHeader,
+          description: subHeader,
           icon: 'fa-cogs',
           align: 'left'
         },
@@ -761,7 +762,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
             click: function(event) {
               event.preventDefault();
               var container = $('#dialog-content-id');
-              collection.events.onCreateModule(collection, container);
+              collection.events.onCreateModule(collection);
             }
           }, {
             name: 'Create Service',
@@ -771,7 +772,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
               event.preventDefault();
               var container = $('#dialog-content-id');
               if (collection.selectedModule) {
-                collection.events.onCreateService(collection, container);
+                collection.events.onCreateService(collection);
               } else {
                 console.error('Module not specified.');
               }
@@ -789,7 +790,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
-      managementDialog.getPage('module|main');
+      managementDialog.getPage('module|main', 'slideUpDown');
     }
   };
   MWidgetCollection.prototype.serialize = function() {
@@ -1442,70 +1443,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     }
 
-    formContainer.append(form);/*
-      .append('<hr class="mtb05" />')
-      .append(keyValueButton)
-      .append(saveModuleButton);*/
+    formContainer.append(form);
 
     return formContainer;
   };
-  MModule.prototype.createFormFooter = function() {
-    var paramOrder = 1,
-        form = $('form.form'),
-        footerContainer = $('<div class="dialog-footer clearfix" id="button-container"></div>');
-
-    var backButton = $('<button id="module-save-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-        self.events.onSave(self);
-      })
-      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Save Module</div>'));
-
-    var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-
-        var keyValueLabel = $('<div class="form-label"></div>'),
-            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
-            keyValueItem = $('<div class="form-item"></div>'),
-            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
-              .attr('data-order', paramOrder)
-              .click(function(event) {
-                var itemId = $(this).attr('data-order');
-                $('div.form-row[data-order=' + itemId + ']').remove();
-              }),
-            formRow = $('<div class="form-row"></div>');
-
-        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
-        formRow.append(keyValueLabel)
-               .append(keyValueColumnBreak)
-               .append(keyValueItem)
-               .append(removeButton)
-               .attr('data-order', paramOrder);
-        form.append(formRow);
-        ++paramOrder;
-      })
-      .append($('<div class="pull-left"><i class="fa fa-key fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Add Key/Values</div>'));
-
-    var saveModuleButton = $('<button id="module-save-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-        $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
-
-        // Save dashboard
-        self.events.onSave(self);
-      })
-      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Save Module</div>'));
-
-    footerContainer.append(keyValueButton).append(saveModuleButton);
-
-  }
-
-
   MModule.prototype.events = {
     onSave: function (module) {
       module.loadForm(function(err, result) {
@@ -2188,12 +2129,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
     return this;
   };
-  MDialog.prototype.getPage = function(identifier) {
+  MDialog.prototype.events = {
+    onDialogReady: function(dialog) {
+    },
+    onPageReady: function(dialogPage) {
+    },
+    onDialogClosed: function(dialog) {
+    }
+  };
+  MDialog.prototype.getPage = function(identifier, animationType) {
     var self = this;
 
     if (identifier && _.isNumber(identifier)) {
       if (self.pages && self.pages.length > identifier) {
-        return self.pages[index].build();
+        return self.pages[index].build(animationType);
       } else {
         return null;
       }
@@ -2204,7 +2153,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
         });
 
         if (page) {
-          return page.build();
+          return page.build(animationType);
         } else {
           return null;
         }
@@ -2213,12 +2162,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       }
     }
   };
+  MDialog.prototype.block = function() {
+    var self = this,
+        existingDialog = $('.dialog');
+
+    //if (dialogContainer && dialogContainer.length > 0 && self.)
+    $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+  };
   MDialog.prototype.close = function() {
     var self = this,
         dialogContainer = self.container ? self.container : $('.dialog');
 
     dialogContainer.prop('disabled', false).removeClass('passive-dialog loading');
     $.boxer("destroy");
+    self.events.onDialogClosed(self);
   };
   MDialog.prototype.activateScroller = function() {
 
@@ -2270,16 +2227,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
     var container = document.getElementById("scroller-container"),
         content = document.getElementById("scroller-content"),
+        panel = document.getElementById("scroller-panel"),
         self = this;
 
    	// Content Generator
-   	var size = 200;
+   	var sizeX = 200, sizeY = 177;
    	var frag = document.createDocumentFragment();
-   	for (var row = 0, rl = content.clientHeight/size; row < rl; row++) {
-   		for (var cell = 0, cl = content.clientWidth/size; cell < cl; cell++) {
+   	for (var row = 0, rl = content.clientHeight/sizeY; row < rl; row++) {
+   		for (var cell = 0, cl = content.clientWidth/sizeX; cell < cl; cell++) {
    			elem = document.createElement("div");
    			elem.className = "scroller-cell";
-   			elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ccc" : "";
+   			//elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ccc" : "";
    			elem.innerHTML = '&nbsp;';
    			frag.appendChild(elem);
    		}
@@ -2288,7 +2246,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
 
     if (self.dashboard.modules.length === 0) {
-      content.append($('<div class="scroller-message">Please create a module to begin</div>'))
+      $(panel).append($('<div>Please create a module to begin</div>'))
     }
 
    	// Initialize Scroller
@@ -2386,7 +2344,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       hasWell: false,
       container: $('<div id="dialog-content-id"></div>'),
       content: $('<div id="dialog-inner-content"></div>'),
-      scroller: $('<div id="scroller-container"><div id="scroller-content"></div></div>')
+      scroller: $('<div id="scroller-container"><div id="scroller-content"><div id="scroller-panel"></div></div></div>')
     };
     this.footerOptions = {
       buttons: [{
@@ -2431,7 +2389,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
           .append($('<h1 style="margin:0; line-height:32px"></h1>').append(self.headerOptions.name))
           .append($('<span class="dialog-header-text"></span>').append(self.headerOptions.description)));
     } else {
-      headerClass.append($('<h1 class="pull-left mb10" style="line-height:65px;"></h1>').append(self.headerOptions.name));
+      headerClass.append($('<h1 class="pull-left" style="line-height:65px;"></h1>').append(self.headerOptions.name));
     }
 
     switch(self.headerOptions.align) {
@@ -2515,24 +2473,45 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
     return footerContainer;
   };
-  MDialogPage.prototype.build = function() {
+  MDialogPage.prototype.build = function(animationType) {
     var self = this,
         header = self.setHeader(),
         body = self.setBody(),
         footer = self.setFooter(),
-        dialogContainer = $('<div class="dialog"></div>');
+        existingDialog = $('.dialog'),
+        dialogIsActive = existingDialog.length > 0,
+        dialogContainer = dialogIsActive ? existingDialog : $('<div class="dialog"></div>');
 
     self.dialog.container = dialogContainer;
-    var render = dialogContainer
-      .append(header)
-      .append(body)
-      .append(footer);
+    var render = null;
 
-    self.dialog.boxer = $.boxer(render);
+    if (!dialogIsActive) {
+      render = dialogContainer.append(header).append(body).append(footer);
+      self.dialog.boxer = $.boxer(render);
+    } else {
+      if (animationType) {
+        switch(animationType) {
+          case 'slideUpDown':
+            dialogContainer.slideUp(400, function() {
+              render = dialogContainer.empty().append(header).append(body).append(footer);
+              dialogContainer.slideDown(400, function() {
+                self.dialog.events.onPageReady(self);
+              });
+            });
+            break;
+        }
+      } else {
+        render = dialogContainer.empty().append(header).append(body).append(footer);
+        self.dialog.events.onPageReady(self);
+      }
+    }
 
     $(window).bind('open.boxer', function(event) {
       var contentHeight = $('.boxer-container').height() - 215;
           contentWidth = $('.boxer-container').width() - 15;
+
+      self.dialog.width = contentWidth;
+      self.dialog.height = contentHeight;
 
       $('#dialog-inner-content').width(contentWidth).height(contentHeight);
       $('#scroller-container').width(contentWidth).height(contentHeight);
@@ -2540,6 +2519,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       if (self.bodyOptions.hasScroller) {
         self.dialog.activateScroller();
       }
+
+      self.dialog.events.onDialogReady(self.dialog);
     });
   };
 
