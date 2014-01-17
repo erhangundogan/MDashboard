@@ -621,3 +621,42 @@ form.form, .form-row {
 .hide {
   display: none;
 }
+
+#management-canvas, #management-svg, #management-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+#management-container * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+
+  -webkit-user-drag: none;
+  -moz-user-drag: none;
+  -ms-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.m-module {
+  margin: 1em;
+  padding: .25em;
+  border-width: 5px;
+  border-style: dotted;
+  border-radius: 8px;
+  border-color: #CCC;
+}
+
+.m-module:hover {
+  border-color: #f00;
+  cursor: pointer;
+}
+
+.m-selected {
+  border-style: solid;
+  border-color: #f00;
+}

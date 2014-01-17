@@ -156,6 +156,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     this.uid = getUniqueId(globalUniqueIdLength);
     this.isLoaded = false;
+    this.name = 'MDashboard';
     this.options = {};
     this.collections = [];
     this.modules = [];
@@ -185,8 +186,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     _.extend(self.options, _options);
 
-    if (self.userId) {
-      var dataId = 'dashboard' + self.userId,
+    if (self.account && self.account.userId) {
+      var dataId = 'dashboard' + self.account.userId,
           data = localStorage.getItem(dataId);
 
       if (data) {
@@ -232,7 +233,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MDashboard.prototype.save = function(callback) {
     var self = this,
-        dataId = 'dashboard' + this.userId,
+        userId = self.account && self.account.userId ? self.account.userId : '',
+        dataId = 'dashboard' + userId,
         oldItem = localStorage.getItem(dataId),
         newItem = null;
 
@@ -1375,7 +1377,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             } else {
               // read image file
               var reader = new FileReader();
-              reader.onload = function(e) {
+              reader.onload = function(e, a) {
                 self.image = e.target.result;
                 self.icon = null;
                 callback(null, self);
@@ -1508,6 +1510,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         }
       });
+    },
+    onSelected: function(module) {
+      module.dashboard.collections[0].selectedModule = module.uid;
+      debugger;
+    },
+    onDeselected: function(module) {
     }
   };
   MModule.prototype.serialize = function() {
@@ -2135,15 +2143,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     if (identifier && _.isNumber(identifier)) {
       if (self.pages && self.pages.length > identifier) {
-        return self.pages[index].build(animationType);
+        selectedPage = self.pages[index];
+        selectedPage.dialog.activePage = selectedPage.uid;
+        return selectedPage.build(animationType);
       } else {
         return null;
       }
     } else if (identifier && _.isString(identifier)) {
       if (self.pages && self.pages.length > 0) {
-        var page = _.find(self.pages, function(page) {
+
+        var selectedPage = _.find(self.pages, function(page) {
           return page.name === identifier;
         });
+
+        if (selectedPage) {
+          selectedPage.dialog.activePage = selectedPage.uid;
+        }
 
         if (page) {
           return page.build(animationType);
@@ -2327,7 +2342,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    	}
   };
   MDialog.prototype.dealloc = function() {
+    var self = this;
+
     // frees scroller events
+    if (self.dashboard && self.dashboard.orchestrator) {
+      self.dashboard.orchestrator.clear();
+    }
   };
 
   MDialogPage = function(_options, _ownerDialog) {
@@ -2592,6 +2612,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MOrchestrator = function(_options, dashboard) {
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MOrchestration';
+    this.container = null;
 
     _.extend(this, _options);
 
@@ -2624,13 +2645,73 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         self.dashboard.modules &&
         self.dashboard.modules.length > 0) {
 
-      if (d3) {
-        var canvas = $('<svg id="management-canvas"></svg>');
-        $(container).append(canvas);
+      self.container = container;
+
+      if (!d3) {
+        $(container).html('<h3 style="margin:1em">Please link D3 visualization library to begin</h3>');
+        return;
       }
 
+      var managementContainer = $('<div id="management-container"></div>'),
+          managementCanvas = $('<canvas id="management-canvas"></canvas>'),
+          managementSvg = $('<svg id="management-svg"></svg>'),
+          modules = self.dashboard.modules;
+
+      $(container).append(managementContainer);
+
+      /////////////// Visualization begins here
+
+      function drawModule(module, index) {
+        function getImage(path, callback) {
+          var image = new Image;
+          image.onload = function() { callback(image); };
+          image.src = path;
+        }
+
+        getImage(module.image, function(result) {
+          var width = result.width,
+              height = result.height,
+              item = $('<img />').attr('src', module.image).addClass('m-module');
+
+          if (width > 128) {
+            var ratio = 128 / width,
+                newWidth = Math.ceil(width * ratio) + 'px',
+                newHeight = Math.ceil(height * ratio) + 'px';
+
+            item.css({
+              width: newWidth,
+              height: newHeight
+            });
+          }
+
+          item.click(function(event) {
+            item.toggleClass('m-selected');
+            if (item.hasClass('m-selected')) {
+              module.onSelected(module);
+            } else {
+              module.onDeselected(module);
+            }
+          });
+
+          managementContainer.append(item);
+
+        });
+      }
+
+      _.each(modules, function(module, index) {
+        drawModule(module, index);
+      });
+
+      ///////////////
+
     } else if (container) {
-      $(container).html('<h2 style="margin:1em">Please create module to begin procedure</h2>');
+      $(container).html('<h3 style="margin:1em">Please create at least one module to begin</h3>');
+    }
+  };
+  MOrchestrator.prototype.clear = function() {
+    var self = this;
+    if (self.container) {
+      $(self.container).empty();
     }
   };
 
