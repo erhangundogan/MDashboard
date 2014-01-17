@@ -2624,7 +2624,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         self.dashboard.modules &&
         self.dashboard.modules.length > 0) {
 
-      
+      if (d3) {
+        var canvas = $('<svg id="management-canvas"></svg>');
+        $(container).append(canvas);
+      }
 
     } else if (container) {
       $(container).html('<h2 style="margin:1em">Please create module to begin procedure</h2>');
