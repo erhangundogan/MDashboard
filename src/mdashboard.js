@@ -6,7 +6,7 @@
  */
 
 var MDashboard, MWidgetCollection, MWidget, MChart, MService,
-    MModule, MDialog, MDialogPage, MConnector, MAccount, MOrchestrator;
+    MModule, MDialog, MDialogPage, MAuth, MAccount, MOrchestrator;
 (function (global) {
 
   var managementDialog = null,
@@ -114,9 +114,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       'fa-arrow-circle-o-left', 'fa-toggle-left', 'fa-caret-square-o-left', 'fa-dot-circle-o', 'fa-wheelchair',
       'fa-vimeo-square', 'fa-turkish-lira', 'fa-try', 'fa-plus-square-o'];
 
-  MAccount = function(_options, _owner) {
+  MAccount = function(_options, owner) {
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.role = [];
+    this.roles = [];
     this.userId = null;
     this.owner = owner;
 
@@ -129,12 +129,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         serialized = {};
 
     serialized.uid = self.uid;
-    serialized.role = self.role;
+    serialized.roles = self.roles;
     serialized.userId = self.userId;
-
-    if (self.owner && self.owner.serialize) {
-      serialized.owner = self.owner.serialize();
-    }
+    serialized.owner = self.owner.uid;
 
     return serialized;
   };
@@ -142,7 +139,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     self.uid = data.uid;
-    self.role = data.role;
+    self.roles = data.roles;
     self.userId = data.userId;
     self.owner = owner;
 
@@ -162,7 +159,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.options = {};
     this.collections = [];
     this.modules = [];
-    this.account = new MAccount({ role: ['admin'], userId: 499 }, self);
+    this.orchestration = new MOrchestrator(null, self);
+    this.account = new MAccount({ roles: ['admin'], userId: 499 }, self);
 
     return this;
   };
@@ -525,7 +523,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       buttons.push(addButton);
 
       // Add management button
-      if (self.dashboard.isAdmin) {
+      if (self.dashboard.account && self.dashboard.account.roles.indexOf('admin') >= 0) {
         var manageButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-cogs"></i></a>')
           .attr('title', 'Manage Services')
           .click(function () {
@@ -1592,8 +1590,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.image = null;
     this.icon = null;
     this.description = null;
-    this.requests = [];
-    this.responses = [];
+    this.methods = [];
     this.isInitialized = false;
     this.isScheduled = false;
     this.module = null;
@@ -1681,16 +1678,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     function callMeMaybe() {
-      var requestItem = {
-        id: getUniqueId(globalUniqueIdLength),
-        time: new Date()
-      };
-
-      self.requests.push(requestItem);
-      _.extend(self.ajaxOptions, {
-        context: requestItem
-      });
-
       var request = $.ajax(self.ajaxOptions);
 
       request.done(function (data, status, request) {
@@ -1713,45 +1700,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       callMeMaybe();
     }
   };
-  /**
-   * MService ajaxOptions .error
-   * @param request
-   * @param status
-   */
-  MService.prototype.fail = function (request, status, error) {
-    var self = this;
-    self.responses.push({
-      id: getUniqueId(globalUniqueIdLength),
-      time: new Date(),
-      requestId: request.id,
-      requestTime: request.time,
-      ajaxRequest: request,
-      status: status,
-      error: error
-    });
-    self.isInitialized = true;
-  };
-  /**
-   * MService ajaxOptions .success
-   * @param data
-   * @param status
-   * @param request
-   */
-  MService.prototype.done = function (data, status, request) {
-    var self = this;
 
-    self.responses.push({
-      id: getUniqueId(globalUniqueIdLength),
-      time: new Date(),
-      requestId: request.id,
-      requestTime: request.time,
-      request: request,
-      status: status,
-      data: data
-    });
-
-    self.isInitialized = true;
-  };
   /**
    * Get connection form values to put into service ajax properties
    * @param callback
@@ -2170,10 +2119,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MDialog.prototype.events = {
     onDialogReady: function(dialog) {
+      // when the first time dialgo showed up
     },
     onPageReady: function(dialogPage) {
+      // when dialog page changed
     },
     onDialogClosed: function(dialog) {
+      dialog.dealloc();
     }
   };
   MDialog.prototype.getPage = function(identifier, animationType) {
@@ -2205,16 +2157,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this,
         existingDialog = $('.dialog');
 
-    //if (dialogContainer && dialogContainer.length > 0 && self.)
-    $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+    if (existingDialog && existingDialog.length > 0) {
+      existingDialog
+        .prop('disabled', true)
+        .addClass('passive-dialog')
+        .addClass('loading');
+    }
+  };
+  MDialog.prototype.unblock = function() {
+    var self = this,
+        existingDialog = $('.dialog');
+
+    if (existingDialog && existingDialog.length > 0) {
+      existingDialog
+        .prop('disabled', false)
+        .removeClass('passive-dialog')
+        .removeClass('loading');
+    }
   };
   MDialog.prototype.close = function() {
-    var self = this,
-        dialogContainer = self.container ? self.container : $('.dialog');
-
-    dialogContainer.prop('disabled', false).removeClass('passive-dialog loading');
+    this.unblock();
     $.boxer("destroy");
-    self.events.onDialogClosed(self);
+    this.events.onDialogClosed(this);
   };
   MDialog.prototype.activateScroller = function() {
 
@@ -2359,6 +2323,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    			mousedown = false;
    		}, false);
    	}
+  };
+  MDialog.prototype.dealloc = function() {
+    // frees scroller events
   };
 
   MDialogPage = function(_options, _ownerDialog) {
@@ -2566,50 +2533,40 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   managementDialog = new MDialog();
 
   /**
-   * Simply a connector takes module, therefore module service and method
-   * authorize and authenticate connection
-   * combines visualization library, service and user function
+   * Authorizes any component like (MModule, MService, MDialog, MWidget)
    * @param _options
-   * @return {*}
+   * @param owner any modules, service, dialog, chart, widget
+   * @returns {*}
    * @constructor
    */
-  MConnector = function(_options, orchestrator) {
+  MAuth = function(_options, owner) {
     var self = this;
 
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.name = 'MConnector';
-    this.module = null;
-    this.method = null;
-    this.auth = { username:null, password:null },
+    this.name = 'MAuth';
+    this.auth = { username:null, password:null };
     this.permissions = [];
     this.args = [];
-    this.orchestrator = orchestrator;
+
+    this.owner = owner;
 
     return this;
   };
-  MConnector.prototype.module = typeof MModule;
-  MConnector.prototype.orchestrator = typeof MOrchestrator;
-  MConnector.prototype.serialize = function() {
+  MAuth.prototype.serialize = function() {
     var self = this,
         serialized = {};
 
     serialized.uid = self.uid;
     serialized.name = self.name;
-    serialized.method = self.method;
     serialized.auth = JSON.stringify(self.auth);
     serialized.permissions = self.permissions;
     serialized.args = self.args;
 
-    // child module
-    serialized.module = self.module.serialize();
-
-    // parent ochestrator
-    serialized.orchestrator = self.orchestrator ? self.orchestrator.uid : null;
+    serialized.owner = self.owner.uid;
 
     return serialized;
   };
-
-  MConnector.prototype.deserialize = function(data, owner) {
+  MAuth.prototype.deserialize = function(data, owner) {
     var self = this;
 
     self.uid = data.uid;
@@ -2618,27 +2575,25 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.permissions = data.permissions;
     self.args = data.args;
 
-    if (data.module) {
-      var newModule = new MModule();
-      self.method = newModule.deserialize(data.module, self);
-    }
+    self.owner = owner;
 
-    if (data.orchestrator) {
-      // TODO
-    }
+    return self;
   };
-
-  // MOrchestrator => [MConnector]
-  // MConnector => MModule
 
   /**
    * Holds connectors and various settings for scroller area
+   * Combines visualization library, connector and user function
+   * renders them
    * @return {*}
    * @constructor
    */
-  MOrchestrator = function() {
+  MOrchestrator = function(_options, dashboard) {
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.connectors = [];
+    this.name = 'MOrchestration';
+
+    _.extend(this, _options);
+
+    this.dashboard = dashboard;
 
     return this;
   };
@@ -2647,29 +2602,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         serialized = {};
 
     serialized.uid = self.uid;
-
-    serialized.connectors = _.map(self.connectors, function(connector, index) {
-      return connector.serialize();
-    });
+    serialized.name = self.name;
+    serialized.dashboard = self.dashboard.uid;
 
     return serialized;
   };
-  MOrchestrator.prototype.deserialize = function(data) {
+  MOrchestrator.prototype.deserialize = function(data, dashboard) {
     var self = this;
 
     self.uid = data.uid;
-
-    if (data.connectors && data.connectors > 0) {
-      self.connectors = _.map(data.connectors, function(connectorData, index) {
-        var newConnector = new MConnector();
-        return newConnector.deserialize(connectorData, self);
-      });
-    }
+    self.name = data.name;
+    self.dashboard = dashboard;
 
     return self;
   };
   MOrchestrator.prototype.render = function() {
-    // TODO
+    if (self.dashboard && self.dashboard.modules && self.dashboard.modules.length > 0) {
+
+    } else {
+      // nothing to render
+    }
   };
 
   /**
