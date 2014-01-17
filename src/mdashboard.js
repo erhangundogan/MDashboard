@@ -5,7 +5,8 @@
  MIT License
  */
 
-var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, MDialogPage;
+var MDashboard, MWidgetCollection, MWidget, MChart, MService,
+    MModule, MDialog, MDialogPage, MConnector, MAccount, MOrchestrator;
 (function (global) {
 
   var managementDialog = null,
@@ -113,21 +114,60 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
       'fa-arrow-circle-o-left', 'fa-toggle-left', 'fa-caret-square-o-left', 'fa-dot-circle-o', 'fa-wheelchair',
       'fa-vimeo-square', 'fa-turkish-lira', 'fa-try', 'fa-plus-square-o'];
 
+  MAccount = function(_options, _owner) {
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.role = [];
+    this.userId = null;
+    this.owner = owner;
+
+    _.extend(this, _options);
+
+    return this;
+  };
+  MAccount.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.uid = self.uid;
+    serialized.role = self.role;
+    serialized.userId = self.userId;
+
+    if (self.owner && self.owner.serialize) {
+      serialized.owner = self.owner.serialize();
+    }
+
+    return serialized;
+  };
+  MAccount.prototype.deserialize = function(data, owner) {
+    var self = this;
+
+    self.uid = data.uid;
+    self.role = data.role;
+    self.userId = data.userId;
+    self.owner = owner;
+
+    return self;
+  };
+
   /**
    * MDashboard
    * @returns {*}
    * @constructor
    */
   MDashboard = function () {
+    var self = this;
+
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.userId = 499;
-    this.isAdmin = true; // TODO
     this.isLoaded = false;
     this.options = {};
     this.collections = [];
     this.modules = [];
+    this.account = new MAccount({ role: ['admin'], userId: 499 }, self);
+
     return this;
   };
+  MDashboard.prototype.account = typeof MAccount;
+
   /**
    * MDashboard Initialize
    * @param _options MDashboard Options (optional)
@@ -225,9 +265,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
 
     serialized.mType = 'MDashboard';
     serialized.uid = self.uid;
-    serialized.userId = self.userId;
-    serialized.isAdmin = self.isAdmin;
     serialized.options = self.options;
+
+    serialized.account = self.account.serialize();
 
     // modules
     serialized.modules = _.map(self.modules, function(module, index) {
@@ -353,7 +393,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     // false: module not exist
     return found;
   };
-
 
   /**
    * MWidgetCollection constructor
@@ -1269,7 +1308,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
    */
   MModule = function(_options, module) {
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.name = "MModule";
+    this.name = 'MModule';
     this.image = null;
     this.icon = null;
     this.description = null;
@@ -1511,7 +1550,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
     self.tags = data.tags;
     self.params = data.params;
 
-    self.dashboard = dashboard;
+    //self.dashboard = dashboard;
 
     if (data.service) {
       var newService = new MService();
@@ -2525,6 +2564,113 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService, MModule, MDialog, 
   };
 
   managementDialog = new MDialog();
+
+  /**
+   * Simply a connector takes module, therefore module service and method
+   * authorize and authenticate connection
+   * combines visualization library, service and user function
+   * @param _options
+   * @return {*}
+   * @constructor
+   */
+  MConnector = function(_options, orchestrator) {
+    var self = this;
+
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.name = 'MConnector';
+    this.module = null;
+    this.method = null;
+    this.auth = { username:null, password:null },
+    this.permissions = [];
+    this.args = [];
+    this.orchestrator = orchestrator;
+
+    return this;
+  };
+  MConnector.prototype.module = typeof MModule;
+  MConnector.prototype.orchestrator = typeof MOrchestrator;
+  MConnector.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.uid = self.uid;
+    serialized.name = self.name;
+    serialized.method = self.method;
+    serialized.auth = JSON.stringify(self.auth);
+    serialized.permissions = self.permissions;
+    serialized.args = self.args;
+
+    // child module
+    serialized.module = self.module.serialize();
+
+    // parent ochestrator
+    serialized.orchestrator = self.orchestrator ? self.orchestrator.uid : null;
+
+    return serialized;
+  };
+
+  MConnector.prototype.deserialize = function(data, owner) {
+    var self = this;
+
+    self.uid = data.uid;
+    self.name = data.name;
+    self.auth = $.parseJSON(data.auth);
+    self.permissions = data.permissions;
+    self.args = data.args;
+
+    if (data.module) {
+      var newModule = new MModule();
+      self.method = newModule.deserialize(data.module, self);
+    }
+
+    if (data.orchestrator) {
+      // TODO
+    }
+  };
+
+  // MOrchestrator => [MConnector]
+  // MConnector => MModule
+
+  /**
+   * Holds connectors and various settings for scroller area
+   * @return {*}
+   * @constructor
+   */
+  MOrchestrator = function() {
+    this.uid = getUniqueId(globalUniqueIdLength);
+    this.connectors = [];
+
+    return this;
+  };
+  MOrchestrator.prototype.serialize = function() {
+    var self = this,
+        serialized = {};
+
+    serialized.uid = self.uid;
+
+    serialized.connectors = _.map(self.connectors, function(connector, index) {
+      return connector.serialize();
+    });
+
+    return serialized;
+  };
+  MOrchestrator.prototype.deserialize = function(data) {
+    var self = this;
+
+    self.uid = data.uid;
+
+    if (data.connectors && data.connectors > 0) {
+      self.connectors = _.map(data.connectors, function(connectorData, index) {
+        var newConnector = new MConnector();
+        return newConnector.deserialize(connectorData, self);
+      });
+    }
+
+    return self;
+  };
+  MOrchestrator.prototype.render = function() {
+    // TODO
+  };
 
   /**
    * https://github.com/erhangundogan/jstools/blob/master/lib/jstools.js#L137
