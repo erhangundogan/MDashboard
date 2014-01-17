@@ -159,12 +159,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.options = {};
     this.collections = [];
     this.modules = [];
-    this.orchestration = new MOrchestrator(null, self);
+    this.orchestrator = new MOrchestrator(null, self);
     this.account = new MAccount({ roles: ['admin'], userId: 499 }, self);
 
     return this;
   };
   MDashboard.prototype.account = typeof MAccount;
+  MDashboard.prototype.orchestrator = typeof MOrchestrator;
+
 
   /**
    * MDashboard Initialize
@@ -2248,8 +2250,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    	content.appendChild(frag);
 
 
-    if (self.dashboard.modules.length === 0) {
-      $(panel).append($('<div>Please create a module to begin</div>'))
+    if (self.dashboard && self.dashboard.orchestrator) {
+      self.dashboard.orchestrator.render(panel);
     }
 
    	// Initialize Scroller
@@ -2616,11 +2618,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  MOrchestrator.prototype.render = function() {
-    if (self.dashboard && self.dashboard.modules && self.dashboard.modules.length > 0) {
+  MOrchestrator.prototype.render = function(container) {
+    if (container &&
+        self.dashboard &&
+        self.dashboard.modules &&
+        self.dashboard.modules.length > 0) {
 
-    } else {
-      // nothing to render
+      
+
+    } else if (container) {
+      $(container).html('<h2 style="margin:1em">Please create module to begin procedure</h2>');
     }
   };
 
