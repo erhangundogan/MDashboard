@@ -2130,6 +2130,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MDialog.prototype.events = {
     onDialogReady: function(dialog) {
       // when the first time dialgo showed up
+
     },
     onPageReady: function(dialogPage) {
       // when dialog page changed
@@ -2158,10 +2159,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         if (selectedPage) {
           selectedPage.dialog.activePage = selectedPage.uid;
-        }
-
-        if (page) {
-          return page.build(animationType);
+          return selectedPage.build(animationType);
         } else {
           return null;
         }
@@ -2687,9 +2685,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           item.click(function(event) {
             item.toggleClass('m-selected');
             if (item.hasClass('m-selected')) {
-              module.onSelected(module);
+              module.events.onSelected(module);
             } else {
-              module.onDeselected(module);
+              module.events.onDeselected(module);
             }
           });
 
