@@ -10,6 +10,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 (function (global) {
 
   var managementDialog = null,
+    addItemDialog = null,
+    editWidgetDialog = null,
+    editChartDialog = null,
     globalUniqueIdLength = 32,
     classTopContainer = 'mdashboard-container',
     classToolbar = 'mdashboard-toolbar',
@@ -160,6 +163,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.options = {};
     this.collections = [];
     this.modules = [];
+    this.activeDialog = null;
     this.orchestrator = new MOrchestrator(null, self);
     this.account = new MAccount({ roles: ['admin'], userId: 499 }, self);
 
@@ -167,7 +171,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MDashboard.prototype.account = typeof MAccount;
   MDashboard.prototype.orchestrator = typeof MOrchestrator;
-
 
   /**
    * MDashboard Initialize
@@ -615,17 +618,115 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       collection.resizing = false;
     },
     onAddWidget: function (collection) {
-      debugger;
+      var subHeader = 'Please add, remove or modify your widgets and charts from this dialog. ' +
+            'Your widget/chart would be ready when you have finished your configuration and saved your settings.';
+
+      var addItemPage = {
+        name: 'widget|main',
+        headerOptions: {
+          name: 'Widgets & Charts',
+          description: subHeader,
+          icon: 'fa-bar-chart-o',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: true,
+          hasWell: true
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Create Widget',
+            disabled: true,
+            icon: 'fa-list',
+            click: function(event) {
+              event.preventDefault();
+              collection.events.onCreateWidget(collection);
+            }
+          }, {
+            name: 'Create Chart',
+            disabled: true,
+            icon: 'fa-dashboard',
+            click: function(event) {
+              event.preventDefault();
+              debugger;
+            }
+          }, {
+            name: 'Close Dialog',
+            icon: 'fa-sign-out',
+            click: function(event) {
+              event.preventDefault();
+              addItemDialog.close();
+            }
+          }]
+        }
+      };
+
+      addItemDialog.dashboard = collection.dashboard;
+      addItemDialog.orchestrator = collection.dashboard.orchestrator;
+      addItemDialog.pages.push(new MDialogPage(addItemPage, addItemDialog));
+      addItemDialog.getPage('widget|main', 'slideUpDown');
+    },
+    onCreateWidget: function (collection) {
+      var widget = new MWidget(collection),
+          module = collection.dashboard.orchestrator.selected;
+
+      if (module && module.service) {
+        widget.service = module.service;
+      }
+
+      var form = widget.createForm();
+
+      var createWidgetPage = {
+        name: 'widget|create',
+        headerOptions: {
+          name: 'Create Widget',
+          icon: 'fa-bar-chart-o',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: false,
+          hasWell: true,
+          container: $('<div id="dialog-content-id"></div>'),
+          content: $('<div id="dialog-inner-content"></div>')
+            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .append(form)
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Go<br/>Back',
+            icon: 'fa-arrow-left',
+            click: function(event) {
+              event.preventDefault();
+              addItemDialog.getPage('widget|main', 'slideUpDown');
+            }
+          }, {
+            name: 'Save Widget',
+            icon: 'fa-save',
+            click: function(event) {
+              debugger;
+              event.preventDefault();
+              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+
+              // Save dashboard
+              widget.events.onSave(widget);
+            }
+          }]
+        }
+      };
+
+      addItemDialog.dashboard = collection.dashboard;
+      addItemDialog.orchestrator = collection.dashboard.orchestrator;
+      addItemDialog.pages.push(new MDialogPage(createWidgetPage, addItemDialog));
+      addItemDialog.getPage('widget|create', 'slideUpDown');
     },
     onCreateModule: function (collection) {
-      var module = new MModule();
+      var module = new MModule(),
+          selectedItem = collection.dashboard.orchestrator.selected;
+
       module.dashboard = collection.dashboard;
 
-      if (collection.selectedModule) {
-        var selectedModule = collection.dashboard.getModuleById(collection.selectedModule);
-        if (selectedModule) {
-          module.parent = selectedModule;
-        }
+      if (selectedItem && selectedItem instanceof MModule) {
+        module.parent = selectedItem;
       }
 
       // creates management dialog new module form
@@ -657,6 +758,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
+            name: 'Save Module',
+            icon: 'fa-save',
+            click: function(event) {
+              event.preventDefault();
+              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+
+              // Save dashboard
+              module.events.onSave(module);
+            }
+          }, {
             name: 'Add Key/Value',
             icon: 'fa-key',
             click: function(event) {
@@ -683,15 +794,117 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               form.append(formRow);
               ++paramOrder;
             }
+          }]
+        }
+      };
+
+      managementDialog.events.onPageReady = function(page) {
+        $('ul.item-icons').on('click', 'li', function(event) {
+          // remove old selected
+          var item = $('ul.item-icons li.selected');
+          if (item && item.length > 0) {
+            item.removeClass('selected');
+          }
+
+          // add new selected icon
+          if (event.currentTarget != item[0]) {
+            $(event.currentTarget).addClass('selected');
+          }
+        });
+      };
+
+      managementDialog.dashboard = collection.dashboard;
+      managementDialog.orchestrator = collection.dashboard.orchestrator;
+      managementDialog.pages.push(new MDialogPage(editModulePage, managementDialog));
+      managementDialog.getPage('module|edit', 'slideUpDown');
+
+    },
+    onCreateService: function (collection) {
+      var service = null,
+          selectedItem = collection.dashboard.orchestrator.selected;
+
+      if (selectedItem && selectedItem instanceof MModule) {
+        service = new MService();
+        service.module = selectedItem;
+      } else {
+        console.error('Module must be selected to create service!');
+        return;
+      }
+
+      // creates management dialog new module form
+      var form = service.createForm();
+
+      var paramOrder = 1;
+      var editServicePage = {
+        name: 'service|edit',
+        headerOptions: {
+          name: 'Create/Edit Service',
+          description: 'You can specify options for your web service here. This web service would be data connection for your widgets and charts.',
+          icon: 'fa-cloud-upload',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: false,
+          hasWell: true,
+          container: $('<div id="dialog-content-id"></div>'),
+          content: $('<div id="dialog-inner-content"></div>')
+            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .append(form)
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Go<br/>Back',
+            icon: 'fa-arrow-left',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.getPage('module|main', 'slideUpDown');
+            }
           }, {
-            name: 'Save Module',
+            name: 'Save Service',
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
-              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+              if (service.ajaxOptions.url) {
+                $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+                // Save service
+                service.events.onSave(service);
+              } else {
+                console.error('Connection settings not specified for web service. Please create connection first.');
+              }
+            }
+          }, {
+            name: 'Create Connection',
+            icon: 'fa-chain',
+            click: function(event) {
+              event.preventDefault();
+              collection.events.onCreateServiceConnection(collection, service);
+            }
+          }, {
+            name: 'Add Key/Value',
+            icon: 'fa-key',
+            click: function(event) {
+              event.preventDefault();
 
-              // Save dashboard
-              module.events.onSave(module);
+              var keyValueLabel = $('<div class="form-label"></div>'),
+                  keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+                  keyValueItem = $('<div class="form-item"></div>'),
+                  removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+                    .attr('data-order', paramOrder)
+                    .click(function(event) {
+                      var itemId = $(this).attr('data-order');
+                      $('div.form-row[data-order=' + itemId + ']').remove();
+                    }),
+                  formRow = $('<div class="form-row"></div>');
+
+              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+              formRow.append(keyValueLabel)
+                     .append(keyValueColumnBreak)
+                     .append(keyValueItem)
+                     .append(removeButton)
+                     .attr('data-order', paramOrder);
+              form.append(formRow);
+              ++paramOrder;
             }
           }]
         }
@@ -713,76 +926,104 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       };
 
       managementDialog.dashboard = collection.dashboard;
-      managementDialog.pages.push(new MDialogPage(editModulePage, managementDialog));
-      managementDialog.getPage('module|edit', 'slideUpDown');
+      managementDialog.orchestrator = collection.dashboard.orchestrator;
+      managementDialog.pages.push(new MDialogPage(editServicePage, managementDialog));
+      managementDialog.getPage('service|edit', 'slideUpDown');
 
     },
-    onCreateService: function (collection, container) {
-      container.slideUp(400, function() {
-        var service = new MService();
-
-        service.module = collection.dashboard.getModuleById(collection.selectedModule);
-
-        // creates management dialog new service form
-        var form = service.createForm(collection, container),
-            section = container.find('#dialog-inner-content');
-
-        if (section) {
-          section.empty().append(form);
-
-          $('ul.item-icons').on('click', 'li', function(event) {
-
-            // remove old selected
-            var item = $('ul.item-icons li.selected');
-            if (item && item.length > 0) {
-              item.removeClass('selected');
-            }
-
-            // add new selected icon
-            if (event.currentTarget != item[0]) {
-              $(event.currentTarget).addClass('selected');
-            }
-          });
-
-          container.slideDown(400);
-        }
-      });
-    },
-    onCreateServiceConnection: function (collection, container, service) {
-      container.slideUp(400, function() {
-
-       var form = service.createConnectionForm(collection, container, service),
-           section = container.find('#dialog-inner-content');
-
-       if (section) {
-         section.empty().append(form);
-         container.slideDown(400);
-       }
-      });
-    },
-    onManageModuleSelected: function(collection, swiperItem) {
-      //var selectedModule = $('.swiper-slide.selected');
-
-      // if module is selected, clicking again removes selection
-      if (selectedModule && selectedModule.length > 0) {
-        $('#service-create-button').prop('disabled', true).addClass('disabled');
-        selectedModule.removeClass('selected');
-        collection.selectedModule = null;
-      } else {
-        var currentSelectedModule = $(swiperItem.clickedSlide),
-            currentSelectedModuleId = currentSelectedModule.attr('data-uid');
-
-        currentSelectedModule.addClass('selected');
-        collection.selectedModule = currentSelectedModuleId;
-        $('#service-create-button').prop('disabled', false).removeClass('disabled');
+    onCreateServiceConnection: function (collection, service) {
+      if (!service) {
+        console.error('Service must be specified to create/edit connection.');
+        return;
       }
+
+      var form = service.createConnectionForm(collection, service);
+
+      var paramOrder = 1;
+
+      var editConnectionPage = {
+        name: 'connection|edit',
+        headerOptions: {
+          name: 'Create/Edit Connection',
+          description: 'You can specify options for your web service connection here. This web service would be doing ajax requests for data retrieval.',
+          icon: 'fa-chain',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: false,
+          hasWell: true,
+          container: $('<div id="dialog-content-id"></div>'),
+          content: $('<div id="dialog-inner-content"></div>')
+            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .append(form)
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Go<br/>Back',
+            icon: 'fa-arrow-left',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.getPage('service|edit', 'slideUpDown');
+            }
+          }, {
+            name: 'Add Query Strings',
+            icon: 'fa-key',
+            click: function(event) {
+              event.preventDefault();
+
+              var keyValueLabel = $('<div class="form-label"></div>'),
+                  keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+                  keyValueItem = $('<div class="form-item"></div>'),
+                  removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+                    .attr('data-order', paramOrder)
+                    .click(function(event) {
+                      var itemId = $(this).attr('data-order');
+                      $('div.form-row[data-order=' + itemId + ']').remove();
+                    }),
+                  formRow = $('<div class="form-row"></div>');
+
+              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+              formRow.append(keyValueLabel)
+                     .append(keyValueColumnBreak)
+                     .append(keyValueItem)
+                     .append(removeButton)
+                     .attr('data-order', paramOrder);
+              form.append(formRow);
+              ++paramOrder;
+            }
+          }, {
+            name: 'Save Connection',
+            icon: 'fa-save',
+            click: function(event) {
+              event.preventDefault();
+              service = service.events.onConnectionSave(service);
+              collection.dashboard.activeDialog.activePage.enableButton('Test Connection');
+            }
+          }, {
+            name: 'Test Connection',
+            id: 'connection-page-button-test',
+            disabled: true,
+            icon: 'fa-bolt',
+            click: function(event) {
+              event.preventDefault();
+              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+              service.events.onConnectionTest(service);
+            }
+          }]
+        }
+      };
+
+      managementDialog.dashboard = collection.dashboard;
+      managementDialog.orchestrator = collection.dashboard.orchestrator;
+      managementDialog.pages.push(new MDialogPage(editConnectionPage, managementDialog));
+      managementDialog.getPage('connection|edit', 'slideUpDown');
     },
     onManageServices: function(collection) {
       var subHeader = 'Please add, remove or modify your modules and connections from this dialog.' +
         ' <strong>You can create new module clicking button below.</strong> When you have saved your new module, it would' +
         ' be placed in scroller section as you may see below. Create modules as many as you like. ' +
-        ' It is possible to create child modules and/or services. When you have finished creating services,' +
-        ' you may gather data for your widgets and charts.';
+        ' It is possible to create child modules and/or services.';
 
       var entrancePage = {
         name: 'module|main',
@@ -811,8 +1052,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             disabled: true,
             click: function(event) {
               event.preventDefault();
-              var container = $('#dialog-content-id');
-              if (collection.selectedModule) {
+              var container = $('#dialog-content-id'),
+                  orchestrator = collection.dashboard.orchestrator;
+
+              if (orchestrator.selected && orchestrator.selected instanceof MModule) {
                 collection.events.onCreateService(collection);
               } else {
                 console.error('Module not specified.');
@@ -830,6 +1073,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       };
 
       managementDialog.dashboard = collection.dashboard;
+      managementDialog.orchestrator = collection.dashboard.orchestrator;
       managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
       managementDialog.getPage('module|main', 'slideUpDown');
     }
@@ -888,8 +1132,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MWidget = function (ownerCollection, _options) {
     this.uid = getUniqueId(globalUniqueIdLength);
+    this.name = 'MWidget';
     this.xSize = 1;
     this.ySize = 1;
+    this.header = null;
+    this.description = null;
+    this.template = null;
     this.settings = true;
     this.collection = ownerCollection;
     this.isInitialized = false;
@@ -1077,7 +1325,110 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         });
       }
+    },
+    onSave: function(widget) {
+      widget.collection.add(widget);
     }
+  };
+  /**
+   * Gets "Create Widget" dialog page form values to create new widget
+   * @return {*}
+   */
+  MWidget.prototype.loadForm = function() {
+    var self = this;
+
+    self.header = $('.form-row .form-item .item-header').val();
+    self.template = $('.form-row .form-item .item-template').val();
+    self.description = $('.form-row .form-item .item-description').val();
+    // self.service not needed
+
+    return self;
+  };
+
+  /**
+   * Creates "Create Widget" dialog page form values
+   * @return {*|jQuery|HTMLElement}
+   */
+  MWidget.prototype.createForm = function() {
+    var self = this,
+        formContainer = $('<div class="widget-container"></div>'),
+        rows = [],
+        form = $('<form class="form"></form>');
+
+    _.each(self, function(value, key) {
+      var propertyRequired = false,
+          formRow = $('<div class="form-row"></div>'),
+          label = $('<div class="form-label"></div>'),
+          item = $('<div class="form-item"></div>'),
+          columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
+
+      switch(key) {
+        case 'uid':
+          label.append($('<span>ID</span>'));
+          item.append($('<span class="item-uid">' + value + '</span>'));
+          propertyRequired = true;
+          order = 1;
+          break;
+        case 'header':
+          label.append($('<span>Header</span>'));
+          item.append($('<input class="item-header" type="text" required autofocus />'));
+          propertyRequired = true;
+          order = 2;
+          break;
+        case 'template':
+          label.append($('<span>Template</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-template" rows="5"></textarea>'));
+          propertyRequired = true;
+          order = 4;
+          break;
+        case 'description':
+          label.append($('<span>Description</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-description" rows="2"></textarea>'));
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'service':
+          var services = $('<select class="item-service"></select>');
+
+          if (self.service) {
+            services.append($('<option value="' + self.service.uid + '" selected>' +
+              (self.service.name || self.service.uid) + '</option>'));
+          }
+          label.append($('<span>Service</span>'));
+          item.append(services);
+          propertyRequired = true;
+          order = 3;
+          break;
+      }
+
+      if (propertyRequired) {
+        rows[order] = {
+          label: label,
+          columnBreak: columnBreak,
+          item: item
+        };
+      }
+    });
+
+    for (var count = 0; count < rows.length; count++) {
+      var currentRowItem = rows[count],
+          formRow = $('<div class="form-row"></div>');
+
+      if (currentRowItem) {
+        formRow
+          .append(currentRowItem.label)
+          .append(currentRowItem.columnBreak)
+          .append(currentRowItem.item);
+
+        form.append(formRow);
+      }
+    }
+
+    formContainer.append(form);
+
+    return formContainer;
   };
   MWidget.prototype.serialize = function() {
     var self = this,
@@ -1085,7 +1436,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     serialized.mType = 'MWidget';
     serialized.contentType = self.contentType;
+    serialized.description = self.description;
+    serialized.template = self.template;
     serialized.col = self.col;
+    serialized.name = self.name;
     serialized.header = self.header;
     serialized.height = self.height;
     serialized.id = self.id;
@@ -1135,7 +1489,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     self.contentType = data.contentType;
     self.col = data.col;
+    self.name = data.name;
     self.header = data.header;
+    self.description = data.description;
+    self.template = data.template;
     self.height = data.height;
     self.id = data.id;
     self.isClosable = data.isClosable;
@@ -1479,7 +1836,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           formRow = $('<div class="form-row"></div>');
 
       if (currentRowItem) {
-        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
+        formRow
+          .append(currentRowItem.label)
+          .append(currentRowItem.columnBreak)
+          .append(currentRowItem.item);
+
         form.append(formRow);
       }
     }
@@ -1511,11 +1872,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       });
     },
-    onSelected: function(module) {
-      module.dashboard.collections[0].selectedModule = module.uid;
-      debugger;
+    onOrchestrationSelect: function(module) {
+      module.dashboard.orchestrator.selected = module;
     },
-    onDeselected: function(module) {
+    onOrchestrationDeselect: function(module) {
+      module.dashboard.orchestrator.selected = module;
     }
   };
   MModule.prototype.serialize = function() {
@@ -1618,19 +1979,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
       crossDomain: false,
       data: {},
-      //dataType: 'json'
+      dataType: 'json',
       global: true,
       headers: {},
       ifModified: false,
-      //jsonp: ''
+      jsonp: false,
       //jsonpCallback: function() {}
       //password: ''
       processData: true,
-      /*statusCode: {
-       404: function() {
-       alert( "page not found" );
-       }
-       }*/
       timeout: 30000, // 30sn
       type: 'GET',
       //username: ''
@@ -1688,15 +2044,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     function callMeMaybe() {
-      var request = $.ajax(self.ajaxOptions);
+      if (self.ajaxOptions.dataType === 'jsonp' && self.ajaxOptions.type == 'GET') {
+        /*var address = self.ajaxOptions.url,
+            queryStrings = [];
 
-      request.done(function (data, status, request) {
-        callback(null, data);
-      });
+        _.each(self.ajaxOptions.data, function(value, key) {
+          var queryString = '' + key + '=' + (value ? encodeURIComponent(value) : '');
+          queryStrings.push(queryString);
+        });
+        address = address + '?callback=?' + queryStrings.join('&');*/
 
-      request.fail(function (request, status, error) {
-        callback(error);
-      });
+        $.getJSON(self.ajaxOptions.url + '?callback=?', self.ajaxOptions.data, callback);
+      } else {
+        var request = $.ajax(self.ajaxOptions);
+
+        request.done(function (data, status, request) {
+           callback(null, data);
+         });
+
+         request.fail(function (request, status, error) {
+           callback(error);
+         });
+      }
     }
 
     if (self.schedule) {
@@ -1716,14 +2085,34 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    * @param callback
    */
   MService.prototype.loadConnectionForm = function() {
-    var self = this,
-        message = null;
+    var self = this;
 
     self.ajaxOptions.url = $('.form-row .form-item .item-url').val();
     self.ajaxOptions.type = $('.form-row .form-item .item-type').val();
+    self.ajaxOptions.dataType = $('.form-row .form-item .item-dataType').val();
 
+    /*
     var dataValue = $('.form-row .form-item .item-data').val();
     self.ajaxOptions.data = dataValue ? $.parseJSON(dataValue) : {};
+    */
+
+    var param = {};
+    $('.param-key').each(function() {
+      var key = $(this).val();
+
+      if (key) {
+          var orderId = $(this).attr('data-order'),
+              value = $('.param-value[data-order=' + orderId + ']').val();
+
+        if (value) {
+          param[key] = value; //$.parseJSON(value);
+        } else {
+          param[key] = '';
+        }
+      }
+    });
+
+    self.ajaxOptions.data = param;
 
     self.ajaxOptions.crossDomain  = $('.form-row .form-item .item-crossDomain').prop('checked');
     self.ajaxOptions.async        = $('.form-row .form-item .item-async').prop('checked');
@@ -1731,6 +2120,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.ajaxOptions.processData  = $('.form-row .form-item .item-processData').prop('checked');
     self.ajaxOptions.global       = $('.form-row .form-item .item-global').prop('checked');
     self.ajaxOptions.ifModified   = $('.form-row .form-item .item-ifModified').prop('checked');
+    self.ajaxOptions.jsonp        = $('.form-row .form-item .item-jsonp').prop('checked');
 
     self.ajaxOptions.contentType = $('.form-row .form-item .item-contentType').val();
 
@@ -1742,7 +2132,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  MService.prototype.createConnectionForm = function(collection, container, service) {
+  MService.prototype.createConnectionForm = function(collection, service) {
     var self = service,
         formContainer = $('<div class="service-ajax-container"></div>'),
         rows = [],
@@ -1758,7 +2148,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       switch(key) {
         case 'url':
           label.append($('<span>Url</span>'));
-          item.append($('<input class="item-url" type="text" required placeholder="http://test.merlon.com.tr/Service/Task/TaskService.svc/GetLatestTasks" />'));
+          item.append(
+            $('<input class="item-url" type="text" required placeholder="http://yourdomain.com/service" />')
+              .val('https://www.googleapis.com/freebase/v1/mqlread')
+          );
+          propertyRequired = true;
+          order = 3;
+          break;
+        case 'dataType':
+          label.append($('<span>Data Type</span>'));
+          var dataTypes = $('<select class="item-dataType"></select>')
+            .append($('<option value="xml">XML</option>'))
+            .append($('<option value="html">HTML</option>'))
+            .append($('<option value="script">Script</option>'))
+            .append($('<option value="json">JSON</option>'))
+            .append($('<option value="jsonp" selected>JSONP</option>'))
+            .append($('<option value="text">Text</option>'));
+          item.append(dataTypes);
           propertyRequired = true;
           order = 2;
           break;
@@ -1771,54 +2177,60 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 1;
           break;
-        case 'data':
+        /*case 'data':
           label.append($('<span>Arguments</span>'));
-          item.append($('<input class="item-data" type="text" placeholder="{ count:10 }" />'));
+          item.append($('<input class="item-data" type="text" placeholder="{ \"count:1\" }" />').val('{ "count":1 }'));
           propertyRequired = true;
           order = 3;
-          break;
+          break;*/
         case 'crossDomain':
           label.append($('<span>Cross Domain</span>'));
           item.append($('<input class="item-crossDomain" type="checkbox" />'));
           propertyRequired = true;
           order = 4;
           break;
+        case 'jsonp':
+          label.append($('<span>jsonp</span>'));
+          item.append($('<input class="item-jsonp" type="checkbox" checked="checked" />'));
+          propertyRequired = true;
+          order = 5;
+          break;
         case 'async':
           label.append($('<span>Asynchronous</span>'));
           item.append($('<input class="item-async" type="checkbox" checked="checked" />'));
           propertyRequired = true;
-          order = 5;
+          order = 6;
           break;
         case 'cache':
           label.append($('<span>Cache Results</span>'));
           item.append($('<input class="item-cache" type="checkbox" checked="checked" />'));
           propertyRequired = true;
-          order = 6;
+          order = 7;
           break;
         case 'processData':
-          label.append($('<span>Process Arguments</span>'));
+          label.append($('<span>Process Data</span>'));
           item.append($('<input class="item-processData" type="checkbox" />'));
           propertyRequired = true;
-          order = 7;
+          order = 8;
           break;
         case 'global':
           label.append($('<span>Global</span>'));
           item.append($('<input class="item-global" type="checkbox" checked="checked" />'));
           propertyRequired = true;
-          order = 8;
+          order = 9;
           break;
         case 'ifModified':
           label.append($('<span>If Modified</span>'));
           item.append($('<input class="item-ifModified" type="checkbox" />'));
           propertyRequired = true;
-          order = 9;
+          order = 10;
           break;
         case 'contentType':
           label.append($('<span>Content Type</span>'));
           item.append($('<input class="item-contentType" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
             .val('application/x-www-form-urlencoded; charset=UTF-8'));
           propertyRequired = true;
-          order = 10;
+          order = 11;
           break;
         case 'timeout':
           label.append($('<span>Timeout</span>'));
@@ -1831,7 +2243,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           columnBreak.css('vertical-align', 'top');
           item.append($('<textarea rows="2" class="item-headers" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>'));
           propertyRequired = true;
-          order = 11;
+          order = 13;
           break;
       }
 
@@ -1849,39 +2261,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           formRow = $('<div class="form-row"></div>');
 
       if (currentRowItem) {
-        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
+        formRow
+          .append(currentRowItem.label)
+          .append(currentRowItem.columnBreak)
+          .append(currentRowItem.item);
+
         form.append(formRow);
       }
     }
 
-    var saveConnectionButton = $('<button id="connection-save-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-
-        if (self.ajaxOptions.url) {
-          self.events.onConnectionSave(self);
-        }
-      })
-      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Save Connection</div>'));
-
-    var testConnectionButton = $('<button id="connection-test-button" type="button" class="button pull-left""></button>')
-      .click(function(event) {
-        event.preventDefault();
-        //$('.dialog').prop('disabled', true).addClass('passive-dialog loading');
-        self.events.onConnectionTest(self);
-      })
-      .append($('<div class="pull-left"><i class="fa fa-bolt fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Test Connection</div>'));
-
-    formContainer
-      .append(form)
-      .append('<hr class="mtb05" />')
-      .append(saveConnectionButton)
-      .append(testConnectionButton);
+    formContainer.append(form).append($('<div id="connection-page-result-test"></div>'));
 
     return formContainer;
-
   };
   /**
    * Get form values to put into service properties
@@ -2026,65 +2417,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           formRow = $('<div class="form-row"></div>');
 
       if (currentRowItem) {
-        formRow.append(currentRowItem.label).append(currentRowItem.columnBreak).append(currentRowItem.item);
+        formRow
+          .append(currentRowItem.label)
+          .append(currentRowItem.columnBreak)
+          .append(currentRowItem.item);
+
         form.append(formRow);
       }
     }
 
-    var createConnectionButton = $('<button id="add-connection-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-        collection.events.onCreateServiceConnection(collection, container, self);
-      })
-      .append($('<div class="pull-left"><i class="fa fa-chain fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Create Connection</div>'));
-
-    var paramOrder = 1;
-    var keyValueButton = $('<button id="key-value-button" type="button" class="button pull-left"></button>')
-      .click(function(event) {
-        event.preventDefault();
-
-        var keyValueLabel = $('<div class="form-label"></div>'),
-            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
-            keyValueItem = $('<div class="form-item"></div>'),
-            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
-              .attr('data-order', paramOrder)
-              .click(function(event) {
-                var itemId = $(this).attr('data-order');
-                $('div.form-row[data-order=' + itemId + ']').remove();
-              }),
-            formRow = $('<div class="form-row"></div>');
-
-        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
-        formRow.append(keyValueLabel)
-               .append(keyValueColumnBreak)
-               .append(keyValueItem)
-               .append(removeButton)
-               .attr('data-order', paramOrder);
-        form.append(formRow);
-        ++paramOrder;
-      })
-      .append($('<div class="pull-left"><i class="fa fa-key fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Add Key/Values</div>'));
-
-    var saveServiceButton = $('<button id="service-save-button" type="button" class="button pull-left disabled" disabled="disabled"></button>')
-      .click(function(event) {
-        event.preventDefault();
-        $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
-
-        // Save dashboard
-        self.events.onSave(self);
-      })
-      .append($('<div class="pull-left"><i class="fa fa-save fa-3x fa-white"></i></div>'))
-      .append($('<div class="button-text pull-left">Save Service</div>'));
-
-    formContainer
-      .append(form)
-      .append('<hr class="mtb05" />')
-      .append(createConnectionButton)
-      .append(keyValueButton)
-      .append(saveServiceButton);
+    formContainer.append(form);
 
     return formContainer;
   };
@@ -2104,7 +2446,54 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       });
     },
     onConnectionSave: function (service) {
-      service = service.loadConnectionForm();
+      return service.loadConnectionForm();
+      //service.module.dashboard.save(service.module.dashboard.events.onSaved);
+    },
+    onConnectionTest: function (service) {
+      // empty result section
+      var resultContainer = $('#connection-page-result-test');
+      // clear container
+      resultContainer.empty().removeClass('error').removeClass('success');
+
+      // TODO: change error, data to jquery callback style
+      // https://www.googleapis.com/freebase/v1/mqlread
+      // { "query": { "type":"/music/artist", "name":"The Police", "album":[] } }
+      service.begin(function (error, data) {
+        debugger;
+        if (error) {
+          $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
+
+          var resultMessage = $('<div></div>').addClass('error').append('Service request failed.');
+          var dataMessage = $('<div></div>').append(error);
+          resultContainer.append(resultMessage).append('<hr/>').append(dataMessage);
+        } else {
+          $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
+
+          if (data) {
+            var resultMessage = $('<div></div>').addClass('success').append('Service request successful.');
+            var dataMessage = $('<div></div>').append($('<code></code>').append(data));
+            resultContainer.append(resultMessage).append('<hr/>').append(dataMessage);
+          } else {
+            var resultMessage = $('<div></div>').addClass('success').append('Service request successful. But no result returned.');
+            resultContainer.append(resultMessage).append('<hr/>');
+          }
+        }
+      });
+
+      /*
+      var service_url = 'https://www.googleapis.com/freebase/v1/search';
+
+      var params = {
+        'query': 'Madonna',
+        'filter': '(any type:/music/artist)',
+        'limit': 10,
+        'indent': true
+      };
+
+      $.getJSON(service_url + '?callback=?', params, function(response, status, jqXHR) {
+        $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
+      });
+      */
     }
   };
 
@@ -2114,6 +2503,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.name = 'MDialog';
     this.dashboard = null;
     this.activePage = null;
+    this.orchestrator = null;
     this.container = null;
     this.pages = [];
 
@@ -2127,10 +2517,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return this;
   };
+  /**
+   * Dailog events
+   * @type {Object}
+   */
   MDialog.prototype.events = {
     onDialogReady: function(dialog) {
+      dialog.dashboard.activeDialog = dialog;
       // when the first time dialgo showed up
-
     },
     onPageReady: function(dialogPage) {
       // when dialog page changed
@@ -2139,13 +2533,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       dialog.dealloc();
     }
   };
+  /**
+   * Show dialog page with pageNumber or DialogPage.name
+   * @param identifier pageNumber or DialogPage.name
+   * @param animationType 'slideUpDown'
+   * @return {*}
+   */
   MDialog.prototype.getPage = function(identifier, animationType) {
     var self = this;
 
     if (identifier && _.isNumber(identifier)) {
       if (self.pages && self.pages.length > identifier) {
         selectedPage = self.pages[index];
-        selectedPage.dialog.activePage = selectedPage.uid;
+        selectedPage.dialog.activePage = selectedPage;
         return selectedPage.build(animationType);
       } else {
         return null;
@@ -2158,7 +2558,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         });
 
         if (selectedPage) {
-          selectedPage.dialog.activePage = selectedPage.uid;
+          selectedPage.dialog.activePage = selectedPage;
           return selectedPage.build(animationType);
         } else {
           return null;
@@ -2255,7 +2655,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    		for (var cell = 0, cl = content.clientWidth/sizeX; cell < cl; cell++) {
    			elem = document.createElement("div");
    			elem.className = "scroller-cell";
-   			//elem.style.backgroundColor = row%2 + cell%2 > 0 ? "#ccc" : "";
    			elem.innerHTML = '&nbsp;';
    			frag.appendChild(elem);
    		}
@@ -2281,6 +2680,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
    	// Event Handler
    	if ('ontouchstart' in window) {
+      if (!!container.touchstart)
    		container.addEventListener("touchstart", function(e) {
    			// Don't react if initial down happens on a form element
    			if (e.target.tagName.match(/input|textarea|select/i)) {
@@ -2346,6 +2746,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     if (self.dashboard && self.dashboard.orchestrator) {
       self.dashboard.orchestrator.clear();
     }
+
+    self.pages.length = 0;
+    //self.dashboard.activeDialog = null;
   };
 
   MDialogPage = function(_options, _ownerDialog) {
@@ -2400,6 +2803,30 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return this;
   };
   MDialogPage.prototype.dialog = typeof MDialog;
+
+  MDialogPage.prototype.setButtonState = function(buttonName, disable) {
+    var self = this;
+
+    _.each(self.footerOptions.buttons, function(currentButton, index) {
+      if (currentButton.name === buttonName) {
+
+        self.footerOptions.buttons[index].disabled = disable;
+        self.footerOptions.buttons[index].reference.prop('disabled', disable);
+
+        if (disable) {
+          self.footerOptions.buttons[index].reference.addClass('disabled');
+        } else {
+          self.footerOptions.buttons[index].reference.removeClass('disabled');
+        }
+      }
+    });
+  };
+  MDialogPage.prototype.enableButton = function(buttonName) {
+    this.setButtonState(buttonName, false);
+  };
+  MDialogPage.prototype.disableButton = function(buttonName) {
+    this.setButtonState(buttonName, true);
+  };
   MDialogPage.prototype.setHeader = function(_options) {
     var self = this,
         _options = _options || {},
@@ -2429,6 +2856,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         headerClass.css('text-align', 'center');
         break;
     }
+
+    self.headerOptions.reference = headerClass;
     return headerClass;
   };
   MDialogPage.prototype.setBody = function(_options) {
@@ -2446,7 +2875,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     if (self.bodyOptions.hasScroller) {
       content.append(scroller);
     }
-    return container.append(content);
+
+    var result = container.append(content);
+    self.bodyOptions.reference = result;
+    return result;
   };
   MDialogPage.prototype.setFooter = function(_options) {
     var self = this,
@@ -2495,6 +2927,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       buttons.push(btn);
       footerContainer.append(btn);
+      self.footerOptions.buttons[index].reference = btn;
     });
 
     return footerContainer;
@@ -2506,14 +2939,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         footer = self.setFooter(),
         existingDialog = $('.dialog'),
         dialogIsActive = existingDialog.length > 0,
-        dialogContainer = dialogIsActive ? existingDialog : $('<div class="dialog"></div>');
-
-    self.dialog.container = dialogContainer;
-    var render = null;
+        dialogContainer = dialogIsActive ? existingDialog : $('<div class="dialog"></div>'),
+        render = null;
 
     if (!dialogIsActive) {
       render = dialogContainer.append(header).append(body).append(footer);
-      self.dialog.boxer = $.boxer(render);
+      self.dialog.container = dialogContainer;
+      self.dialog.boxer = $.boxer(render, {
+        onClose: function(boxerDialog) {
+          self.dialog.events.onDialogClosed(self.dialog);
+        }
+      });
+
     } else {
       if (animationType) {
         switch(animationType) {
@@ -2521,6 +2958,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             dialogContainer.slideUp(400, function() {
               render = dialogContainer.empty().append(header).append(body).append(footer);
               dialogContainer.slideDown(400, function() {
+                self.dialog.container = dialogContainer;
                 self.dialog.events.onPageReady(self);
               });
             });
@@ -2528,6 +2966,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       } else {
         render = dialogContainer.empty().append(header).append(body).append(footer);
+        self.dialog.container = dialogContainer;
         self.dialog.events.onPageReady(self);
       }
     }
@@ -2548,9 +2987,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       self.dialog.events.onDialogReady(self.dialog);
     });
+
   };
 
   managementDialog = new MDialog();
+  addItemDialog = new MDialog();
+  editWidgetDialog = new MDialog();
+  editChartDialog = new MDialog();
 
   /**
    * Authorizes any component like (MModule, MService, MDialog, MWidget)
@@ -2611,6 +3054,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MOrchestration';
     this.container = null;
+    this.selected = null;
 
     _.extend(this, _options);
 
@@ -2638,10 +3082,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return self;
   };
   MOrchestrator.prototype.render = function(container) {
+    var self = this;
+
     if (container &&
         self.dashboard &&
         self.dashboard.modules &&
         self.dashboard.modules.length > 0) {
+
+      $(container).empty();
 
       self.container = container;
 
@@ -2669,7 +3117,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         getImage(module.image, function(result) {
           var width = result.width,
               height = result.height,
-              item = $('<img />').attr('src', module.image).addClass('m-module');
+              item = $('<img />')
+                .prop('src', module.image)
+                .attr('draggable', true)
+                .addClass('m-module');
 
           if (width > 128) {
             var ratio = 128 / width,
@@ -2685,9 +3136,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           item.click(function(event) {
             item.toggleClass('m-selected');
             if (item.hasClass('m-selected')) {
-              module.events.onSelected(module);
+              self.events.onModuleSelected(module);
             } else {
-              module.events.onDeselected(module);
+              self.events.onModuleDeselected(module);
             }
           });
 
@@ -2703,13 +3154,39 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       ///////////////
 
     } else if (container) {
-      $(container).html('<h3 style="margin:1em">Please create at least one module to begin</h3>');
+      $(container)
+        .empty()
+        .html('<h3 style="margin:1em">Please create at least one module to begin</h3>');
     }
   };
   MOrchestrator.prototype.clear = function() {
     var self = this;
     if (self.container) {
       $(self.container).empty();
+    }
+  };
+  MOrchestrator.prototype.events = {
+    onModuleSelected: function(module) {
+      var orchestrator = module.dashboard.orchestrator;
+      orchestrator.selected = module;
+      // management dialog
+      module.dashboard.activeDialog.activePage.enableButton('Create Service');
+      // add widget dialog
+      if (module.service) {
+        module.dashboard.activeDialog.activePage.enableButton('Create Widget');
+      }
+      module.events.onOrchestrationSelect(module);
+    },
+    onModuleDeselected: function(module) {
+      var orchestrator = module.dashboard.orchestrator;
+      orchestrator.selected = null;
+      // management dialog
+      module.dashboard.activeDialog.activePage.disableButton('Create Service');
+      // add widget dialog
+      if (module.service) {
+        module.dashboard.activeDialog.activePage.disableButton('Create Widget');
+      }
+      module.events.onOrchestrationDeselect(module);
     }
   };
 

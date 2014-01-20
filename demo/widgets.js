@@ -297,10 +297,11 @@ var widgets = [
         widget.isRendered = true;
       }
     }
-  },
+  }
 
   // mwidget-5
   // highcharts gauge
+  /*
   { row: 3,
     col: 3,
     header: "header 5",
@@ -423,5 +424,5 @@ var widgets = [
         ]
       }
     }
-  }
+  }*/
 ];

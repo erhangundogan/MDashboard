@@ -35,7 +35,7 @@
       dashboard.collections[0].invalidate().render();
     } else {
       dashboard.createCollection(function(err, collection) {
-        collection.add(widgets).render();
+        collection.render();
       });
     }
   </script>

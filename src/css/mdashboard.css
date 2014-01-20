@@ -397,6 +397,7 @@ body {
   width: 100%;
   overflow: auto;
   z-index: 11;
+  margin-top: .25em;
 }
 
 #scroller-container {
@@ -496,17 +497,25 @@ body {
   background: transparent url('images/merlon-logo-small.png') center no-repeat;
 }
 
-.module-container, .service-container, .service-ajax-container {
+.widget-container,
+.module-container,
+.service-container,
+.service-ajax-container {
   overflow: hidden;
 }
 
-.module-container .form, .service-container .form, .service-ajax-container .form {
+.widget-container .form,
+.module-container .form,
+.service-container .form,
+.service-ajax-container .form {
   display: block;
   width: 100%;
   font-size: 12pt;
 }
 
-.module-container .form-label, .service-container .form-label {
+.widget-container .form-label,
+.module-container .form-label,
+.service-container .form-label {
   width: 16%;
   display: inline-block;
   text-align: right;
@@ -514,23 +523,32 @@ body {
 }
 
 .service-ajax-container .form-label {
-  width: 24%;
+  width: 20%;
   display: inline-block;
   text-align: right;
   font-weight: bold;
 }
 
-.module-container .form-break, .service-container .form-break, .service-ajax-container form-break {
+.widget-container .form-break,
+.module-container .form-break,
+.service-container .form-break,
+.service-ajax-container form-break {
   text-align: center;
   display: inline-block;
 }
 
-.module-container .form-item, .service-container .form-item, .service-ajax-container .form-item {
+.widget-container .form-item,
+.module-container .form-item,
+.service-container .form-item,
+.service-ajax-container .form-item {
   display: inline-block;
   text-align: left;
 }
 
-.module-container .form-button, .service-container .form-button, .service-ajax-container .form-button {
+.widget-container .form-button,
+.module-container .form-button,
+.service-container .form-button,
+.service-ajax-container .form-button {
   display: inline-block;
   margin-left: .5em;
   vertical-align: middle;
@@ -545,7 +563,9 @@ body {
   border: 1px solid #666;
 }
 
-.form-item input[type=text] , .form-item textarea, .form-item select {
+.form-item input[type=text],
+.form-item textarea,
+.form-item select {
   width: 475px;
   border-radius: 4px;
   padding: .25em;
@@ -645,10 +665,10 @@ form.form, .form-row {
 .m-module {
   margin: 1em;
   padding: .25em;
-  border-width: 5px;
+  border-width: 2px;
   border-style: dotted;
   border-radius: 8px;
-  border-color: #CCC;
+  border-color: transparent;
 }
 
 .m-module:hover {
@@ -659,4 +679,22 @@ form.form, .form-row {
 .m-selected {
   border-style: solid;
   border-color: #f00;
+}
+
+.error {
+  color: #a00;
+  font-weight: bold;
+}
+
+.success {
+  color: #0a0;
+  font-weight: bold;
+}
+
+#connection-page-result-test {
+  margin: 1em;
+}
+
+#connection-page-result-test hr {
+  margin: .5em;
 }
