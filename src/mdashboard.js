@@ -27,9 +27,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       widget_base_dimensions: [400, 225],
       extra_rows: 0,
       extra_cols: 0,
-      min_cols: 1,
+      min_cols: 3,
       max_cols: null,
-      min_rows: 15,
+      min_rows: 3,
       max_size_x: false,
       autogenerate_stylesheet: true,
       avoid_overlapped_widgets: true,
@@ -258,7 +258,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       localStorage.setItem(dataId, JSON.stringify(data));
     } catch (exception) {
       // oldies but goldies
-      if (oldItem) localStorage.setItem(oldItem);
+      console.error(exception);
+      if (oldItem) localStorage.setItem(dataId, oldItem);
       else if (storageCheck) clearInterval(storageCheck);
 
       callback(exception);
@@ -427,19 +428,29 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       widget_margins: [25, 25],
       resize: {
         enabled: true,
-        stop: function (e, ui, $widget) {
+        stop: function (event, ui, $widget) {
           var resizedWidgetId = $widget.attr('id'),
               resizedWidget = _.find(self.widgets, function (item) {
                 return item.id === resizedWidgetId;
               });
 
           if (resizedWidget) {
-            resizedWidget.invalidate();
+            resizedWidget.events.onResized(resizedWidget, event, ui);
           }
         }
       },
       draggable: {
-        handle: widgetHandle
+        handle: widgetHandle,
+        stop: function(event, ui) {
+          var draggedWidgetId =  ui.$player.attr('id'),
+              draggedWidget = _.find(self.widgets, function (item) {
+                return item.id === draggedWidgetId;
+              });
+
+          if (draggedWidget) {
+            draggedWidget.events.onDragged(draggedWidget, event, ui);
+          }
+        }
       }
     });
 
@@ -477,6 +488,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MWidgetCollection.prototype.invalidate = function () {
     var self = this;
 
+    //debugger;
     self.width = $(self.container).width();
     self.height = self.container.is('body') ? $(window).height() : $(self.container).height();
     self.columnMargin = self.collectionOptions.widget_margins[0];
@@ -492,6 +504,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         yCount += widget.ySize;
       }
     });
+
+    // widget minimums
+    xCount = xCount < self.collectionOptions.min_cols ? self.collectionOptions.min_cols : xCount;
+    yCount = yCount < self.collectionOptions.min_rows ? self.collectionOptions.min_rows : yCount;
 
     var xWidth = parseInt((self.width / xCount) - (2 * self.columnMargin));
     var yHeight = parseInt((self.height / yCount) - (2 * self.rowMargin));
@@ -538,6 +554,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           });
         buttons.push(manageButton);
       }
+
+      // Add save button
+      var saveButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-save"></i></a>')
+        .attr('title', 'Save Dashboard')
+        .click(function () {
+          self.dashboard.save(self.dashboard.events.onSaved);
+        });
+      buttons.push(saveButton);
 
       self.toolbar.empty();
 
@@ -670,8 +694,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var widget = new MWidget(collection),
           module = collection.dashboard.orchestrator.selected;
 
-      if (module && module.service) {
+       if (module) {
         widget.service = module.service;
+        widget.header = module.name;
+        widget.contentType = 'html';
       }
 
       var form = widget.createForm();
@@ -703,11 +729,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             name: 'Save Widget',
             icon: 'fa-save',
             click: function(event) {
-              debugger;
               event.preventDefault();
-              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
-
-              // Save dashboard
               widget.events.onSave(widget);
             }
           }]
@@ -1135,6 +1157,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.name = 'MWidget';
     this.xSize = 1;
     this.ySize = 1;
+    this.row = 1;
+    this.col = 1;
     this.header = null;
     this.description = null;
     this.template = null;
@@ -1192,7 +1216,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MWidget.prototype.render = function () {
     var self = this,
       item = $('<li></li>').attr('id', this.id),
-      contentSection = $('<div></div>').addClass('mwidget-content').addClass('loading'),
+      contentSection = $('<div></div>').addClass('mwidget-content'); //.addClass('loading'), // TODO
       options = Object.keys(self);
 
     self.mainContainer = item;
@@ -1227,7 +1251,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
           break;
         case 'html':
-          if (self.contentType === "html" && self.html.render) {
+          if (self.contentType === "html" && self.html && self.html.render) {
             contentSection.append(self.html.render(self));
           }
           //contentSection.append(self.content);
@@ -1284,7 +1308,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         self.height -= (headerPaddingTop + headerPaddingBottom);
       }
     }
-    self.container.height(self.height).addClass('loading');
+    self.container.height(self.height); //.addClass('loading');
 
     var widgetIsRendered = setInterval(function () {
       if (self.isRendered) {
@@ -1296,7 +1320,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     if (self.contentType === "chart" && self.chart) {
       self.chart.render(self);
     } else if (self.contentType === "html" && self.html) {
-      self.container.append(self.html.render(self));
+      if (self.html.render) {
+        self.container.append(self.html.render(self));
+      }
+    } else {
+      self.container.removeClass('loading');
     }
 
   };
@@ -1325,10 +1353,34 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         });
       }
+
+      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
     onSave: function(widget) {
-      widget.collection.add(widget);
+      widget = widget.loadForm();
+
+      widget.collection.widgets.push(widget);
+      //widget.collection.events.onCollectionChange(widget.collection);
+      //widget.collection.invalidate().render();
+      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+      widget.collection.redraw();
+    },
+    onResized: function(widget, event, ui) {
+      widget.invalidate();
+      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+    },
+    onDragged: function(widget, event, ui) {
+      if (widget.mainContainer) {
+        widget.col = widget.mainContainer.attr('data-col');
+        widget.row = widget.mainContainer.attr('data-row');
+      } else {
+        var mainContainer = $('#' + widget.id);
+        widget.col = mainContainer.attr('data-col');
+        widget.row = mainContainer.attr('data-row');
+      }
+      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     }
+
   };
   /**
    * Gets "Create Widget" dialog page form values to create new widget
@@ -1337,8 +1389,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MWidget.prototype.loadForm = function() {
     var self = this;
 
-    self.header = $('.form-row .form-item .item-header').val();
+    var headerText = $('.form-row .form-item .item-header').val();
+    self.header = headerText || self.header;
+
     self.template = $('.form-row .form-item .item-template').val();
+
+    self.row = $('.form-row .form-item .item-row').val();
+    self.col = $('.form-row .form-item .item-col').val();
+    self.xSize = $('.form-row .form-item .item-xsize').val();
+    self.ySize = $('.form-row .form-item .item-ysize').val();
+
     self.description = $('.form-row .form-item .item-description').val();
     // self.service not needed
 
@@ -1371,7 +1431,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'header':
           label.append($('<span>Header</span>'));
-          item.append($('<input class="item-header" type="text" required autofocus />'));
+          item.append($('<input class="item-header" type="text" required autofocus />').val(self.header));
           propertyRequired = true;
           order = 2;
           break;
@@ -1382,12 +1442,36 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 4;
           break;
+        case 'row':
+          label.append($('<span>Row</span>'));
+          item.append($('<input class="item-row" type="number" required />'));
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'col':
+          label.append($('<span>Column</span>'));
+          item.append($('<input class="item-col" type="number" required />'));
+          propertyRequired = true;
+          order = 6;
+          break;
+        case 'xSize':
+          label.append($('<span>Width Size</span>'));
+          item.append($('<input class="item-xsize" type="number" required />').val("1"));
+          propertyRequired = true;
+          order = 7;
+          break;
+        case 'ySize':
+          label.append($('<span>Height Size</span>'));
+          item.append($('<input class="item-ysize" type="number" required />').val("1"));
+          propertyRequired = true;
+          order = 8;
+          break;
         case 'description':
           label.append($('<span>Description</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
           item.append($('<textarea class="item-description" rows="2"></textarea>'));
           propertyRequired = true;
-          order = 5;
+          order = 9;
           break;
         case 'service':
           var services = $('<select class="item-service"></select>');
@@ -1435,10 +1519,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         serialized = {};
 
     serialized.mType = 'MWidget';
+
     serialized.contentType = self.contentType;
     serialized.description = self.description;
     serialized.template = self.template;
-    serialized.col = self.col;
     serialized.name = self.name;
     serialized.header = self.header;
     serialized.height = self.height;
@@ -1446,12 +1530,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.isClosable = self.isClosable;
     serialized.isLocked = self.isLocked;
     serialized.order = self.order;
-    serialized.row = self.row;
     serialized.settings = self.settings;
     serialized.uid = self.uid;
     serialized.width = self.width;
     serialized.xSize = self.xSize;
     serialized.ySize = self.ySize;
+    serialized.col = self.col;
+    serialized.row = self.row;
+
+    /*
+    if (self.mainContainer) {
+      serialized.col = self.mainContainer.attr('data-col') || self.col;
+      serialized.row = self.mainContainer.attr('data-row') || self.row;
+    }*/
 
     // collection
     serialized.collection = self.collection.uid;
@@ -1459,26 +1550,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     switch (self.contentType) {
       case 'html':
         serialized.html = {};
-        if (self.html.dataset) {
+        if (self.html && self.html.dataset) {
           serialized.html.dataset = _.isFunction(self.html.dataset)
             ? self.html.dataset.toString()
             : JSON.stringify(self.html.dataset);
         }
 
-        if (self.html.render) {
+        if (self.html && self.html.render) {
           serialized.html.render = _.isFunction(self.html.render)
             ? self.html.render.toString()
             : JSON.stringify(self.html.render);
         }
 
-        if (self.html.style) {
+        if (self.html && self.html.style) {
           serialized.html.style = _.isFunction(self.html.style)
             ? self.html.style.toString()
             : JSON.stringify(self.html.style);
         }
         break;
       case 'chart':
-        serialized.chart = self.chart.serialize();
+        if (self.chart) {
+          serialized.chart = self.chart.serialize();
+        }
         break;
     }
 
@@ -3107,31 +3200,63 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       /////////////// Visualization begins here
 
-      function drawModule(module, index) {
-        function getImage(path, callback) {
-          var image = new Image;
-          image.onload = function() { callback(image); };
-          image.src = path;
-        }
+      function drawModule(module) {
 
-        getImage(module.image, function(result) {
-          var width = result.width,
-              height = result.height,
-              item = $('<img />')
-                .prop('src', module.image)
-                .attr('draggable', true)
-                .addClass('m-module');
+        var isChild = module.parent ? true : false;
 
-          if (width > 128) {
-            var ratio = 128 / width,
-                newWidth = Math.ceil(width * ratio) + 'px',
-                newHeight = Math.ceil(height * ratio) + 'px';
-
-            item.css({
-              width: newWidth,
-              height: newHeight
-            });
+        if (module.image) {
+          function getImage(path, callback) {
+            var image = new Image;
+            image.onload = function() { callback(image); };
+            image.src = path;
           }
+
+          getImage(module.image, function(result) {
+            var width = result.width,
+                height = result.height,
+                item = $('<img />')
+                  .prop('src', module.image)
+                  .attr('draggable', true)
+                  .addClass('m-module');
+
+            if (width > 128) {
+              var ratio = 128 / width,
+                  newWidth = Math.ceil(width * ratio) + 'px',
+                  newHeight = Math.ceil(height * ratio) + 'px';
+
+              item.css({
+                width: newWidth,
+                height: newHeight
+              });
+            }
+
+            item.addClass('pull-left');
+            item.click(function(event) {
+              item.toggleClass('m-selected');
+              if (item.hasClass('m-selected')) {
+                self.events.onModuleSelected(module);
+              } else {
+                self.events.onModuleDeselected(module);
+              }
+            });
+
+            if (!isChild) {
+              managementContainer.append(item.css('clear', 'left'));
+            } else {
+              managementContainer.append(item);
+            }
+
+          });
+        } else {
+          var item = $('<i class="fa fa-3x"></i>');
+
+          if (module.icon) {
+            item.addClass(module.icon);
+          } else {
+            item.addClass('fa-question-circle');
+          }
+
+          item.addClass('m-module');
 
           item.click(function(event) {
             item.toggleClass('m-selected');
@@ -3142,14 +3267,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
           });
 
-          managementContainer.append(item);
+          if (!isChild) {
+            managementContainer.append(item.css('clear', 'left'));
+          } else {
+            managementContainer.append(item);
+          }
 
+        }
+      }
+
+      function iterator(modules) {
+        _.each(modules, function(module, index) {
+          drawModule(module);
+          iterator(module.modules);
         });
       }
 
-      _.each(modules, function(module, index) {
-        drawModule(module, index);
-      });
+      iterator(modules);
 
       ///////////////
 
@@ -3172,9 +3306,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // management dialog
       module.dashboard.activeDialog.activePage.enableButton('Create Service');
       // add widget dialog
-      if (module.service) {
-        module.dashboard.activeDialog.activePage.enableButton('Create Widget');
-      }
+      module.dashboard.activeDialog.activePage.enableButton('Create Widget');
+
       module.events.onOrchestrationSelect(module);
     },
     onModuleDeselected: function(module) {
@@ -3183,9 +3316,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // management dialog
       module.dashboard.activeDialog.activePage.disableButton('Create Service');
       // add widget dialog
-      if (module.service) {
-        module.dashboard.activeDialog.activePage.disableButton('Create Widget');
-      }
+      module.dashboard.activeDialog.activePage.disableButton('Create Widget');
+
       module.events.onOrchestrationDeselect(module);
     }
   };

@@ -669,6 +669,7 @@ form.form, .form-row {
   border-style: dotted;
   border-radius: 8px;
   border-color: transparent;
+  float: left;
 }
 
 .m-module:hover {
