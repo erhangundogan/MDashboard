@@ -709,3 +709,9 @@ form.form, .form-row {
 #connection-page-result-test hr {
   margin: .5em;
 }
+
+/* swiper */
+.swiper-container, .swiper-wrapper {
+  height: 250px;
+}
+
