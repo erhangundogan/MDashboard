@@ -545,12 +545,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var buttons = [];
 
       // Add widget button
+      /*
       var addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-bar-chart-o"></i></a>')
         .attr('title', 'Add Widget')
         .click(function () {
           self.events.onAddWidget(self);
         });
       buttons.push(addButton);
+      */
 
       // Add save button
       var saveButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-save"></i></a>')
@@ -669,27 +671,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           align: 'left'
         },
         bodyOptions: {
-          hasScroller: true,
+          hasScroller: false,
           hasWell: true
         },
         footerOptions: {
           buttons: [{
-            name: 'Create Widget',
-            disabled: true,
-            icon: 'fa-list',
-            click: function(event) {
-              event.preventDefault();
-              collection.events.onCreateWidget(collection);
-            }
-          }, {
-            name: 'Create Chart',
-            disabled: true,
-            icon: 'fa-dashboard',
-            click: function(event) {
-              event.preventDefault();
-              debugger;
-            }
-          }, {
             name: 'Close Dialog',
             icon: 'fa-sign-out',
             click: function(event) {
@@ -738,7 +724,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
-              addItemDialog.getPage('widget|main', 'slideUpDown');
+              managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
             name: 'Save Widget',
@@ -751,10 +737,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       };
 
-      addItemDialog.dashboard = collection.dashboard;
-      addItemDialog.orchestrator = collection.dashboard.orchestrator;
-      addItemDialog.pages.push(new MDialogPage(createWidgetPage, addItemDialog));
-      addItemDialog.getPage('widget|create', 'slideUpDown');
+      managementDialog.dashboard = collection.dashboard;
+      managementDialog.orchestrator = collection.dashboard.orchestrator;
+      managementDialog.pages.push(new MDialogPage(createWidgetPage, managementDialog));
+      managementDialog.getPage('widget|create', 'slideUpDown');
     },
     onCreateModule: function (collection) {
       var module = new MModule(),
@@ -1094,6 +1080,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
               if (orchestrator.selected && orchestrator.selected instanceof MModule) {
                 collection.events.onCreateService(collection);
+              } else {
+                console.error('Module not specified.');
+              }
+            }
+          }, {
+            name: 'Create Widget',
+            disabled: true,
+            icon: 'fa-list',
+            click: function(event) {
+              event.preventDefault();
+              var orchestrator = collection.dashboard.orchestrator;
+
+              if (orchestrator.selected && orchestrator.selected instanceof MModule) {
+                collection.events.onCreateWidget(collection);
               } else {
                 console.error('Module not specified.');
               }
@@ -2990,7 +2990,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this,
         buttons = [],
         _options = _options || {},
-        footerContainer = $('<div class="dialog-footer clearfix"></div>');
+        footerContainer = $('<div class="dialog-footer clearfix"></div>'),
+        buttonContainer = $('<div class="dialog-footer-buttons"></div>');
 
     _.extend(_options, self.footerOptions);
 
@@ -3032,11 +3033,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       });
 
       buttons.push(btn);
-      footerContainer.append(btn);
+      buttonContainer.append(btn);
       self.footerOptions.buttons[index].reference = btn;
     });
 
-    return footerContainer;
+    return footerContainer.append(buttonContainer);
   };
   MDialogPage.prototype.build = function(animationType) {
     var self = this,
@@ -3097,9 +3098,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
 
   managementDialog = new MDialog();
-  addItemDialog = new MDialog();
-  editWidgetDialog = new MDialog();
-  editChartDialog = new MDialog();
+  //addItemDialog = new MDialog();
+  //editWidgetDialog = new MDialog();
+  //editChartDialog = new MDialog();
 
   /**
    * Authorizes any component like (MModule, MService, MDialog, MWidget)
@@ -3214,15 +3215,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       /////////////// Visualization begins here
 
       function drawModule(module, callback) {
-
         var isChild = module.parent ? true : false,
             moduleId = module.uid,
             parentId = module.parent ? module.parent.uid : null;
             moduleContainer = null;
 
-        if (isChild) {
-          moduleContainer = $('.module-container[data-uid=' + parentId + ']');
-        } else {
+        if (!isChild) {
           moduleContainer = $('<div class="module-container"></div>').attr('data-uid', moduleId);
           managementContainer.append(moduleContainer);
         }
@@ -3255,17 +3253,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
             item.addClass('pull-left');
             item.click(function(event) {
-              item.toggleClass('m-selected');
               if (item.hasClass('m-selected')) {
-                self.events.onModuleSelected(module);
-              } else {
+                item.removeClass('m-selected');
                 self.events.onModuleDeselected(module);
+              } else {
+                // remove others
+                $('.m-selected').removeClass('m-selected');
+                item.addClass('m-selected');
+                self.events.onModuleSelected(module);
               }
             });
 
+            moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
             moduleContainer.append(item);
-
-            callback();
           });
         } else {
           var item = $('<i class="fa fa-5x"></i>');
@@ -3276,31 +3276,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             item.addClass('fa-question-circle');
           }
 
-          item.addClass('m-module');
-
+          item.addClass('m-module').addClass('pull-left');
           item.click(function(event) {
-            item.toggleClass('m-selected');
             if (item.hasClass('m-selected')) {
-              self.events.onModuleSelected(module);
-            } else {
+              item.removeClass('m-selected');
               self.events.onModuleDeselected(module);
+            } else {
+              // remove others
+              $('.m-selected').removeClass('m-selected');
+              item.addClass('m-selected');
+              self.events.onModuleSelected(module);
             }
           });
 
+          moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
           moduleContainer.append(item);
-
-          callback();
-
         }
       }
 
       var row = 0;
 
-      function iterator(modules) {
-        _.each(modules, function(module, index) {
-          drawModule(module, function() {
-            iterator(module.modules);
-          });
+      function iterator(moduleModules) {
+        //debugger;
+        _.each(moduleModules, function(module, index) {
+          drawModule(module);
+          iterator(module.modules);
         });
       }
 

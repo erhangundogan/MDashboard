@@ -242,6 +242,7 @@ body {
   margin-top: -40px;
 }
 
+
 .button {
   color: #333;
   background-color: #e5e5e5;
@@ -249,7 +250,7 @@ body {
   display: inline-block;
   padding: .5em .3em .1em .5em;
   margin: 0 .5em 0 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: normal;
   text-align: center;
   white-space: normal;
@@ -257,6 +258,7 @@ body {
   cursor: pointer;
   background-image: none;
   border-radius: 8px;
+  float: left;
 
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -366,16 +368,24 @@ body {
 }
 
 .dialog .dialog-footer {
+  width: 690px;
+  height: 75px;
   position: absolute;
-  bottom: 5px;
+  bottom: 0;
   left: 5px;
   z-index: 10;
+  overflow: hidden;
 }
 
 .dialog .dialog-body {
   width: 650px;
   background-color: #F5F2EF;
   border-radius: 5px;
+}
+
+.dialog-footer-buttons {
+  width: 690px;
+  overflow: hidden;
 }
 
 #dialog-content-id {
