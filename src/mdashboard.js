@@ -324,6 +324,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         console.log('Dashboard saved successfully');
       }
+    },
+    onDeleteConfig: function(dashboard) {
+      var userId = dashboard.account && dashboard.account.userId ? dashboard.account.userId : '',
+          dataId = 'dashboard' + userId;
+
+      localStorage.removeItem(dataId);
+      window.location.reload(true);
     }
   };
   /**
@@ -545,6 +552,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         });
       buttons.push(addButton);
 
+      // Add save button
+      var saveButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-save"></i></a>')
+        .attr('title', 'Save Dashboard')
+        .click(function () {
+          self.dashboard.save(self.dashboard.events.onSaved);
+        });
+      buttons.push(saveButton);
+
       // Add management button
       if (self.dashboard.account && self.dashboard.account.roles.indexOf('admin') >= 0) {
         var manageButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-cogs"></i></a>')
@@ -553,15 +568,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             self.events.onManageServices(self);
           });
         buttons.push(manageButton);
+
+        var deleteButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-times-circle-o"></i></a>')
+          .attr('title', 'Delete Configuration')
+          .click(function () {
+            self.dashboard.events.onDeleteConfig(self.dashboard);
+          });
+        buttons.push(deleteButton);
       }
 
-      // Add save button
-      var saveButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-save"></i></a>')
-        .attr('title', 'Save Dashboard')
-        .click(function () {
-          self.dashboard.save(self.dashboard.events.onSaved);
-        });
-      buttons.push(saveButton);
 
       self.toolbar.empty();
 
