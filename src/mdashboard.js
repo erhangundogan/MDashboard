@@ -23,13 +23,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     gridsterOptions = {
       namespace: '',
       widget_selector: 'li',
-      widget_margins: [10, 10],
-      widget_base_dimensions: [400, 225],
+      widget_margins: [20, 20],
+      widget_base_dimensions: [200, 125],
       extra_rows: 0,
       extra_cols: 0,
-      min_cols: 3,
+      min_cols: 10,
       max_cols: null,
-      min_rows: 3,
+      min_rows: 6,
       max_size_x: false,
       autogenerate_stylesheet: true,
       avoid_overlapped_widgets: true,
@@ -44,7 +44,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       collision: {},
       draggable: {
         items: '.gs-w',
-        distance: 4
+        distance: 10
       },
       resize: {
         enabled: false,
@@ -171,7 +171,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MDashboard.prototype.account = typeof MAccount;
   MDashboard.prototype.orchestrator = typeof MOrchestrator;
-
   /**
    * MDashboard Initialize
    * @param _options MDashboard Options (optional)
@@ -498,6 +497,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     //debugger;
     self.width = $(self.container).width();
     self.height = self.container.is('body') ? $(window).height() : $(self.container).height();
+
     self.columnMargin = self.collectionOptions.widget_margins[0];
     self.rowMargin = self.collectionOptions.widget_margins[1];
     self.collectionOptions.widget_base_dimensions = [self.width, self.height];
@@ -1419,7 +1419,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-
   /**
    * Creates "Create Widget" dialog page form values
    * @return {*|jQuery|HTMLElement}
@@ -2042,7 +2041,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.dashboard = owner.dashboard;
     }
 
-    if (data.modules && data.modules > 0) {
+    if (data.modules && data.modules.length > 0) {
       self.modules = _.map(data.modules, function(moduleData, index) {
         var newModule = new MModule();
         return newModule.deserialize(moduleData, self);
@@ -2187,7 +2186,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       callMeMaybe();
     }
   };
-
   /**
    * Get connection form values to put into service ajax properties
    * @param callback
@@ -2853,6 +2851,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     // frees scroller events
     if (self.dashboard && self.dashboard.orchestrator) {
       self.dashboard.orchestrator.clear();
+      self.dashboard.orchestrator.selected = null;
     }
 
     self.pages.length = 0;
@@ -2911,7 +2910,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return this;
   };
   MDialogPage.prototype.dialog = typeof MDialog;
-
   MDialogPage.prototype.setButtonState = function(buttonName, disable) {
     var self = this;
 
@@ -3215,9 +3213,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       /////////////// Visualization begins here
 
-      function drawModule(module) {
+      function drawModule(module, callback) {
 
-        var isChild = module.parent ? true : false;
+        var isChild = module.parent ? true : false,
+            moduleId = module.uid,
+            parentId = module.parent ? module.parent.uid : null;
+            moduleContainer = null;
+
+        if (isChild) {
+          moduleContainer = $('.module-container[data-uid=' + parentId + ']');
+        } else {
+          moduleContainer = $('<div class="module-container"></div>').attr('data-uid', moduleId);
+          managementContainer.append(moduleContainer);
+        }
 
         if (module.image) {
           function getImage(path, callback) {
@@ -3255,15 +3263,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             });
 
-            if (!isChild) {
-              managementContainer.append(item.css('clear', 'left'));
-            } else {
-              managementContainer.append(item);
-            }
+            moduleContainer.append(item);
 
+            callback();
           });
         } else {
-          var item = $('<i class="fa fa-3x"></i>');
+          var item = $('<i class="fa fa-5x"></i>');
 
           if (module.icon) {
             item.addClass(module.icon);
@@ -3282,19 +3287,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
           });
 
-          if (!isChild) {
-            managementContainer.append(item.css('clear', 'left'));
-          } else {
-            managementContainer.append(item);
-          }
+          moduleContainer.append(item);
+
+          callback();
 
         }
       }
 
+      var row = 0;
+
       function iterator(modules) {
         _.each(modules, function(module, index) {
-          drawModule(module);
-          iterator(module.modules);
+          drawModule(module, function() {
+            iterator(module.modules);
+          });
         });
       }
 

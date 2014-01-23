@@ -663,7 +663,7 @@ form.form, .form-row {
 }
 
 .m-module {
-  margin: 1em;
+  margin: .25em;
   padding: .25em;
   border-width: 2px;
   border-style: dotted;
