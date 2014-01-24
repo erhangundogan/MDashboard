@@ -2900,6 +2900,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.dashboard.orchestrator.renderSwiper(swiper, defaults);
     }
 
+    $('.swiper-parent-item').on('click', function() {
+      debugger;
+    });
+
   };
   MDialog.prototype.dealloc = function() {
     var self = this;
@@ -2911,7 +2915,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       if (self.dashboard.orchestrator.swiper) {
         var swiper = $('.swiper-container').data('swiper');
-        swiper.destroy();
+
+        if (swiper) {
+          swiper.destroy();
+        }
         self.dashboard.orchestrator.swiper = null;
         self.dashboard.orchestrator.swiperOptions = null;
       }
@@ -2948,7 +2955,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       container: $('<div id="dialog-content-id"></div>'),
       content: $('<div id="dialog-inner-content"></div>'),
       scroller: $('<div id="scroller-container"><div id="scroller-content"><div id="scroller-panel"></div></div></div>'),
-      swiper: $('<ul id="swiper-parent-module"></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div>')
+      swiper: $('<ul id="swiper-parent-module"><li class="swiper-parent-item" data-order="0"><i class="fa fa-2x fa-folder-open" style="margin-left: 10px;"></i></li>' +
+        '<li class="swiper-parent-sep" data-order="0"></li></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div>')
     };
     this.footerOptions = {
       buttons: [{
@@ -3484,6 +3492,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       var parentModule = $('#swiper-parent-module'),
           parentListItem = $('<li></li>').addClass('swiper-parent-item'),
+          parentListSeparator = $('<li></li>').addClass('swiper-parent-sep'),
           parentItemImage = module.image
             ? $('<img />').attr('src', module.image)
             : module.icon
@@ -3491,8 +3500,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               : $('<i class="fa fa-3x fa-question"></i>'),
           parentItemName = $('<span></span>').append(module.name);
 
-      parentListItem.append(parentItemImage)//.append(parentItemName);
-      parentModule.append(parentListItem);
+      parentListItem.append(parentItemImage);//.append(parentItemName);
+      parentModule.append(parentListItem).append(parentListSeparator);
 
       module.events.onOrchestrationSelect(module);
     },
