@@ -10,37 +10,37 @@
   <link rel="stylesheet" href="../src/css/mdashboard.css">
 </head>
 <body>
-  <div class="dashboard-container"></div>
+<div class="dashboard-container"></div>
 
-  <!-- core libraries begin -->
-  <script src="../lib/development/jquery/jquery-1.10.2.js"></script>
-  <script src="../lib/development/underscore/underscore.js"></script>
-  <script src="../lib/development/gridster/jquery.gridster.with-extras.js"></script>
-  <script src="../lib/development/boxer/jquery.fs.boxer.js"></script>
-  <script src="../lib/development/swiper/idangerous.swiper-2.4.2.js"></script>
-  <script src="../lib/development/scroller/Animate.js"></script>
-  <script src="../lib/development/scroller/Scroller.js"></script>
-  <script src="../src/mdashboard.js"></script>
-  <!-- core libraries end -->
+<!-- core libraries begin -->
+<script src="../lib/development/jquery/jquery-1.10.2.js"></script>
+<script src="../lib/development/underscore/underscore.js"></script>
+<script src="../lib/development/gridster/jquery.gridster.with-extras.js"></script>
+<script src="../lib/development/boxer/jquery.fs.boxer.js"></script>
+<script src="../lib/development/swiper/idangerous.swiper-2.4.2.js"></script>
+<script src="../lib/development/scroller/Animate.js"></script>
+<script src="../lib/development/scroller/Scroller.js"></script>
+<script src="../src/mdashboard.js"></script>
+<!-- core libraries end -->
 
-  <!-- chart libraries begin -->
-  <script charset="utf-8" src="../lib/development/d3/d3.v3.js"></script>
-  <script src="../lib/development/highcharts/highcharts.src.js"></script>
-  <script src="../lib/development/highcharts/highcharts-more.src.js"></script>
-  <!-- chart libraries end -->
+<!-- chart libraries begin -->
+<script charset="utf-8" src="../lib/development/d3/d3.v3.js"></script>
+<script src="../lib/development/highcharts/highcharts.src.js"></script>
+<script src="../lib/development/highcharts/highcharts-more.src.js"></script>
+<!-- chart libraries end -->
 
-  <!-- site specific scripts begin -->
-  <script src="widgets_default.js"></script>
-  <script>
-    var dashboard = new MDashboard().init();
-    if (dashboard.isLoaded) {
-      dashboard.collections[0].invalidate().render();
-    } else {
-      dashboard.createCollection(function(err, collection) {
-        collection.render();
-      });
-    }
-  </script>
-  <!-- site specific scripts end -->
+<!-- site specific scripts begin -->
+<script src="widgets_default.js"></script>
+<script>
+  var dashboard = new MDashboard().init();
+  if (dashboard.isLoaded) {
+    dashboard.collections[0].invalidate().render();
+  } else {
+    dashboard.createCollection(function (err, collection) {
+      collection.render();
+    });
+  }
+</script>
+<!-- site specific scripts end -->
 </body>
 </html>

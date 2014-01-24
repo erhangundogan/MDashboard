@@ -405,7 +405,7 @@ body {
 
 #dialog-inner-content {
   width: 100%;
-  overflow: auto;
+  /*overflow: auto;*/
   z-index: 11;
   margin-top: .25em;
 }
@@ -711,7 +711,209 @@ form.form, .form-row {
 }
 
 /* swiper */
-.swiper-container, .swiper-wrapper {
+
+.swiper-container {
+  display: inline-block;
+  width: 680px;
   height: 250px;
+  color: #fff;
+  text-align: center;
+  background: transparent url('images/brickwall.png') top left repeat;
+  border: solid 1px #CCC;
+  border-radius: 6px;
+
+  position: relative;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  -ms-backface-visibility: hidden;
+  -o-backface-visibility: hidden;
+  backface-visibility: hidden;
+  z-index: 1;
 }
 
+.swiper-container .left, .swiper-container .right {
+  background: #000000 url(images/arrow-left.png) no-repeat center;
+  position: absolute;
+  left: 0px;
+  top: 0%;
+  height: 100%;
+  width: 20px;
+  opacity: 0.08;
+  cursor: pointer;
+  z-index: 10;
+  -webkit-transition: 300ms;
+  -moz-transition: 300ms;
+  -ms-transition: 300ms;
+  -o-transition: 300ms;
+  transition: 300ms;
+}
+
+.swiper-container .left:hover, .swiper-container .right:hover {
+  opacity: .5;
+  width: 30px;
+}
+
+.swiper-container .right {
+  background: #000000 url(images/arrow-right.png) no-repeat center;
+  left: auto;
+  right: 0px;
+}
+
+.swiper-container .top, .swiper-container .bottom {
+  background: #000000 url(images/arrow-top.png) no-repeat center;
+  position: absolute;
+  left: 0px;
+  top: 0%;
+  width: 100%;
+  height: 20px;
+  opacity: 0.08;
+  cursor: pointer;
+  z-index: 10;
+  -webkit-transition: 300ms;
+  -moz-transition: 300ms;
+  -ms-transition: 300ms;
+  -o-transition: 300ms;
+  transition: 300ms;
+}
+
+.swiper-container .bottom {
+  background: #000000 url(images/arrow-bottom.png) no-repeat center;
+  top: auto;
+  bottom: 0;
+}
+
+.swiper-container .top:hover, .swiper-container .bottom:hover {
+  opacity: .5;
+  height: 30px;
+}
+
+#swiper-parent-module {
+  width: 680px;
+  height: 70px;
+  opacity: 0.75;
+  font-size: 14pt;
+}
+
+#swiper-parent-module li {
+  list-style-type: none;
+  width: 105px;
+  height: 70px;
+}
+
+#swiper-parent-module li img {
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+}
+
+.swiper-parent-item span {
+  float:left;
+  font-size: 20pt;
+  font-family: 'Ubuntu', sans-serif;
+}
+
+.swiper-slide {
+  opacity: 0.4;
+  font-size: 24px;
+  text-align: center;
+  vertical-align: middle;
+  color: #333333;
+  width: 340px;
+  height: 250px;
+
+  -webkit-transition: 300ms;
+  -moz-transition: 300ms;
+  -ms-transition: 300ms;
+  -o-transition: 300ms;
+  transition: 300ms;
+
+  -webkit-transform: scale(0);
+  -moz-transform: scale(0);
+  -ms-transform: scale(0);
+  -o-transform: scale(0);
+  transform: scale(0);
+}
+
+.swiper-slide-visible {
+  opacity: 0.5;
+  -webkit-transform: scale(0.8);
+  -moz-transform: scale(0.8);
+  -ms-transform: scale(0.8);
+  -o-transform: scale(0.8);
+  transform: scale(0.8);
+}
+
+.swiper-slide-active {
+  opacity: 1;
+  -webkit-transform: scale(1);
+  -moz-transform: scale(1);
+  -ms-transform: scale(1);
+  -o-transform: scale(1);
+  transform: scale(1);
+}
+
+.swiper-slide-active:hover {
+  background-color: #FFF;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.swiper-slide .title {
+  font-style: italic;
+  font-size: 42px;
+  margin-top: 80px;
+  margin-bottom: 0;
+  line-height: 45px;
+}
+
+.swiper-slide-image {
+  margin-top: .5em;
+}
+
+.swiper-slide-content {
+  margin-top: 2em;
+}
+
+.swiper-visible-switch {
+  opacity: 1;
+  top: 0;
+  background: #aaa;
+}
+
+.swiper-active-switch {
+  background: #fff;
+}
+
+.swiper-slide img {
+  max-width: 100%;
+  max-height: 100%;
+  position: relative;
+}
+
+.swiper-module {
+  position: absolute;
+  right: 25px;
+  top: 25px;
+  font-size: 2em;
+}
+
+.swiper-module:before {
+  content: "\f12e";
+}
+
+.selected, .selected:hover {
+  color: #000;
+  background-color: #FFF !important;
+  border-radius: 12px;
+}
+
+.swiper-button {
+  line-height: 200px;
+  display: inline;
+  color: #ccc;
+}
+
+.swiper-button:hover {
+  color: #999;
+}
