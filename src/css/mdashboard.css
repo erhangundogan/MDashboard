@@ -623,7 +623,7 @@ form.form, .form-row {
   text-align: center;
 }
 
-.item-icons li.selected {
+.item-icons li.selected-icon {
   color: #FFF;
   background-color: #900;
   border-radius: 4px;

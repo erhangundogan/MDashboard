@@ -9,6 +9,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     MModule, MDialog, MDialogPage, MAuth, MAccount, MOrchestrator;
 (function (global) {
 
+  // http://www.yuiblog.com/blog/2010/12/14/strict-mode-is-coming-to-town/
+  'use strict';
+
   var managementDialog = null,
     addItemDialog = null,
     editWidgetDialog = null,
@@ -217,9 +220,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var newCollection = new MWidgetCollection(self, _options);
     self.collections.push(newCollection);
 
-    if (!_options && !callback) {
-      return newCollection;
-    } else {
+    if (_options && callback) {
       var DOMLoadCheck = setInterval(function () {
         var body = $('body');
         if (body && body.length > 0) {
@@ -241,11 +242,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         newItem = null;
 
     // first remove old one
-    if (oldItem) localStorage.removeItem(dataId);
+    if (oldItem) { localStorage.removeItem(dataId); }
 
     // begin to check if storage is written
     var storageCheck = setInterval(function() {
-      if (newItem = localStorage.getItem(dataId) !== null) {
+      var newItem = localStorage.getItem(dataId);
+      if (newItem !== null) {
         clearInterval(storageCheck);
         callback(null, newItem);
       }
@@ -258,8 +260,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     } catch (exception) {
       // oldies but goldies
       console.error(exception);
-      if (oldItem) localStorage.setItem(dataId, oldItem);
-      else if (storageCheck) clearInterval(storageCheck);
+      if (oldItem) {
+        localStorage.setItem(dataId, oldItem);
+      }
+      else if (storageCheck) {
+        clearInterval(storageCheck);
+      }
 
       callback(exception);
     }
@@ -351,11 +357,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
     getModules(self.modules);
 
-    var requestedModule = _.find(allModules, function(item) {
+    return _.find(allModules, function (item) {
       return item.uid === moduleId;
     });
-
-    return requestedModule;
   };
   /**
    * Finds module if is stored in dashboard modules
@@ -382,8 +386,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             if (module.modules && module.modules.length > 0) {
 
               // merge existing child modules with replacing child modules
-              var childModules = module.modules.concat(searchModule.modules);
-              searchModule.modules = childModules;
+              searchModule.modules = module.modules.concat(searchModule.modules);
               moduleArray[index] = searchModule;
             } else {
 
@@ -492,7 +495,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    * @returns {*} self
    */
   MWidgetCollection.prototype.invalidate = function () {
-    var self = this;
+    var self = this,
+        xCount = 0,
+        yCount = 0;
 
     //debugger;
     self.width = $(self.container).width();
@@ -502,7 +507,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.rowMargin = self.collectionOptions.widget_margins[1];
     self.collectionOptions.widget_base_dimensions = [self.width, self.height];
 
-    var xCount = yCount = 0;
     _.each(self.widgets, function (widget, index) {
       if (widget.row === 1) {
         xCount += widget.xSize;
@@ -516,8 +520,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     xCount = xCount < self.collectionOptions.min_cols ? self.collectionOptions.min_cols : xCount;
     yCount = yCount < self.collectionOptions.min_rows ? self.collectionOptions.min_rows : yCount;
 
-    var xWidth = parseInt((self.width / xCount) - (2 * self.columnMargin));
-    var yHeight = parseInt((self.height / yCount) - (2 * self.rowMargin));
+    var xWidth = parseInt((self.width / xCount) - (2 * self.columnMargin), 10);
+    var yHeight = parseInt((self.height / yCount) - (2 * self.rowMargin), 10);
     self.collectionOptions.widget_base_dimensions = [xWidth, yHeight];
 
     self.columnWidth = xWidth;
@@ -595,7 +599,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.container.append(self.toolbar);
     }
 
-    if (self.widgets.length == 0) return;
+    if (self.widgets.length === 0) {
+      return;
+    }
 
     self.container.append(
       wrapper.append(
@@ -826,12 +832,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           // remove old selected
           var item = $('ul.item-icons li.selected');
           if (item && item.length > 0) {
-            item.removeClass('selected');
+            item.removeClass('selected-icon');
           }
 
           // add new selected icon
-          if (event.currentTarget != item[0]) {
-            $(event.currentTarget).addClass('selected');
+          if (event.currentTarget !== item[0]) {
+            $(event.currentTarget).addClass('selected-icon');
           }
         });
       };
@@ -938,12 +944,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           // remove old selected
           var item = $('ul.item-icons li.selected');
           if (item && item.length > 0) {
-            item.removeClass('selected');
+            item.removeClass('selected-icon');
           }
 
           // add new selected icon
-          if (event.currentTarget != item[0]) {
-            $(event.currentTarget).addClass('selected');
+          if (event.currentTarget !== item[0]) {
+            $(event.currentTarget).addClass('selected-icon');
           }
         });
       };
@@ -1191,7 +1197,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     _.extend(this, _options);
 
     if (this.contentType === "chart") {
-      if (this.chart.widget) delete this.chart.widget;
+      if (this.chart.widget) {
+        delete this.chart.widget;
+      }
       this.chart = new MChart(this, this.chart);
     }
 
@@ -1204,8 +1212,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           self.height = self.height - headerHeight;
 
           if (self.headerItem.css) {
-            var headerPaddingTop = parseInt(self.headerItem.css('padding-top')) || 0;
-            var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom')) || 0;
+            var headerPaddingTop = parseInt(self.headerItem.css('padding-top'), 10) || 0;
+            var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom'), 10) || 0;
             self.height -= (headerPaddingTop + headerPaddingBottom);
           }
 
@@ -1232,7 +1240,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MWidget.prototype.render = function () {
     var self = this,
       item = $('<li></li>').attr('id', this.id),
-      contentSection = $('<div></div>').addClass('mwidget-content'); //.addClass('loading'), // TODO
+      contentSection = $('<div></div>').addClass('mwidget-content'), //.addClass('loading'), // TODO
       options = Object.keys(self);
 
     self.mainContainer = item;
@@ -1435,6 +1443,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           formRow = $('<div class="form-row"></div>'),
           label = $('<div class="form-label"></div>'),
           item = $('<div class="form-item"></div>'),
+          order = null,
           columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
 
       switch(key) {
@@ -1817,10 +1826,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           key = $(this).val();
 
       if (key) {
-          var orderId = $(this).attr('data-order'),
-              value = $('.param-value[data-order=' + orderId + ']').val();
-
-        param[key] = value;
+        var orderId = $(this).attr('data-order');
+        param[key] = $('.param-value[data-order=' + orderId + ']').val();
         self.params.push(param);
       }
     });
@@ -1864,6 +1871,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this,
         formContainer = $('<div class="module-container"></div>'),
         rows = [],
+        order = null,
         orderOffset = 0,
         form = $('<form class="form"></form>');
 
@@ -2152,7 +2160,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     function callMeMaybe() {
-      if (self.ajaxOptions.dataType === 'jsonp' && self.ajaxOptions.type == 'GET') {
+      if (self.ajaxOptions.dataType === 'jsonp' && self.ajaxOptions.type === 'GET') {
         /*var address = self.ajaxOptions.url,
             queryStrings = [];
 
@@ -2240,12 +2248,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return self;
   };
   MService.prototype.createConnectionForm = function(collection, service) {
-    var self = service,
-        formContainer = $('<div class="service-ajax-container"></div>'),
+    var formContainer = $('<div class="service-ajax-container"></div>'),
         rows = [],
         form = $('<form class="form"></form>');
 
-    _.each(self.ajaxOptions, function(value, key) {
+    _.each(service.ajaxOptions, function(value, key) {
       var propertyRequired = false,
           order = null,
           label = $('<div class="form-label"></div>'),
@@ -2399,10 +2406,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           key = $(this).val();
 
       if (key) {
-          var orderId = $(this).attr('data-order'),
-              value = $('.param-value[data-order=' + orderId + ']').val();
-
-        param[key] = value;
+        var orderId = $(this).attr('data-order');
+        param[key] = $('.param-value[data-order=' + orderId + ']').val();
         self.params.push(param);
       }
     });
@@ -2566,7 +2571,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // https://www.googleapis.com/freebase/v1/mqlread
       // { "query": { "type":"/music/artist", "name":"The Police", "album":[] } }
       service.begin(function (error, data) {
-        debugger;
         if (error) {
           $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
 
@@ -2755,18 +2759,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         panel = document.getElementById("scroller-panel"),
         self = this;
 
-   	// Content Generator
-   	var sizeX = 200, sizeY = 177;
-   	var frag = document.createDocumentFragment();
-   	for (var row = 0, rl = content.clientHeight/sizeY; row < rl; row++) {
-   		for (var cell = 0, cl = content.clientWidth/sizeX; cell < cl; cell++) {
-   			elem = document.createElement("div");
-   			elem.className = "scroller-cell";
-   			elem.innerHTML = '&nbsp;';
-   			frag.appendChild(elem);
-   		}
-   	}
-   	content.appendChild(frag);
+    // Content Generator
+    var sizeX = 200,
+        sizeY = 177;
+
+    var frag = document.createDocumentFragment();
+    for (var row = 0, rl = content.clientHeight/sizeY; row < rl; row++) {
+      for (var cell = 0, cl = content.clientWidth/sizeX; cell < cl; cell++) {
+        var elem = document.createElement("div");
+        elem.className = "scroller-cell";
+        elem.innerHTML = '&nbsp;';
+        frag.appendChild(elem);
+      }
+    }
+    content.appendChild(frag);
 
 
     if (self.dashboard && self.dashboard.orchestrator) {
@@ -2774,78 +2780,79 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.dashboard.orchestrator.renderScroller(panel);
     }
 
-   	// Initialize Scroller
-   	var scroller = new Scroller(render, {
-   		snapping: true
-   	});
+    // Initialize Scroller
+    var scroller = new Scroller(render, {
+      snapping: true
+    });
 
-   	// Setup Scroller
-   	var rect = container.getBoundingClientRect();
+    // Setup Scroller
+    var rect = container.getBoundingClientRect();
 
-   	scroller.setPosition(rect.left+container.clientLeft, rect.top+container.clientTop);
-   	scroller.setDimensions(container.clientWidth, container.clientHeight, content.offsetWidth, content.offsetHeight);
-   	scroller.setSnapSize(100, 100);
+    scroller.setPosition(rect.left+container.clientLeft, rect.top+container.clientTop);
+    scroller.setDimensions(container.clientWidth, container.clientHeight, content.offsetWidth, content.offsetHeight);
+    scroller.setSnapSize(100, 100);
 
-   	// Event Handler
-   	if ('ontouchstart' in window) {
-      if (!!container.touchstart)
-   		container.addEventListener("touchstart", function(e) {
-   			// Don't react if initial down happens on a form element
-   			if (e.target.tagName.match(/input|textarea|select/i)) {
-   				return;
-   			}
+    // Event Handler
+    if ('ontouchstart' in window) {
+      if (!!container.touchstart) {
+        container.addEventListener("touchstart", function(e) {
+        // Don't react if initial down happens on a form element
+          if (e.target.tagName.match(/input|textarea|select/i)) {
+            return;
+          }
 
-   			scroller.doTouchStart(e.touches, e.timeStamp);
-   			e.preventDefault();
-   		}, false);
+          scroller.doTouchStart(e.touches, e.timeStamp);
+          e.preventDefault();
+        }, false);
+      }
 
-   		document.addEventListener("touchmove", function(e) {
-   			scroller.doTouchMove(e.touches, e.timeStamp);
-   		}, false);
+      document.addEventListener("touchmove", function(e) {
+        scroller.doTouchMove(e.touches, e.timeStamp);
+      }, false);
 
-   		document.addEventListener("touchend", function(e) {
-   			scroller.doTouchEnd(e.timeStamp);
-   		}, false);
+      document.addEventListener("touchend", function(e) {
+        scroller.doTouchEnd(e.timeStamp);
+      }, false);
 
-   	} else {
-   		var mousedown = false;
+    } else {
+      var mousedown = false;
 
-   		container.addEventListener("mousedown", function(e) {
-   			// Don't react if initial down happens on a form element
-   			if (e.target.tagName.match(/input|textarea|select/i)) {
-   				return;
-   			}
+      container.addEventListener("mousedown", function(e) {
+        // Don't react if initial down happens on a form element
+        if (e.target.tagName.match(/input|textarea|select/i)) {
+          return;
+        }
 
-   			scroller.doTouchStart([{
-   				pageX: e.pageX,
-   				pageY: e.pageY
-   			}], e.timeStamp);
+        scroller.doTouchStart([{
+          pageX: e.pageX,
+          pageY: e.pageY
+        }], e.timeStamp);
 
-   			mousedown = true;
-   		}, false);
+        mousedown = true;
+      }, false);
 
-   		document.addEventListener("mousemove", function(e) {
-   			if (!mousedown) {
-   				return;
-   			}
+      document.addEventListener("mousemove", function(e) {
+        if (!mousedown) {
+          return;
+        }
 
-   			scroller.doTouchMove([{
-   				pageX: e.pageX,
-   				pageY: e.pageY
-   			}], e.timeStamp);
+        scroller.doTouchMove([{
+          pageX: e.pageX,
+          pageY: e.pageY
+        }], e.timeStamp);
 
-   			mousedown = true;
-   		}, false);
+        mousedown = true;
+      }, false);
 
-   		document.addEventListener("mouseup", function(e) {
-   			if (!mousedown) {
-   				return;
-   			}
+      document.addEventListener("mouseup", function(e) {
+        if (!mousedown) {
+          return;
+        }
 
-   			scroller.doTouchEnd(e.timeStamp);
-   			mousedown = false;
-   		}, false);
-   	}
+        scroller.doTouchEnd(e.timeStamp);
+        mousedown = false;
+      }, false);
+    }
   };
   MDialog.prototype.activateSwiper = function(_options) {
 
@@ -2863,7 +2870,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       initialSlide: 0,
       autoResize : true,
       resizeReInit : false,
-      watchActiveIndex: false,
       visibilityFullFit : false,
       onSlideClick: function(swiperItem) {
         var hasSelected = $(swiperItem.clickedSlide).hasClass('selected'),
@@ -2955,8 +2961,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       container: $('<div id="dialog-content-id"></div>'),
       content: $('<div id="dialog-inner-content"></div>'),
       scroller: $('<div id="scroller-container"><div id="scroller-content"><div id="scroller-panel"></div></div></div>'),
-      swiper: $('<ul id="swiper-parent-module"><li class="swiper-parent-item" data-order="0"><i class="fa fa-2x fa-folder-open" style="margin-left: 10px;"></i></li>' +
-        '<li class="swiper-parent-sep" data-order="0"></li></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div>')
+      swiper: $('<ul id="swiper-parent-module"></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div>')
     };
     this.footerOptions = {
       buttons: [{
@@ -3161,7 +3166,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
 
     $(window).bind('open.boxer', function(event) {
-      var contentHeight = $('.boxer-container').height() - 215;
+      var contentHeight = $('.boxer-container').height() - 215,
           contentWidth = $('.boxer-container').width() - 15;
 
       self.dialog.width = contentWidth;
@@ -3276,6 +3281,64 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return self;
   };
   MOrchestrator.prototype.renderSwiper = function(swiper, swiperOptions) {
+
+     function drawModule(module, callback) {
+      function getImage(path, callback) {
+        var image = new Image;
+        image.onload = function() { callback(image); };
+        image.src = path;
+      }
+
+      if (module.image) {
+        getImage(module.image, function(result) {
+          var width = result.width,
+              height = result.height,
+              item = $('<img />')
+                .prop('src', module.image);
+
+          if (width > 200) {
+            var ratio = 200 / width,
+                newWidth = Math.ceil(width * ratio) + 'px',
+                newHeight = Math.ceil(height * ratio) + 'px';
+
+            item.css({
+              width: newWidth,
+              height: newHeight
+            });
+          }
+
+          item.append($('<span></span>').append(module.name));
+
+          callback($('<div></div>')
+            .append(
+              $('<div class="swiper-slide-image"></div>')
+                .append(item)
+                .append(
+                    $('<input type="hidden" />')
+                      .addClass('module-uid')
+                      .val(module.uid))));
+        });
+      } else {
+        var item = $('<i class="fa fa-3x"></i>');
+
+        if (module.icon) {
+          item.addClass(module.icon);
+        } else {
+          item.addClass('fa-question-circle');
+        }
+
+        item.append($('<span></span>').append(module.name));
+
+        callback($('<div></div>').append(
+          $('<div class="swiper-slide-content"></div>')
+            .append(item)
+            .append(
+                $('<input type="hidden" />')
+                  .addClass('module-uid')
+                  .val(module.uid))));
+      }
+    }
+
     var self = this;
 
     if (swiper &&
@@ -3289,62 +3352,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var modules = self.dashboard.modules,
           slides = [];
 
-      function drawModule(module, callback) {
-        if (module.image) {
-          function getImage(path, callback) {
-            var image = new Image;
-            image.onload = function() { callback(image); };
-            image.src = path;
-          }
 
-          getImage(module.image, function(result) {
-            var width = result.width,
-                height = result.height,
-                item = $('<img />')
-                  .prop('src', module.image);
-
-            if (width > 200) {
-              var ratio = 200 / width,
-                  newWidth = Math.ceil(width * ratio) + 'px',
-                  newHeight = Math.ceil(height * ratio) + 'px';
-
-              item.css({
-                width: newWidth,
-                height: newHeight
-              });
-            }
-
-            item.append($('<span></span>').append(module.name));
-
-            callback($('<div></div>')
-              .append(
-                $('<div class="swiper-slide-image"></div>')
-                  .append(item)
-                  .append(
-                      $('<input type="hidden" />')
-                        .addClass('module-uid')
-                        .val(module.uid))));
-          });
-        } else {
-          var item = $('<i class="fa fa-3x"></i>');
-
-          if (module.icon) {
-            item.addClass(module.icon);
-          } else {
-            item.addClass('fa-question-circle');
-          }
-
-          item.append($('<span></span>').append(module.name));
-
-          callback($('<div></div>').append(
-            $('<div class="swiper-slide-content"></div>')
-              .append(item)
-              .append(
-                  $('<input type="hidden" />')
-                    .addClass('module-uid')
-                    .val(module.uid))));
-        }
-      }
 
       _.each(modules, function(module, index) {
         drawModule(module, function(content) {
@@ -3357,6 +3365,86 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MOrchestrator.prototype.renderScroller = function(container) {
     var self = this;
+
+    function drawModule(module, callback) {
+      function getImage(path, callback) {
+        var image = new Image;
+        image.onload = function() { callback(image); };
+        image.src = path;
+      }
+
+      var isChild = module.parent ? true : false,
+          moduleId = module.uid,
+          parentId = module.parent ? module.parent.uid : null;
+          moduleContainer = null;
+
+      if (!isChild) {
+        moduleContainer = $('<div class="module-container"></div>').attr('data-uid', moduleId);
+        managementContainer.append(moduleContainer);
+      }
+
+      if (module.image) {
+        getImage(module.image, function(result) {
+          var width = result.width,
+              height = result.height,
+              item = $('<img />')
+                .prop('src', module.image)
+                .attr('draggable', true)
+                .addClass('m-module');
+
+          if (width > 128) {
+            var ratio = 128 / width,
+                newWidth = Math.ceil(width * ratio) + 'px',
+                newHeight = Math.ceil(height * ratio) + 'px';
+
+            item.css({
+              width: newWidth,
+              height: newHeight
+            });
+          }
+
+          item.addClass('pull-left');
+          item.click(function(event) {
+            if (item.hasClass('m-selected')) {
+              item.removeClass('m-selected');
+              self.events.onModuleDeselected(module);
+            } else {
+              // remove others
+              $('.m-selected').removeClass('m-selected');
+              item.addClass('m-selected');
+              self.events.onModuleSelected(module);
+            }
+          });
+
+          moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
+          moduleContainer.append(item);
+        });
+      } else {
+        var item = $('<i class="fa fa-5x"></i>');
+
+        if (module.icon) {
+          item.addClass(module.icon);
+        } else {
+          item.addClass('fa-question-circle');
+        }
+
+        item.addClass('m-module').addClass('pull-left');
+        item.click(function(event) {
+          if (item.hasClass('m-selected')) {
+            item.removeClass('m-selected');
+            self.events.onModuleDeselected(module);
+          } else {
+            // remove others
+            $('.m-selected').removeClass('m-selected');
+            item.addClass('m-selected');
+            self.events.onModuleSelected(module);
+          }
+        });
+
+        moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
+        moduleContainer.append(item);
+      }
+    }
 
     if (container &&
         self.dashboard &&
@@ -3381,95 +3469,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       /////////////// Visualization begins here
 
-      function drawModule(module, callback) {
-        var isChild = module.parent ? true : false,
-            moduleId = module.uid,
-            parentId = module.parent ? module.parent.uid : null;
-            moduleContainer = null;
-
-        if (!isChild) {
-          moduleContainer = $('<div class="module-container"></div>').attr('data-uid', moduleId);
-          managementContainer.append(moduleContainer);
-        }
-
-        if (module.image) {
-          function getImage(path, callback) {
-            var image = new Image;
-            image.onload = function() { callback(image); };
-            image.src = path;
-          }
-
-          getImage(module.image, function(result) {
-            var width = result.width,
-                height = result.height,
-                item = $('<img />')
-                  .prop('src', module.image)
-                  .attr('draggable', true)
-                  .addClass('m-module');
-
-            if (width > 128) {
-              var ratio = 128 / width,
-                  newWidth = Math.ceil(width * ratio) + 'px',
-                  newHeight = Math.ceil(height * ratio) + 'px';
-
-              item.css({
-                width: newWidth,
-                height: newHeight
-              });
-            }
-
-            item.addClass('pull-left');
-            item.click(function(event) {
-              if (item.hasClass('m-selected')) {
-                item.removeClass('m-selected');
-                self.events.onModuleDeselected(module);
-              } else {
-                // remove others
-                $('.m-selected').removeClass('m-selected');
-                item.addClass('m-selected');
-                self.events.onModuleSelected(module);
-              }
-            });
-
-            moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
-            moduleContainer.append(item);
-          });
-        } else {
-          var item = $('<i class="fa fa-5x"></i>');
-
-          if (module.icon) {
-            item.addClass(module.icon);
-          } else {
-            item.addClass('fa-question-circle');
-          }
-
-          item.addClass('m-module').addClass('pull-left');
-          item.click(function(event) {
-            if (item.hasClass('m-selected')) {
-              item.removeClass('m-selected');
-              self.events.onModuleDeselected(module);
-            } else {
-              // remove others
-              $('.m-selected').removeClass('m-selected');
-              item.addClass('m-selected');
-              self.events.onModuleSelected(module);
-            }
-          });
-
-          moduleContainer =  $('.module-container[data-uid=' + (isChild ? parentId : module.uid) + ']');
-          moduleContainer.append(item);
-        }
-      }
-
       var row = 0;
 
-      function iterator(moduleModules) {
+      var iterator = function iterator(moduleModules) {
         //debugger;
         _.each(moduleModules, function(module, index) {
           drawModule(module);
           iterator(module.modules);
         });
-      }
+      };
 
       iterator(modules);
 
@@ -3481,27 +3489,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         .html('<h3 style="margin:1em">Please create at least one module to begin</h3>');
     }
   };
+  MOrchestrator.prototype.setBreadcrumb = function(selectedModule) {
+    var getParent = function getParent(module) {
+      return module.parent;
+    };
+    var currentModule = selectedModule,
+        breadcrumbs = [],
+        listItem = null,
+        parentModule = $('#swiper-parent-module'),
+        rootItem = $('<li class="swiper-parent-item"><i class="fa fa-2x fa-folder-open" style="margin-left: 10px;"></i></li>');
+
+    debugger;
+
+    do {
+      var parentListItem = $('<li></li>').addClass('swiper-parent-item'),
+          //parentItemName = $('<span></span>').append(module.name),
+          parentListItemContent = null;
+
+      if (currentModule.image) {
+        parentListItemContent = $('<img />').attr('src', currentModule.image);
+      } else {
+        if (currentModule.icon) {
+          parentListItemContent = $('<i class="fa fa-3x"></i>').addClass(module.icon);
+        } else {
+          parentListItemContent = $('<i class="fa fa-3x fa-question"></i>');
+        }
+      }
+      parentListItem.append(parentListItemContent);
+
+      breadcrumbs.push(parentListItem);
+
+    } while (currentModule = getParent(currentModule));
+
+    breadcrumbs.push(rootItem);
+
+    while (listItem = breadcrumbs.pop()) {
+      parentModule.append(listItem).append($('<li></li>').addClass('swiper-parent-sep'));
+    }
+  };
   MOrchestrator.prototype.events = {
     onModuleSelected: function(module) {
       var orchestrator = module.dashboard.orchestrator;
       orchestrator.selected = module;
+
       // management dialog
       module.dashboard.activeDialog.activePage.enableButton('Create Service');
       // add widget dialog
       module.dashboard.activeDialog.activePage.enableButton('Create Widget');
 
-      var parentModule = $('#swiper-parent-module'),
-          parentListItem = $('<li></li>').addClass('swiper-parent-item'),
-          parentListSeparator = $('<li></li>').addClass('swiper-parent-sep'),
-          parentItemImage = module.image
-            ? $('<img />').attr('src', module.image)
-            : module.icon
-              ? $('<i class="fa fa-3x"></i>').addClass(module.icon)
-              : $('<i class="fa fa-3x fa-question"></i>'),
-          parentItemName = $('<span></span>').append(module.name);
-
-      parentListItem.append(parentItemImage);//.append(parentItemName);
-      parentModule.append(parentListItem).append(parentListSeparator);
+      orchestrator.setBreadcrumb(module);
 
       module.events.onOrchestrationSelect(module);
     },
@@ -3512,6 +3548,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       module.dashboard.activeDialog.activePage.disableButton('Create Service');
       // add widget dialog
       module.dashboard.activeDialog.activePage.disableButton('Create Widget');
+
+      orchestrator.setBreadcrumb(module);
 
       module.events.onOrchestrationDeselect(module);
     }
@@ -3564,4 +3602,4 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return Function.prototype.constructor.apply(null, args);
   }
 
-}(this));
+}(window));
