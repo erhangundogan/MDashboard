@@ -151,6 +151,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
+  MAccount.prototype.isAdmin = function() {
+    return this.roles.indexOf('admin') >= 0;
+  };
 
   /**
    * MDashboard
@@ -700,10 +703,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var widget = new MWidget(collection),
           module = collection.dashboard.orchestrator.selected;
 
-       if (module) {
+      if (module) {
         widget.service = module.service;
         widget.header = module.name;
         widget.contentType = 'html';
+
+        if (collection.dashboard.account.isAdmin()) {
+          widget.isPrototype = true;
+          widget.module = module;
+        }
       }
 
       var form = widget.createForm();
@@ -1156,10 +1164,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.template = null;
     this.settings = true;
     this.collection = ownerCollection;
+    this.module = null; // prototype of
     this.isInitialized = false;
     this.isClosable = true;
     this.isLocked = false;
     this.isRendered = false;
+    this.isPrototype = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
     this.service = null;
@@ -1352,10 +1362,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     },
     onSave: function(widget) {
       widget = widget.loadForm();
-
       widget.collection.widgets.push(widget);
-      //widget.collection.events.onCollectionChange(widget.collection);
-      //widget.collection.invalidate().render();
+
+      if (widget.isPrototype && widget.module) {
+        if (module.widgetPrototypes.indexOf(widget.uid) < 0) {
+          module.widgetPrototypes.push(widget.uid);
+        }
+      }
+
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
       widget.collection.redraw();
     },
@@ -1523,6 +1537,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.id = self.id;
     serialized.isClosable = self.isClosable;
     serialized.isLocked = self.isLocked;
+    serialized.isPrototype = self.isPrototype;
+    serialized.module = self.module.uid;
     serialized.order = self.order;
     serialized.settings = self.settings;
     serialized.uid = self.uid;
@@ -1584,6 +1600,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.id = data.id;
     self.isClosable = data.isClosable;
     self.isLocked = data.isLocked;
+    self.isPrototype = data.isPrototype;
     self.order = data.order;
     self.row = data.row;
     self.settings = data.settings;
@@ -1592,6 +1609,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.xSize = data.xSize;
     self.ySize = data.ySize;
     self.collection = owner;
+
+    // TODO test
+    self.module = owner.dashboard.getModuleById(data.module);
 
     switch (data.contentType) {
       case 'html':
@@ -1763,6 +1783,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.tags = [];
     this.service = null;
     this.dashboard = null;
+    this.widgetPrototypes = [];
     this.params = [];
 
     //this.css = {};
@@ -1976,6 +1997,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.icon = self.icon;
     serialized.description = self.description;
     serialized.tags = self.tags;
+    serialized.widgetPrototypes = self.widgetPrototypes;
     serialized.params = self.params;
 
     // parent module
@@ -2003,6 +2025,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.icon = data.icon;
     self.description = data.description;
     self.tags = data.tags;
+    self.widgetPrototypes = data.widgetPrototypes;
     self.params = data.params;
 
     //self.dashboard = dashboard;
