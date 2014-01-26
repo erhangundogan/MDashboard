@@ -499,7 +499,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         xCount = 0,
         yCount = 0;
 
-    //debugger;
     self.width = $(self.container).width();
     self.height = self.container.is('body') ? $(window).height() : $(self.container).height();
 
@@ -694,7 +693,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       addItemDialog.dashboard = collection.dashboard;
       addItemDialog.orchestrator = collection.dashboard.orchestrator;
-      addItemDialog.pages.push(new MDialogPage(addItemPage, addItemDialog));
+      addItemDialog.createPage(new MDialogPage(addItemPage, addItemDialog));
       addItemDialog.getPage('widget|main', 'slideUpDown');
     },
     onCreateWidget: function (collection) {
@@ -745,7 +744,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
-      managementDialog.pages.push(new MDialogPage(createWidgetPage, managementDialog));
+      managementDialog.createPage(new MDialogPage(createWidgetPage, managementDialog));
       managementDialog.getPage('widget|create', 'slideUpDown');
     },
     onCreateModule: function (collection) {
@@ -827,24 +826,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       };
 
-      managementDialog.events.onPageReady = function(page) {
-        $('ul.item-icons').on('click', 'li', function(event) {
-          // remove old selected
-          var item = $('ul.item-icons li.selected');
-          if (item && item.length > 0) {
-            item.removeClass('selected-icon');
-          }
-
-          // add new selected icon
-          if (event.currentTarget !== item[0]) {
-            $(event.currentTarget).addClass('selected-icon');
-          }
-        });
-      };
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
-      managementDialog.pages.push(new MDialogPage(editModulePage, managementDialog));
+      managementDialog.createPage(new MDialogPage(editModulePage, managementDialog));
       managementDialog.getPage('module|edit', 'slideUpDown');
 
     },
@@ -939,24 +924,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       };
 
-      managementDialog.events.onPageReady = function(page) {
-        $('ul.item-icons').on('click', 'li', function(event) {
-          // remove old selected
-          var item = $('ul.item-icons li.selected');
-          if (item && item.length > 0) {
-            item.removeClass('selected-icon');
-          }
-
-          // add new selected icon
-          if (event.currentTarget !== item[0]) {
-            $(event.currentTarget).addClass('selected-icon');
-          }
-        });
-      };
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
-      managementDialog.pages.push(new MDialogPage(editServicePage, managementDialog));
+      managementDialog.createPage(new MDialogPage(editServicePage, managementDialog));
       managementDialog.getPage('service|edit', 'slideUpDown');
 
     },
@@ -1045,7 +1016,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
-      managementDialog.pages.push(new MDialogPage(editConnectionPage, managementDialog));
+      managementDialog.createPage(new MDialogPage(editConnectionPage, managementDialog));
       managementDialog.getPage('connection|edit', 'slideUpDown');
     },
     onManageServices: function(collection) {
@@ -1073,7 +1044,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-puzzle-piece',
             click: function(event) {
               event.preventDefault();
-              var container = $('#dialog-content-id');
               collection.events.onCreateModule(collection);
             }
           }, {
@@ -1118,7 +1088,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
-      managementDialog.pages.push(new MDialogPage(entrancePage, managementDialog));
+      managementDialog.createPage(new MDialogPage(entrancePage, managementDialog));
       managementDialog.getPage('module|main', 'slideUpDown');
     }
   };
@@ -1833,7 +1803,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     });
 
     // get icon or image
-    var item = $('ul.item-icons li.selected');
+    var item = $('ul.item-icons li.selected-icon');
     if (item && item.length > 0) {
       self.image = null;
       self.icon = item.attr('data-icon');
@@ -1858,7 +1828,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
         } else {
           self.image = null;
-          self.icon = 'fa-question';
+          self.icon = 'fa-question-circle';
           callback(null, self);
         }
     }
@@ -2413,7 +2383,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     });
 
     // get icon or image
-    var item = $('ul.item-icons li.selected');
+    var item = $('ul.item-icons li.selected-icon');
     if (item && item.length > 0) {
       self.image = null;
       self.icon = item.attr('data-icon');
@@ -2438,7 +2408,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
         } else {
           self.image = null;
-          self.icon = 'fa-question';
+          self.icon = 'fa-question-circle';
           callback(null, self);
         }
     }
@@ -2608,6 +2578,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
   };
 
+  /**
+   * Creates modal dialogs any kind of usage
+   * @param _options {Object} MDialog custom options
+   * @param owner {MWidgetCollection} Owner widget collection
+   * @returns {*}
+   * @constructor
+   */
   MDialog = function(_options, owner) {
     var self = this;
     this.uid = getUniqueId(globalUniqueIdLength);
@@ -2629,15 +2606,67 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return this;
   };
   /**
+   * Creates dialog page and adds it to dialog pages
+   * @param dialogPage {MDialogPage} New dialog page
+   * @param isReplace {bool} If true new page will be prelaced with old one. Default: true
+   */
+  MDialog.prototype.createPage = function(dialogPage, isReplace) {
+    var self = this,
+        found = false;
+
+    if (isReplace === undefined) {
+      _.each(self.pages, function(page, index) {
+         if (page.name === dialogPage.name) {
+           self.pages[index] = dialogPage;
+           found = true;
+         }
+      });
+
+      if (!found) {
+        self.pages.push(dialogPage);
+      }
+
+    } else {
+      self.pages.push(dialogPage);
+    }
+  };
+  /**
    * Dailog events
    * @type {Object}
    */
   MDialog.prototype.events = {
     onDialogReady: function(dialog) {
       dialog.dashboard.activeDialog = dialog;
+      dialog.orchestrator.setBreadcrumb();
       // when the first time dialgo showed up
     },
     onPageReady: function(dialogPage) {
+      switch(dialogPage.name) {
+        case 'module|edit':
+        case 'service|edit':
+          // icon choice section
+          $('ul.item-icons').on('click', 'li', function(event) {
+            // remove old selected
+            var item = $('ul.item-icons li.selected-icon');
+            if (item && item.length > 0) {
+              item.removeClass('selected-icon');
+            }
+
+            // add new selected icon
+            if (event.currentTarget !== item[0]) {
+              $(event.currentTarget).addClass('selected-icon');
+            }
+          });
+          break;
+
+        case 'module|main':
+          // if we have swiper component on main page, we must refresh it
+          var orchestrator = dialogPage.dialog.orchestrator;
+          if (orchestrator) {
+            orchestrator.setBreadcrumb(orchestrator.selected);
+          }
+          break;
+      }
       // when dialog page changed
     },
     onDialogClosed: function(dialog) {
@@ -2862,7 +2891,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var defaults = {
       slidesPerView: 2,
       centeredSlides: true,
-      watchActiveIndex: true,
+      watchActiveIndex: false,
       grabCursor: true,
       loop: false,
       preventLinks : false,
@@ -2872,22 +2901,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       resizeReInit : false,
       visibilityFullFit : false,
       onSlideClick: function(swiperItem) {
-        var hasSelected = $(swiperItem.clickedSlide).hasClass('selected'),
-            moduleId = $(swiperItem.clickedSlide).find('input.module-uid').val();
-
-        if (moduleId) {
-          var module = self.dashboard.getModuleById(moduleId);
-          if (module) {
-            if (hasSelected) {
-              self.dashboard.orchestrator.events.onModuleDeselected(module);
-            } else {
-              self.dashboard.orchestrator.events.onModuleSelected(module);
-            }
-          }
-        }
-
-        $('.swiper-container .selected').removeClass('selected');
-        swiperItem.removeAllSlides();
+        self.dashboard.orchestrator.events.onSlideClick(self.dashboard.orchestrator, swiperItem);
       }
     };
 
@@ -2897,18 +2911,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     $('.swiper-container')
       .append($('<div class="left"></div>').click( function() { swiper.swipePrev() }))
-      .append($('<div class="right"></div>').click( function() { swiper.swipeNext() }))
-      .append($('<div class="top hide"></div>').click( function() { swiper.swipePrev() }))
-      .append($('<div class="bottom hide"></div>').click( function() { swiper.swipeNext() }));
+      .append($('<div class="right"></div>').click( function() { swiper.swipeNext() }));
+      //.append($('<div class="top hide"></div>').click( function() { swiper.swipePrev() }))
+      //.append($('<div class="bottom hide"></div>').click( function() { swiper.swipeNext() }));
 
     if (self.dashboard && self.dashboard.orchestrator) {
       self.dashboard.orchestrator.dialog = self;
       self.dashboard.orchestrator.renderSwiper(swiper, defaults);
     }
-
-    $('.swiper-parent-item').on('click', function() {
-      debugger;
-    });
 
   };
   MDialog.prototype.dealloc = function() {
@@ -2952,7 +2962,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
     this.headerOptions = {
       name: 'Header',
-      icon: 'fa-question',
+      icon: 'fa-question-circle',
       align: 'left'
     };
     this.bodyOptions = {
@@ -3280,7 +3290,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  MOrchestrator.prototype.renderSwiper = function(swiper, swiperOptions) {
+  /**
+   * Draws swiper component on modal dialog
+   * @param swiper {Swiper}
+   * @param swiperOptions {Object}
+   * @param activeModule {MModule}
+   */
+  MOrchestrator.prototype.renderSwiper = function(swiper, swiperOptions, activeModule, cb) {
 
      function drawModule(module, callback) {
       function getImage(path, callback) {
@@ -3324,7 +3340,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         if (module.icon) {
           item.addClass(module.icon);
         } else {
-          item.addClass('fa-question-circle');
+          module.icon = 'fa-question-circle';
+          item.addClass(module.icon);
         }
 
         item.append($('<span></span>').append(module.name));
@@ -3349,18 +3366,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.swiper = swiper;
       self.swiperOptions = swiperOptions;
 
-      var modules = self.dashboard.modules,
+      var modules = activeModule ? activeModule.modules : self.dashboard.modules,
+          modulesCount = modules ? modules.length : 0,
           slides = [];
-
-
 
       _.each(modules, function(module, index) {
         drawModule(module, function(content) {
           var newSlide = swiper.createSlide(content.html()).append();
           slides.push(newSlide);
+          --modulesCount;
         });
       });
 
+      if (cb && _.isFunction(cb)) {
+        var modulesFinished = setInterval(function() {
+          if (modulesCount === 0) {
+            clearInterval(modulesFinished);
+            cb(slides);
+          }
+        }, 100);
+      }
     }
   };
   MOrchestrator.prototype.renderScroller = function(container) {
@@ -3425,7 +3450,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         if (module.icon) {
           item.addClass(module.icon);
         } else {
-          item.addClass('fa-question-circle');
+          module.icon = 'fa-question-circle';
+          item.addClass(module.icon);
         }
 
         item.addClass('m-module').addClass('pull-left');
@@ -3489,35 +3515,47 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         .html('<h3 style="margin:1em">Please create at least one module to begin</h3>');
     }
   };
+
+  /**
+   * Sets breadcrumbs over modules swiper
+   * @param selectedModule {MModule} - Selected module by the user
+   */
   MOrchestrator.prototype.setBreadcrumb = function(selectedModule) {
     var getParent = function getParent(module) {
-      return module.parent;
+      return module ? module.parent : null;
     };
-    var currentModule = selectedModule,
+    var self = this,
+        currentModule = selectedModule,
         breadcrumbs = [],
         listItem = null,
         parentModule = $('#swiper-parent-module'),
-        rootItem = $('<li class="swiper-parent-item"><i class="fa fa-2x fa-folder-open" style="margin-left: 10px;"></i></li>');
+        rootItem = $('<li class="swiper-parent-item" data-module-uid="root">' +
+          '<i class="fa fa-2x fa-folder-open" style="margin-left: 10px;"></i></li>');
 
-    debugger;
+    parentModule.empty();
 
     do {
-      var parentListItem = $('<li></li>').addClass('swiper-parent-item'),
-          //parentItemName = $('<span></span>').append(module.name),
-          parentListItemContent = null;
 
-      if (currentModule.image) {
-        parentListItemContent = $('<img />').attr('src', currentModule.image);
-      } else {
-        if (currentModule.icon) {
-          parentListItemContent = $('<i class="fa fa-3x"></i>').addClass(module.icon);
+      // insert item inte breadcrumb if we have one
+      if (currentModule) {
+        var parentListItem = $('<li></li>')
+            .addClass('swiper-parent-item')
+            .attr('data-module-uid', currentModule.uid),
+            parentListItemContent = null;
+
+        if (currentModule.image) {
+          parentListItemContent = $('<img />').attr('src', currentModule.image);
         } else {
-          parentListItemContent = $('<i class="fa fa-3x fa-question"></i>');
+          if (currentModule.icon) {
+            parentListItemContent = $('<i class="fa fa-3x"></i>').addClass(currentModule.icon);
+          } else {
+            parentListItemContent = $('<i class="fa fa-3x fa-question-circle"></i>');
+          }
         }
-      }
-      parentListItem.append(parentListItemContent);
+        parentListItem.append(parentListItemContent);
 
-      breadcrumbs.push(parentListItem);
+        breadcrumbs.push(parentListItem);
+      }
 
     } while (currentModule = getParent(currentModule));
 
@@ -3526,6 +3564,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     while (listItem = breadcrumbs.pop()) {
       parentModule.append(listItem).append($('<li></li>').addClass('swiper-parent-sep'));
     }
+
+    $('.swiper-parent-item').on('click', function(event) {
+      self.events.onBreadcrumbSelected(self, event);
+    });
   };
   MOrchestrator.prototype.events = {
     onModuleSelected: function(module) {
@@ -3539,8 +3581,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       orchestrator.setBreadcrumb(module);
 
+      if (orchestrator.swiper) {
+        orchestrator.renderSwiper(
+          orchestrator.swiper,
+          orchestrator.swiperOptions,
+          module,
+          function(slides) {
+            orchestrator.swiper.swipeTo(0);
+            orchestrator.swiper.updateActiveSlide(0);
+          });
+      }
+
       module.events.onOrchestrationSelect(module);
     },
+    // deprecated on swiper version
     onModuleDeselected: function(module) {
       var orchestrator = module.dashboard.orchestrator;
       orchestrator.selected = null;
@@ -3550,8 +3604,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       module.dashboard.activeDialog.activePage.disableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
+      if (orchestrator.swiper) {
+        orchestrator.renderSwiper(
+          orchestrator.swiper,
+          orchestrator.swiperOptions,
+          module,
+          function(slides) {
+            orchestrator.swiper.swipeTo(0);
+            orchestrator.swiper.updateActiveSlide(0);
+          });
+      }
 
       module.events.onOrchestrationDeselect(module);
+    },
+    onSlideClick: function onSlideClick(orchestrator, swiper) {
+      var moduleId = $(swiper.clickedSlide).find('input.module-uid').val();
+
+      if (moduleId) {
+        var module = orchestrator.dashboard.getModuleById(moduleId);
+        if (module) {
+          swiper.removeAllSlides();
+          orchestrator.events.onModuleSelected(module);
+        }
+      }
+
+      //$('.swiper-container .selected').removeClass('selected');
+    },
+    onBreadcrumbSelected: function(orchestrator, event) {
+      if (event && event.currentTarget) {
+        var moduleId = $(event.currentTarget).attr('data-module-uid');
+
+        if (moduleId) {
+          if (moduleId === 'root') {
+            if (orchestrator.swiper) {
+              orchestrator.swiper.removeAllSlides();
+              orchestrator.selected = null;
+              orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
+              orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
+              orchestrator.setBreadcrumb();
+              orchestrator.renderSwiper(orchestrator.swiper,orchestrator.swiperOptions);
+            }
+          } else {
+            var module = orchestrator.dashboard.getModuleById(moduleId);
+            if (module && orchestrator.swiper) {
+              orchestrator.swiper.removeAllSlides();
+              orchestrator.events.onModuleSelected(module);
+            }
+          }
+        }
+      }
     }
   };
 
