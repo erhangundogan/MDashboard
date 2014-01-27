@@ -283,10 +283,13 @@ body {
 }
 
 .mdashboard-toolbar .btn {
+  padding-left: 4px;
+  padding-top: 2px;
   color: rgba(0,0,0,0.5);
 }
 
 .mdashboard-toolbar .btn:hover {
+  background-color: #fff;
   color: rgba(0,0,0,1);
 }
 
@@ -797,6 +800,7 @@ form.form, .form-row {
   color: #333333;
   width: 340px;
   height: 250px;
+  line-height: 250px;
 
   -webkit-transition: 300ms;
   -moz-transition: 300ms;
@@ -844,11 +848,19 @@ form.form, .form-row {
 }
 
 .swiper-slide-image {
-  margin-top: .5em;
+  margin: 0;
+  padding: 0;
+  line-height: 250px;
+}
+
+.swiper-slide-image img {
+  vertical-align: middle;
 }
 
 .swiper-slide-content {
-  margin-top: 2em;
+  margin: 0;
+  padding: 0;
+  line-height: 250px;
 }
 
 .swiper-visible-switch {

@@ -493,6 +493,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    * @type {string}
    */
   MWidgetCollection.prototype.dashboard = typeof MDashboard;
+
+  /**
+   * Finds widget in a collection by looking it's uid
+   * @param widgetId
+   * @returns {*}
+   */
+  MWidgetCollection.prototype.getWidgetById = function(widgetId) {
+    return _.find(this.widgets, function(widget, index) {
+      return widget.uid === widgetId;
+    });
+  }
   /**
    * Rearrange widget collection
    * @returns {*} self
@@ -551,14 +562,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var buttons = [];
 
       // Add widget button
-      /*
       var addButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-bar-chart-o"></i></a>')
         .attr('title', 'Add Widget')
         .click(function () {
           self.events.onAddWidget(self);
         });
       buttons.push(addButton);
-      */
 
       // Add save button
       var saveButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-save"></i></a>')
@@ -680,7 +689,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         bodyOptions: {
           hasScroller: false,
-          hasWell: true
+          hasWell: false,
+          hasSwiper: true
         },
         footerOptions: {
           buttons: [{
@@ -1261,7 +1271,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           //contentSection.append(self.content);
           break;
         case 'settings':
-          if (self.settings) {
+          var isAdmin = self.collection.dashboard.account.isAdmin();
+          if (isAdmin || (self.settings && !self.isPrototype)) {
             var settingsIcon = $('<i class="fa fa-cog fa-2x fa-white mwidget-icon icon-settings"></i>');
             self.settingsIcon = settingsIcon;
             settingsIcon.bind('click', function (event) {
@@ -1338,7 +1349,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MWidget.prototype.events = {
     onSettingsOpen: function (event, widget) {
-      widget.createDialog();
+
     },
     onClose: function (event, widget) {
       for (var i in widget.collection.widgets) {
@@ -1365,8 +1376,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       widget.collection.widgets.push(widget);
 
       if (widget.isPrototype && widget.module) {
-        if (module.widgetPrototypes.indexOf(widget.uid) < 0) {
-          module.widgetPrototypes.push(widget.uid);
+        if (widget.module.widgetPrototypes.indexOf(widget.uid) < 0) {
+          widget.module.widgetPrototypes.push(widget.uid);
         }
       }
 
@@ -2659,9 +2670,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MDialog.prototype.events = {
     onDialogReady: function(dialog) {
+      // this event fires when the first time dialog showes up
       dialog.dashboard.activeDialog = dialog;
       dialog.orchestrator.setBreadcrumb();
-      // when the first time dialgo showed up
     },
     onPageReady: function(dialogPage) {
       switch(dialogPage.name) {
@@ -3221,7 +3232,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
 
   managementDialog = new MDialog();
-  //addItemDialog = new MDialog();
+  addItemDialog = new MDialog();
   //editWidgetDialog = new MDialog();
   //editChartDialog = new MDialog();
 
