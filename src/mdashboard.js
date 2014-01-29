@@ -259,6 +259,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     try {
       // lazy code section about json/serialization
       var data = self.serialize();
+      console.log(data);
       localStorage.setItem(dataId, JSON.stringify(data));
     } catch (exception) {
       // oldies but goldies
@@ -424,7 +425,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.dashboard = ownerDashboard;
     this.order = ownerDashboard.collections.length + 1;
     this.isInitialized = false;
-    this.service = null;
     this.toolbar = $('<div class="toolbar-collapse ' + classToolbar + '"></div>');
     this.toolbar.mouseover(function() {
       $(this).removeClass('toolbar-collapse');
@@ -709,27 +709,36 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       addItemDialog.createPage(new MDialogPage(addItemPage, addItemDialog));
       addItemDialog.getPage('widget|main', 'slideUpDown');
     },
-    onCreateWidget: function (collection) {
-      var widget = new MWidget(collection),
-          module = collection.dashboard.orchestrator.selected;
+    onCreateWidget: function (collection, editWidget) {
+      var widget = null,
+          module = null,
+          form = null,
+          dialogPageTitle = editWidget ? 'Edit Widget' : 'Create Widget';
 
-      if (module) {
-        widget.service = module.service;
-        widget.header = module.name;
-        widget.contentType = 'html';
+      if (editWidget) {
+        widget = editWidget;
+        module = editWidget.module;
+        form = widget.createForm(editWidget);
+      } else {
+        widget = new MWidget(collection);
+        module = collection.dashboard.orchestrator.selected;
 
-        if (collection.dashboard.account.isAdmin()) {
-          widget.isPrototype = true;
-          widget.module = module;
+        if (module) {
+          widget.header = module.name;
+          widget.contentType = 'html';
+
+          if (collection.dashboard.account.isAdmin()) {
+            widget.isPrototype = true;
+            widget.module = module;
+          }
         }
+        form = widget.createForm();
       }
 
-      var form = widget.createForm();
-
       var createWidgetPage = {
-        name: 'widget|create',
+        name: 'widget|edit',
         headerOptions: {
-          name: 'Create Widget',
+          name: dialogPageTitle,
           icon: 'fa-bar-chart-o',
           align: 'left'
         },
@@ -743,27 +752,45 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         footerOptions: {
           buttons: [{
-            name: 'Go<br/>Back',
-            icon: 'fa-arrow-left',
-            click: function(event) {
-              event.preventDefault();
-              managementDialog.getPage('module|main', 'slideUpDown');
-            }
-          }, {
             name: 'Save Widget',
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
-              widget.events.onSave(widget);
+
+              if (editWidget) {
+                widget.events.onUpdate(widget);
+              } else {
+                widget.events.onSave(widget);
+              }
             }
           }]
         }
       };
 
+      if (editWidget) {
+        createWidgetPage.footerOptions.buttons.push({
+          name: 'Close Dialog',
+          icon: 'fa-sign-out',
+          click: function(event) {
+            event.preventDefault();
+            managementDialog.close();
+          }
+        });
+      } else {
+        createWidgetPage.footerOptions.buttons.push({
+          name: 'Go<br/>Back',
+          icon: 'fa-arrow-left',
+          click: function(event) {
+            event.preventDefault();
+            managementDialog.getPage('module|main', 'slideUpDown');
+          }
+        });
+      }
+
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
       managementDialog.createPage(new MDialogPage(createWidgetPage, managementDialog));
-      managementDialog.getPage('widget|create', 'slideUpDown');
+      managementDialog.getPage('widget|edit', 'slideUpDown');
     },
     onCreateModule: function (collection) {
       var module = new MModule(),
@@ -1182,7 +1209,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.isPrototype = false;
     this.order = this.collection.widgets.length + 1;
     this.id = 'mwidget-' + this.order;
-    this.service = null;
 
     _.extend(this, _options);
 
@@ -1265,8 +1291,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
           break;
         case 'html':
-          if (self.contentType === "html" && self.html && self.html.render) {
-            contentSection.append(self.html.render(self));
+          if (self.contentType === "html" && self.html) {
+              debugger;
+              if (self.html.render) {
+                contentSection.append(self.html.render(self));
+              } else if (self.template) {
+                contentSection.append(_.template(self.template, self));
+              }
           }
           //contentSection.append(self.content);
           break;
@@ -1349,7 +1380,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MWidget.prototype.events = {
     onSettingsOpen: function (event, widget) {
-
+      widget.collection.events.onCreateWidget(widget.collection, widget);
     },
     onClose: function (event, widget) {
       for (var i in widget.collection.widgets) {
@@ -1380,6 +1411,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           widget.module.widgetPrototypes.push(widget.uid);
         }
       }
+
+      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+      widget.collection.redraw();
+    },
+    onUpdate: function(widget) {
+      widget = widget.loadForm();
+
+      var foundWidget = _.find(widget.collection.widgets, function(currentWidget) {
+        return currentWidget.uid === widget.uid;
+      });
+
+      foundWidget = widget;
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
       widget.collection.redraw();
@@ -1419,7 +1462,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.ySize = $('.form-row .form-item .item-ysize').val();
 
     self.description = $('.form-row .form-item .item-description').val();
-    // self.service not needed
 
     return self;
   };
@@ -1427,7 +1469,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    * Creates "Create Widget" dialog page form values
    * @return {*|jQuery|HTMLElement}
    */
-  MWidget.prototype.createForm = function() {
+  MWidget.prototype.createForm = function(record) {
     var self = this,
         formContainer = $('<div class="widget-container"></div>'),
         rows = [],
@@ -1441,63 +1483,71 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = null,
           columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
 
+
       switch(key) {
         case 'uid':
           label.append($('<span>ID</span>'));
-          item.append($('<span class="item-uid">' + value + '</span>'));
+          item.append($('<span class="item-uid">' + (record ? record[key] : value) + '</span>'));
           propertyRequired = true;
           order = 1;
           break;
         case 'header':
           label.append($('<span>Header</span>'));
-          item.append($('<input class="item-header" type="text" required autofocus />').val(self.header));
+          item.append($('<input class="item-header" type="text" required autofocus />')
+            .val(record ? record[key] : self.header));
           propertyRequired = true;
           order = 2;
           break;
         case 'template':
           label.append($('<span>Template</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-template" rows="5"></textarea>'));
+          item.append($('<textarea class="item-template" rows="5"></textarea>')
+            .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 4;
           break;
         case 'row':
           label.append($('<span>Row</span>'));
-          item.append($('<input class="item-row" type="number" required />'));
+          item.append($('<input class="item-row" type="number" required />')
+            .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 5;
           break;
         case 'col':
           label.append($('<span>Column</span>'));
-          item.append($('<input class="item-col" type="number" required />'));
+          item.append($('<input class="item-col" type="number" required />')
+            .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 6;
           break;
         case 'xSize':
           label.append($('<span>Width Size</span>'));
-          item.append($('<input class="item-xsize" type="number" required />').val("1"));
+          item.append($('<input class="item-xsize" type="number" required />')
+            .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 7;
           break;
         case 'ySize':
           label.append($('<span>Height Size</span>'));
-          item.append($('<input class="item-ysize" type="number" required />').val("1"));
+          item.append($('<input class="item-ysize" type="number" required />')
+            .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 8;
           break;
         case 'description':
           label.append($('<span>Description</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-description" rows="2"></textarea>'));
+          item.append($('<textarea class="item-description" rows="2"></textarea>')
+            .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 9;
           break;
         case 'service':
           var services = $('<select class="item-service"></select>');
 
-          if (self.service) {
-            services.append($('<option value="' + self.service.uid + '" selected>' +
-              (self.service.name || self.service.uid) + '</option>'));
+          if (self.module.service) {
+            services.append($('<option value="' + self.module.service.uid + '" selected>' +
+              (self.module.service.name || self.module.service.uid) + '</option>'));
           }
           label.append($('<span>Service</span>'));
           item.append(services);
@@ -1659,11 +1709,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  /**
-   * Owned service
-   * @type {string}
-   */
-  MWidget.prototype.service = typeof MService;
 
   /**
    * Chart item would be placed into widget
@@ -1676,7 +1721,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.uid = getUniqueId(globalUniqueIdLength);
     this.library = 'highcharts'; // default
     this.widget = ownerWidget;
-    this.service = null;
     this.isInitialized = false;
 
     if (_options) {
