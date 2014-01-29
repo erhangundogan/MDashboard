@@ -971,3 +971,15 @@ form.form, .form-row {
               inset 0 0 0 1px #c5c5c5,
               inset 0 1px 2px 1px #e6e6e6,0 0 0 0 #479aeb;
 }
+
+.widget-cell {
+  width: 100%;
+  height: 100%;
+  background-color: #004756;
+  color: #FFF;
+  font-size: 48pt;
+  font-weight: bold;
+  font-family: Ubuntu;
+  text-align: center;
+  text-shadow: 0 3px 1px rgba(0, 150, 190, 0.8);
+}

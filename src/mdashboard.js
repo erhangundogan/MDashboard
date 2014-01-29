@@ -1292,7 +1292,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'html':
           if (self.contentType === "html" && self.html) {
-              debugger;
               if (self.html.render) {
                 contentSection.append(self.html.render(self));
               } else if (self.template) {
@@ -1368,6 +1367,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     } else if (self.contentType === "html" && self.html) {
       if (self.html.render) {
         self.container.append(self.html.render(self));
+      } else if (self.template) {
+        self.container.append(_.template(self.template, self));
       }
     } else {
       self.container.removeClass('loading');
