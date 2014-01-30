@@ -839,6 +839,22 @@ form.form, .form-row {
   cursor: pointer;
 }
 
+.swiper-item-service:hover {
+  background-color: #3c93dd;
+}
+
+.swiper-item-service {
+  background-color: #a7dcff;
+}
+
+.swiper-item-widget:hover {
+  background-color: #46b976;
+}
+
+.swiper-item-widget {
+  background-color: #8cffb7;
+}
+
 .swiper-slide .title {
   font-style: italic;
   font-size: 42px;
@@ -982,4 +998,142 @@ form.form, .form-row {
   font-family: Ubuntu;
   text-align: center;
   text-shadow: 0 3px 1px rgba(0, 150, 190, 0.8);
+}
+
+/* custom checkboxes - squared */
+
+#swiper-show-items {
+  list-style: none;
+  margin: 15px 0 0 50px;
+}
+
+#swiper-show-items li {
+  float:left;
+  width: 150px;
+  margin-right: 10px;
+}
+
+.squared input[type=checkbox] {
+	visibility: hidden;
+}
+
+.squared {
+	width: 28px;
+	height: 28px;
+	background: #fcfff4;
+
+	background: -webkit-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+	background: -moz-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+	background: -o-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+	background: -ms-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+	background: linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfff4', endColorstr='#b3bead',GradientType=0 );
+
+	-webkit-box-shadow: inset 0px 1px 1px white, 0px 1px 3px rgba(0,0,0,0.5);
+	-moz-box-shadow: inset 0px 1px 1px white, 0px 1px 3px rgba(0,0,0,0.5);
+	box-shadow: inset 0px 1px 1px white, 0px 1px 3px rgba(0,0,0,0.5);
+	position: relative;
+}
+
+.squared label.black {
+	cursor: pointer;
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	left: 4px;
+	top: 4px;
+
+	-webkit-box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,1);
+	-moz-box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,1);
+	box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,1);
+
+	background: -webkit-linear-gradient(top, #222 0%, #45484d 100%);
+	background: -moz-linear-gradient(top, #222 0%, #45484d 100%);
+	background: -o-linear-gradient(top, #222 0%, #45484d 100%);
+	background: -ms-linear-gradient(top, #222 0%, #45484d 100%);
+	background: linear-gradient(top, #222 0%, #45484d 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#222', endColorstr='#45484d',GradientType=0 );
+}
+
+.squared label.blue {
+	cursor: pointer;
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	left: 4px;
+	top: 4px;
+
+	-webkit-box-shadow: inset 0px 1px 1px rgba(3, 37, 96, 0.49), 0px 1px 0px rgb(202, 229, 255);
+	-moz-box-shadow: inset 0px 1px 1px rgba(3, 37, 96, 0.49), 0px 1px 0px rgb(202, 229, 255);
+	box-shadow: inset 0px 1px 1px rgba(3, 37, 96, 0.49), 0px 1px 0px rgb(202, 229, 255);
+
+  background: -webkit-linear-gradient(top, #1f79cd 0%, #7ac9ff 100%);
+  background: -moz-linear-gradient(top, #1f79cd 0%, #7ac9ff 100%);
+  background: -o-linear-gradient(top, #1f79cd 0%, #7ac9ff 100%);
+  background: -ms-linear-gradient(top, #1f79cd 0%, #7ac9ff 100%);
+  background: linear-gradient(top, #1f79cd 0%, #7ac9ff 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#1f79cd', endColorstr='#7ac9ff',GradientType=0 );
+}
+
+.squared label.green {
+	cursor: pointer;
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	left: 4px;
+	top: 4px;
+
+	-webkit-box-shadow: inset 0px 1px 1px rgba(20, 88, 44, 0.67), 0px 1px 0px rgb(215, 255, 232);
+	-moz-box-shadow: inset 0px 1px 1px rgba(20, 88, 44, 0.67), 0px 1px 0px rgb(215, 255, 232);
+	box-shadow: inset 0px 1px 1px rgba(20, 88, 44, 0.67), 0px 1px 0px rgb(215, 255, 232);
+
+  background: -webkit-linear-gradient(top, #1ea051 0%, #9aecc3 100%);
+  background: -moz-linear-gradient(top, #1ea051 0%, #9aecc3 100%);
+  background: -o-linear-gradient(top, #1ea051 0%, #9aecc3 100%);
+  background: -ms-linear-gradient(top, #1ea051 0%, #9aecc3 100%);
+  background: linear-gradient(top, #1ea051 0%, #9aecc3 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#1ea051', endColorstr='#9aecc3',GradientType=0 );
+}
+
+.squared label:after {
+	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+	filter: alpha(opacity=0);
+	opacity: 0;
+	content: '';
+	position: absolute;
+	width: 9px;
+	height: 5px;
+	background: transparent;
+	top: 4px;
+	left: 4px;
+	border: 3px solid #fcfff4;
+	border-top: none;
+	border-right: none;
+
+	-webkit-transform: rotate(-45deg);
+	-moz-transform: rotate(-45deg);
+	-o-transform: rotate(-45deg);
+	-ms-transform: rotate(-45deg);
+	transform: rotate(-45deg);
+}
+
+.squared label:hover::after {
+	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=30)";
+	filter: alpha(opacity=30);
+	opacity: 0.3;
+}
+
+.squared input[type=checkbox]:checked + label:after {
+	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=100)";
+	filter: alpha(opacity=100);
+	opacity: 1;
+}
+
+.squared span {
+  position: absolute;
+  top: 3px;
+  left: 33px;
+  font-size: 14pt;
+  color: #666;
+  font-weight: bold;
 }

@@ -258,6 +258,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     try {
       // lazy code section about json/serialization
+      debugger;
       var data = self.serialize();
       console.log(data);
       localStorage.setItem(dataId, JSON.stringify(data));
@@ -717,7 +718,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       if (editWidget) {
         widget = editWidget;
-        module = editWidget.module;
+        module = collection.dashboard.getModuleById(editWidget.moduleId);
         form = widget.createForm(editWidget);
       } else {
         widget = new MWidget(collection);
@@ -726,10 +727,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         if (module) {
           widget.header = module.name;
           widget.contentType = 'html';
+          widget.service = module.service;
 
           if (collection.dashboard.account.isAdmin()) {
             widget.isPrototype = true;
-            widget.module = module;
+            widget.moduleId = module.uid;
           }
         }
         form = widget.createForm();
@@ -760,7 +762,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               if (editWidget) {
                 widget.events.onUpdate(widget);
               } else {
-                widget.events.onSave(widget);
+                widget.events.onSave(widget, collection);
               }
             }
           }]
@@ -878,26 +880,59 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       managementDialog.getPage('module|edit', 'slideUpDown');
 
     },
-    onCreateService: function (collection) {
+    onCreateService: function (collection, editService) {
       var service = null,
-          selectedItem = collection.dashboard.orchestrator.selected;
+          form = null,
+          dialogPageTitle = editService ? 'Edit Service' : 'Create Service',
+          createConnectionButton = editService ? 'Edit Connection' : 'Create Connection',
+          paramOrder = 1;
 
-      if (selectedItem && selectedItem instanceof MModule) {
-        service = new MService();
-        service.module = selectedItem;
+      var addParam = function(key, value) {
+        var keyValueLabel = $('<div class="form-label"></div>'),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+            keyValueItem = $('<div class="form-item"></div>'),
+            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+              .attr('data-order', paramOrder)
+              .click(function(event) {
+                var itemId = $(this).attr('data-order');
+                $('div.form-row[data-order=' + itemId + ']').remove();
+              }),
+            formRow = $('<div class="form-row"></div>');
+
+        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
+        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+
+        if (key) { keyValueLabel.val(key); }
+        if (value) { keyValueItem.val(value); }
+
+        formRow.append(keyValueLabel)
+               .append(keyValueColumnBreak)
+               .append(keyValueItem)
+               .append(removeButton)
+               .attr('data-order', paramOrder);
+        form.append(formRow);
+        ++paramOrder;
+      };
+
+      if (editService) {
+        service = editService;
+        form = service.createForm(editService);
       } else {
-        console.error('Module must be selected to create service!');
-        return;
+        var selectedItem = collection.dashboard.orchestrator.selected;
+        if (selectedItem && selectedItem instanceof MModule) {
+          service = new MService();
+          service.module = selectedItem;
+        } else {
+          console.error('Module must be selected to create service!');
+          return;
+        }
+        form = service.createForm();
       }
 
-      // creates management dialog new module form
-      var form = service.createForm();
-
-      var paramOrder = 1;
       var editServicePage = {
         name: 'service|edit',
         headerOptions: {
-          name: 'Create/Edit Service',
+          name: dialogPageTitle,
           description: 'You can specify options for your web service here. This web service would be data connection for your widgets and charts.',
           icon: 'fa-cloud-upload',
           align: 'left'
@@ -926,49 +961,46 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               if (service.ajaxOptions.url) {
                 $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
                 // Save service
-                service.events.onSave(service);
+                if (editService) {
+                  service.events.onUpdate(service);
+                } else {
+                  service.events.onSave(service);
+                }
               } else {
                 console.error('Connection settings not specified for web service. Please create connection first.');
               }
             }
           }, {
-            name: 'Create Connection',
+            name: createConnectionButton,
             icon: 'fa-chain',
             click: function(event) {
               event.preventDefault();
-              collection.events.onCreateServiceConnection(collection, service);
+              if (editService) {
+                collection.events.onCreateServiceConnection(collection, service, editService.ajaxOptions);
+              } else {
+                collection.events.onCreateServiceConnection(collection, service);
+              }
             }
           }, {
             name: 'Add Key/Value',
             icon: 'fa-key',
             click: function(event) {
               event.preventDefault();
-
-              var keyValueLabel = $('<div class="form-label"></div>'),
-                  keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
-                  keyValueItem = $('<div class="form-item"></div>'),
-                  removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
-                    .attr('data-order', paramOrder)
-                    .click(function(event) {
-                      var itemId = $(this).attr('data-order');
-                      $('div.form-row[data-order=' + itemId + ']').remove();
-                    }),
-                  formRow = $('<div class="form-row"></div>');
-
-              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
-              formRow.append(keyValueLabel)
-                     .append(keyValueColumnBreak)
-                     .append(keyValueItem)
-                     .append(removeButton)
-                     .attr('data-order', paramOrder);
-              form.append(formRow);
-              ++paramOrder;
+              addParam();
             }
           }]
         }
       };
 
+      if (editService && editService.params && editService.params.length > 0) {
+        _.each(editService.params, function(param, index) {
+          for (var paramKey in param) {
+            if (param.hasOwnProperty(paramKey)) {
+              addParam(paramKey, param[paramKey]);
+            }
+          }
+        });
+      }
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
@@ -976,7 +1008,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       managementDialog.getPage('service|edit', 'slideUpDown');
 
     },
-    onCreateServiceConnection: function (collection, service) {
+    onCreateServiceConnection: function (collection, service, editConnection) {
       if (!service) {
         console.error('Service must be specified to create/edit connection.');
         return;
@@ -1201,13 +1233,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.template = null;
     this.settings = true;
     this.collection = ownerCollection;
-    this.module = null; // prototype of
+    this.service = null;
+    this.moduleId = null;
     this.isInitialized = false;
     this.isClosable = true;
     this.isLocked = false;
     this.isRendered = false;
-    this.isPrototype = false;
-    this.order = this.collection.widgets.length + 1;
+    this.isPrototype = this.collection
+      ? (this.collection.dashboard.account.isAdmin() ? true : false)
+      : true;
+    this.order = this.collection ? this.collection.widgets.length + 1 : 0;
     this.id = 'mwidget-' + this.order;
 
     _.extend(this, _options);
@@ -1219,32 +1254,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       this.chart = new MChart(this, this.chart);
     }
 
-    var self = this;
-    var collectionInitialized = setInterval(function () {
-      if (self.collection.isInitialized) {
-        clearInterval(collectionInitialized);
-        if (self.headerItem) {
-          var headerHeight = self.headerItem.height();
-          self.height = self.height - headerHeight;
+    if (!this.collection) {
+      var self = this;
+      var collectionInitialized = setInterval(function () {
+        if (self.collection.isInitialized) {
+          clearInterval(collectionInitialized);
+          if (self.headerItem) {
+            var headerHeight = self.headerItem.height();
+            self.height = self.height - headerHeight;
 
-          if (self.headerItem.css) {
-            var headerPaddingTop = parseInt(self.headerItem.css('padding-top'), 10) || 0;
-            var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom'), 10) || 0;
-            self.height -= (headerPaddingTop + headerPaddingBottom);
+            if (self.headerItem.css) {
+              var headerPaddingTop = parseInt(self.headerItem.css('padding-top'), 10) || 0;
+              var headerPaddingBottom = parseInt(self.headerItem.css('padding-bottom'), 10) || 0;
+              self.height -= (headerPaddingTop + headerPaddingBottom);
+            }
+
+            self.container.height(self.height);
           }
-
-          self.container.height(self.height);
+          self.isInitialized = true;
         }
-        self.isInitialized = true;
-      }
-    }, 100);
+      }, 100);
 
-    var widgetIsRendered = setInterval(function () {
-      if (self.isRendered) {
-        clearInterval(widgetIsRendered);
-        self.container.removeClass('loading');
-      }
-    }, 100);
+      var widgetIsRendered = setInterval(function () {
+        if (self.isRendered) {
+          clearInterval(widgetIsRendered);
+          self.container.removeClass('loading');
+        }
+      }, 100);
+    } else {
+      var headerItem = $('<' + widgetHandle + '>' + this.header + '</' + widgetHandle + '>');
+      this.headerItem = headerItem;
+    }
 
     return this;
   };
@@ -1403,13 +1443,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
-    onSave: function(widget) {
+    onSave: function(widget, collection) {
       widget = widget.loadForm();
       widget.collection.widgets.push(widget);
 
-      if (widget.isPrototype && widget.module) {
-        if (widget.module.widgetPrototypes.indexOf(widget.uid) < 0) {
-          widget.module.widgetPrototypes.push(widget.uid);
+      if (widget.isPrototype && widget.moduleId) {
+        var module = widget.collection
+          ? widget.collection.dashboard.getModuleById(widget.moduleId)
+          : collection.dashboard.getModuleById(widget.moduleId);
+        var widgetPrototypeIDs = _.map(module.widgetPrototypes, function(widgetPrototype) {
+          return widgetPrototype.uid;
+        });
+        if (widgetPrototypeIDs.indexOf(widget.uid) < 0) {
+          module.widgetPrototypes.push(widget);
         }
       }
 
@@ -1546,10 +1592,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'service':
           var services = $('<select class="item-service"></select>');
 
+          /*
           if (self.module.service) {
             services.append($('<option value="' + self.module.service.uid + '" selected>' +
               (self.module.service.name || self.module.service.uid) + '</option>'));
-          }
+          }*/
           label.append($('<span>Service</span>'));
           item.append(services);
           propertyRequired = true;
@@ -1600,7 +1647,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.isClosable = self.isClosable;
     serialized.isLocked = self.isLocked;
     serialized.isPrototype = self.isPrototype;
-    serialized.module = self.module.uid;
+    serialized.moduleId = self.moduleId;
     serialized.order = self.order;
     serialized.settings = self.settings;
     serialized.uid = self.uid;
@@ -1610,6 +1657,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.col = self.col;
     serialized.row = self.row;
 
+    // service
+    serialized.service = self.service ? self.service.serialize() : null;
     /*
     if (self.mainContainer) {
       serialized.col = self.mainContainer.attr('data-col') || self.col;
@@ -1672,8 +1721,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.ySize = data.ySize;
     self.collection = owner;
 
+    if (data.service) {
+      var newService = new MService();
+      self.service = newService.deserialize(data.service, self);
+    }
+
+
     // TODO test
-    self.module = owner.dashboard.getModuleById(data.module);
+    //self.module = owner.dashboard.getModuleById(data.module);
 
     switch (data.contentType) {
       case 'html':
@@ -2053,7 +2108,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.icon = self.icon;
     serialized.description = self.description;
     serialized.tags = self.tags;
-    serialized.widgetPrototypes = self.widgetPrototypes;
     serialized.params = self.params;
 
     // parent module
@@ -2068,6 +2122,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     // modules
     serialized.modules = _.map(self.modules, function(module, index) {
       return module.serialize();
+    });
+
+    // widgets
+    serialized.widgetPrototypes = _.map(self.widgetPrototypes, function(widget, index) {
+      return widget.serialize();
     });
 
     return serialized;
@@ -2103,6 +2162,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.modules = _.map(data.modules, function(moduleData, index) {
         var newModule = new MModule();
         return newModule.deserialize(moduleData, self);
+      });
+    }
+
+    if (data.widgetPrototypes && data.widgetPrototypes.length > 0) {
+      self.widgetPrototypes = _.map(data.widgetPrototypes, function(widgetData, index) {
+        var newWidget = new MWidget();
+        return newWidget.deserialize(widgetData, self);
       });
     }
 
@@ -2606,6 +2672,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       });
     },
+    onUpdate: function(service) {
+      debugger;
+    },
     onConnectionSave: function (service) {
       return service.loadConnectionForm();
       //service.module.dashboard.save(service.module.dashboard.events.onSaved);
@@ -2718,6 +2787,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // this event fires when the first time dialog showes up
       dialog.dashboard.activeDialog = dialog;
       dialog.orchestrator.setBreadcrumb();
+      dialog.orchestrator.setSwiperItemsVisible();
     },
     onPageReady: function(dialogPage) {
       switch(dialogPage.name) {
@@ -3050,7 +3120,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       container: $('<div id="dialog-content-id"></div>'),
       content: $('<div id="dialog-inner-content"></div>'),
       scroller: $('<div id="scroller-container"><div id="scroller-content"><div id="scroller-panel"></div></div></div>'),
-      swiper: $('<ul id="swiper-parent-module"></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div>')
+      swiper: $('<ul id="swiper-parent-module"></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div><ul id="swiper-show-items"></ul>')
     };
     this.footerOptions = {
       buttons: [{
@@ -3340,6 +3410,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.name = 'MOrchestration';
     this.container = null;
     this.selected = null;
+    this.swiperVisibleItems = { Modules:true, Services:true, Widgets:true };
 
     _.extend(this, _options);
 
@@ -3356,6 +3427,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.name = self.name;
     serialized.type = self.type;
     serialized.dashboard = self.dashboard.uid;
+    serialized.swiperVisibleItems = JSON.stringify(self.swiperVisibleItems);
 
     return serialized;
   };
@@ -3366,6 +3438,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.name = data.name;
     self.type = data.type;
     self.dashboard = dashboard;
+    self.swiperVisibleItems = $.parseJSON(data.swiperVisibleItems);
 
     return self;
   };
@@ -3377,61 +3450,85 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MOrchestrator.prototype.renderSwiper = function(swiper, swiperOptions, activeModule, cb) {
 
-     function drawModule(module, callback) {
+    function drawItem(item, callback) {
       function getImage(path, callback) {
         var image = new Image;
         image.onload = function() { callback(image); };
         image.src = path;
       }
 
-      if (module.image) {
-        getImage(module.image, function(result) {
+      var nodeType = null,
+          nodeClass = null,
+          nodeName = null;
+
+      if (item instanceof MModule) {
+        nodeType = 'module-uid';
+        nodeClass = 'swiper-item-module';
+        nodeName = item.name;
+      } else if (item instanceof MService) {
+        nodeType = 'service-uid';
+        nodeClass = 'swiper-item-service';
+        nodeName = item.name;
+      } else if (item instanceof MWidget) {
+        nodeType = 'widget-uid';
+        nodeClass = 'swiper-item-widget';
+        nodeName = item.header;
+      }
+
+      if (item.image) {
+        getImage(item.image, function(result) {
           var width = result.width,
               height = result.height,
-              item = $('<img />')
-                .prop('src', module.image);
+              node = $('<img />')
+                .prop('src', item.image);
 
           if (width > 200) {
             var ratio = 200 / width,
                 newWidth = Math.ceil(width * ratio) + 'px',
                 newHeight = Math.ceil(height * ratio) + 'px';
 
-            item.css({
+            node.css({
               width: newWidth,
               height: newHeight
             });
           }
 
-          item.append($('<span></span>').append(module.name));
+          node.append($('<span></span>').append(nodeName));
 
           callback($('<div></div>')
             .append(
               $('<div class="swiper-slide-image"></div>')
-                .append(item)
+                .addClass(nodeClass)
+                .append(node)
                 .append(
                     $('<input type="hidden" />')
-                      .addClass('module-uid')
-                      .val(module.uid))));
+                      .addClass(nodeType)
+                      .val(item.uid))));
         });
       } else {
-        var item = $('<i class="fa fa-3x"></i>');
+        var node = $('<i class="fa fa-3x"></i>');
 
-        if (module.icon) {
-          item.addClass(module.icon);
+        if (item.icon) {
+          node.addClass(item.icon);
         } else {
-          module.icon = 'fa-question-circle';
-          item.addClass(module.icon);
+          if (item instanceof MWidget) {
+            item.icon = 'fa-dashboard';
+          } else {
+            item.icon = 'fa-question-circle';
+          }
+          node.addClass(item.icon);
         }
 
-        item.append($('<span></span>').append(module.name));
+        node.append($('<span></span>').append(nodeName));
 
         callback($('<div></div>').append(
           $('<div class="swiper-slide-content"></div>')
-            .append(item)
+            .addClass(nodeClass)
+            .append(node)
             .append(
                 $('<input type="hidden" />')
-                  .addClass('module-uid')
-                  .val(module.uid))));
+                  .addClass(nodeType)
+                  .val(item.uid))));
       }
     }
 
@@ -3445,21 +3542,61 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.swiper = swiper;
       self.swiperOptions = swiperOptions;
 
-      var modules = activeModule ? activeModule.modules : self.dashboard.modules,
-          modulesCount = modules ? modules.length : 0,
+      var modules = null,
+          service = null,
+          widgets = [],
+          modulesCount = 0,
+          servicesCount = 0,
+          widgetsCount = 0,
           slides = [];
 
-      _.each(modules, function(module, index) {
-        drawModule(module, function(content) {
+      if (activeModule) {
+        modules = activeModule.modules;
+      } else {
+        modules = self.dashboard.modules;
+      }
+
+      if (modules && modules.length > 0 && self.swiperVisibleItems.Modules) {
+        modulesCount = modules.length;
+        _.each(modules, function(module, index) {
+          drawItem(module, function(content) {
+            var newSlide = swiper.createSlide(content.html()).append();
+            slides.push(newSlide);
+            --modulesCount;
+          });
+        });
+      }
+
+      if (activeModule && activeModule.service && self.swiperVisibleItems.Services) {
+        service = activeModule.service;
+        servicesCount = 1;
+
+        drawItem(service, function(content) {
           var newSlide = swiper.createSlide(content.html()).append();
           slides.push(newSlide);
-          --modulesCount;
+          --servicesCount;
         });
-      });
+      }
+
+      if (activeModule &&
+          activeModule.widgetPrototypes &&
+          activeModule.widgetPrototypes.length > 0 &&
+          self.swiperVisibleItems.Widgets) {
+
+        widgetsCount = activeModule.widgetPrototypes.length;
+
+        _.each(activeModule.widgetPrototypes, function(widgetPrototype, index) {
+          drawItem(widgetPrototype, function(content) {
+            var newSlide = swiper.createSlide(content.html()).append();
+            slides.push(newSlide);
+            --widgetsCount;
+          });
+        });
+      }
 
       if (cb && _.isFunction(cb)) {
         var modulesFinished = setInterval(function() {
-          if (modulesCount === 0) {
+          if (modulesCount === 0 && servicesCount === 0 && widgetsCount === 0) {
             clearInterval(modulesFinished);
             cb(slides);
           }
@@ -3595,6 +3732,42 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
   };
 
+  MOrchestrator.prototype.setSwiperItemsVisible = function() {
+    var self = this,
+        items = ['Modules', 'Services', 'Widgets'],
+        colors = ['black', 'blue', 'green'];
+
+    $('#swiper-show-items').empty().append($('<div style="margin:8px 25px 0 0;" class="dialog-header-text pull-left">Visible Items: </div>'));
+
+    _.each(items, function(item, index) {
+      var itemContainer = $('<li></li>'),
+          squaredContainer = $('<div class="squared"></div>'),
+          squaredId = item + '-visible',
+          squaredInput = $('<input id="' + squaredId + '" type="checkbox" value="' + item + '" name="check" />'),
+          squaredLabel = $('<label for="' + squaredId + '"></label>').addClass(colors[index]),
+          squaredSpan = $('<span></span>').append(item);
+
+      squaredInput.on('change', function(event) {
+        var selectedItem = event.currentTarget.value,
+            checked = $(event.currentTarget).prop('checked');
+
+        self.swiperVisibleItems[selectedItem] = checked;
+      });
+
+      if (self.swiperVisibleItems && self.swiperVisibleItems[item]) {
+        squaredInput.attr('checked', 'checked');
+      }
+
+      $('#swiper-show-items')
+        .append(
+          itemContainer.append(
+            squaredContainer
+              .append(squaredInput)
+              .append(squaredLabel)
+              .append(squaredSpan)));
+    });
+  };
+
   /**
    * Sets breadcrumbs over modules swiper
    * @param selectedModule {MModule} - Selected module by the user
@@ -3659,6 +3832,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       module.dashboard.activeDialog.activePage.enableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
+      orchestrator.setSwiperItemsVisible();
 
       if (orchestrator.swiper) {
         orchestrator.renderSwiper(
@@ -3683,6 +3857,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       module.dashboard.activeDialog.activePage.disableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
+      orchestrator.setSwiperItemsVisible();
+
       if (orchestrator.swiper) {
         orchestrator.renderSwiper(
           orchestrator.swiper,
@@ -3697,14 +3873,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       module.events.onOrchestrationDeselect(module);
     },
     onSlideClick: function onSlideClick(orchestrator, swiper) {
-      var moduleId = $(swiper.clickedSlide).find('input.module-uid').val();
+      var moduleId = $(swiper.clickedSlide).find('input.module-uid').val(),
+          serviceId = $(swiper.clickedSlide).find('input.service-uid').val(),
+          widgetId = $(swiper.clickedSlide).find('input.widget-uid').val();
 
+      debugger;
       if (moduleId) {
         var module = orchestrator.dashboard.getModuleById(moduleId);
         if (module) {
           swiper.removeAllSlides();
           orchestrator.events.onModuleSelected(module);
         }
+      } else if (serviceId) {
+
+      } else if (widgetId) {
+
       }
 
       //$('.swiper-container .selected').removeClass('selected');
@@ -3721,6 +3904,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
               orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
               orchestrator.setBreadcrumb();
+              orchestrator.setSwiperItemsVisible();
               orchestrator.renderSwiper(orchestrator.swiper,orchestrator.swiperOptions);
             }
           } else {
