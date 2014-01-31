@@ -769,7 +769,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         if (module) {
           widget.header = module.name;
           widget.contentType = 'html';
-          widget.service = module.service;
+          widget.serviceId = module.service ? module.service.uid : null;
 
           if (collection.dashboard.account.isAdmin()) {
             widget.isPrototype = true;
@@ -800,7 +800,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
-
               if (editWidget) {
                 widget.events.onUpdate(widget);
               } else {
@@ -817,7 +816,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           icon: 'fa-sign-out',
           click: function(event) {
             event.preventDefault();
-            managementDialog.close();
+            collection.dashboard.activeDialog.close();
+          }
+        });
+
+        createWidgetPage.footerOptions.buttons.push({
+          name: 'Add to Dashboard',
+          icon: 'fa-plus-square',
+          click: function(event) {
+            event.preventDefault();
+            var newWidget = _.clone(widget);
+            newWidget.uid = getUniqueId(globalUniqueIdLength);
+            newWidget.isPrototype = false;
+            collection.add(widget);
+            collection.dashboard.save(collection.dashboard.events.onSaved);
+            collection.dashboard.activeDialog.close();
           }
         });
       } else {
@@ -835,6 +848,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       managementDialog.orchestrator = collection.dashboard.orchestrator;
       managementDialog.createPage(new MDialogPage(createWidgetPage, managementDialog));
       managementDialog.getPage('widget|edit', 'slideUpDown');
+
     },
     onCreateModule: function (collection) {
       var module = new MModule(),
@@ -1306,7 +1320,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.template = null;
     this.settings = true;
     this.collection = ownerCollection;
-    this.service = null;
+    this.serviceId = null;
     this.moduleId = null;
     this.isInitialized = false;
     this.isClosable = true;
@@ -1406,17 +1420,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'html':
           if (self.contentType === "html" && self.html) {
 
-            if (self.service) {
+            if (self.serviceId) {
               contentSection.addClass('loading');
-              self.service.getData(function(err, result) {
-                debugger;
-                contentSection.removeClass('loading');
-                if (self.html.render) {
-                  contentSection.append(self.html.render(self, { data:result }));
-                } else if (self.template) {
-                  contentSection.append(_.template(self.template, { data:result }));
-                }
-              });
+
+              if (self.collection) {
+                var service = self.collection.dashboard.getServiceById(self.serviceId);
+                service.getData(function(err, result) {
+                  contentSection.removeClass('loading');
+                  if (self.html.render) {
+                    contentSection.append(self.html.render(self, { data:result }));
+                  } else if (self.template) {
+                    contentSection.append(_.template(self.template, { data:result }));
+                  }
+                });
+              }
             }
           }
           //contentSection.append(self.content);
@@ -1528,16 +1545,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       widget = widget.loadForm();
       widget.collection.widgets.push(widget);
 
-      if (widget.isPrototype && widget.moduleId) {
-        var module = widget.collection
-          ? widget.collection.dashboard.getModuleById(widget.moduleId)
-          : collection.dashboard.getModuleById(widget.moduleId);
-        var widgetPrototypeIDs = _.map(module.widgetPrototypes, function(widgetPrototype) {
-          return widgetPrototype.uid;
-        });
-        if (widgetPrototypeIDs.indexOf(widget.uid) < 0) {
-          module.widgetPrototypes.push(widget);
-        }
+      var module = widget.collection
+        ? widget.collection.dashboard.getModuleById(widget.moduleId)
+        : collection.dashboard.getModuleById(widget.moduleId);
+
+      var widgetPrototypeIDs = _.map(module.widgetPrototypes, function(widgetPrototype) {
+        return widgetPrototype.uid;
+      });
+      if (widgetPrototypeIDs.indexOf(widget.uid) < 0) {
+        module.widgetPrototypes.push(widget);
       }
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
@@ -1556,7 +1572,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       foundWidget = widget;
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
-      widget.collection.redraw();
+
+      if (widget.collection) {
+        widget.collection.redraw();
+      }
     },
     onResized: function(widget, event, ui) {
       widget.invalidate();
@@ -1676,9 +1695,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'service':
           var services = $('<select class="item-service"></select>');
 
-          if (self.service) {
-            services.append($('<option value="' + self.service.uid + '" selected>' +
-              (self.service.name || self.service.uid) + '</option>'));
+          if (self.serviceId) {
+            var service = self.collection.dashboard.getServiceById(self.serviceId);
+            services.append($('<option value="' + service.uid + '" selected>' +
+              (service.name || service.uid) + '</option>'));
           }
           label.append($('<span>Service</span>'));
           item.append(services);
@@ -1710,7 +1730,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     }
 
-    formContainer.append(form);
+    formContainer.append(form).append($('<div id="connection-page-result-test"></div>'));
 
     return formContainer;
   };
@@ -1739,9 +1759,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.ySize = self.ySize;
     serialized.col = self.col;
     serialized.row = self.row;
-
     // service
-    serialized.service = self.service ? self.service.serialize() : null;
+    serialized.serviceId = self.serviceId;
+
     /*
     if (self.mainContainer) {
       serialized.col = self.mainContainer.attr('data-col') || self.col;
@@ -1803,12 +1823,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.xSize = data.xSize;
     self.ySize = data.ySize;
     self.collection = owner;
-
-    if (data.service) {
-      var newService = new MService();
-      self.service = newService.deserialize(data.service, self);
-    }
-
+    self.serviceId = data.serviceId;
 
     // TODO test
     //self.module = owner.dashboard.getModuleById(data.module);
@@ -2821,9 +2836,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     },
     onConnectionSave: function (service) {
       return service.loadConnectionForm();
-      //service.module.dashboard.save(service.module.dashboard.events.onSaved);
     },
-    onConnectionTest: function (service) {
+    onConnectionTest: function (service, noLoadForm) {
       // service must be saved
       service = service.loadConnectionForm();
       // empty result section
@@ -2831,9 +2845,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // clear container
       resultContainer.empty().removeClass('error').removeClass('success');
 
-      // TODO: change error, data to jquery callback style
-      // https://www.googleapis.com/freebase/v1/mqlread
-      // { "query": { "type":"/music/artist", "name":"The Police", "album":[] } }
       service.begin(function (error, data) {
         if (error) {
           $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
@@ -2856,21 +2867,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         }
       });
-
-      /*
-      var service_url = 'https://www.googleapis.com/freebase/v1/search';
-
-      var params = {
-        'query': 'Madonna',
-        'filter': '(any type:/music/artist)',
-        'limit': 10,
-        'indent': true
-      };
-
-      $.getJSON(service_url + '?callback=?', params, function(response, status, jqXHR) {
-        $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
-      });
-      */
     }
   };
 
