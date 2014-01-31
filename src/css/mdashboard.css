@@ -65,6 +65,7 @@ font-family: 'Varela', sans-serif;
   overflow: hidden;
 }
 
+
 /* MDashboard */
 
 .clearfix:after {
@@ -226,7 +227,7 @@ body {
   /*padding: 5px 0 0 5px;*/
   width: 100%;
   background-color: rgba(0,0,0,0.25);
-  z-index: 3;
+  z-index: 9999;
 
   -moz-transition: margin .25s;
   -webkit-transition: margin .25s;
@@ -372,7 +373,7 @@ body {
 
 .dialog .dialog-footer {
   width: 690px;
-  height: 75px;
+  height: 70px;
   position: absolute;
   bottom: 0;
   left: 5px;
@@ -408,7 +409,8 @@ body {
 
 #dialog-inner-content {
   width: 100%;
-  /*overflow: auto;*/
+  overflow-x: hidden;
+  overflow-y: auto;
   z-index: 11;
   margin-top: .25em;
 }
@@ -724,7 +726,7 @@ form.form, .form-row {
   background: transparent url('images/brickwall.png') top left repeat;
   border: solid 1px #CCC;
   border-radius: 6px;
-  margin-top: 1em;
+  margin-top: 5px;
 
   position: relative;
   overflow: hidden;
@@ -974,7 +976,7 @@ form.form, .form-row {
   color: #4f4f4f;
   padding: 0;
   height: 100px;
-  width: 695px;
+  width: 693px;
   font-size: 16px;
 
   -webkit-transition: all 300ms ease;
@@ -1004,7 +1006,7 @@ form.form, .form-row {
 
 #swiper-show-items {
   list-style: none;
-  margin: 15px 0 0 50px;
+  margin: 10px 0 0 50px;
 }
 
 #swiper-show-items li {
@@ -1136,4 +1138,22 @@ form.form, .form-row {
   font-size: 14pt;
   color: #666;
   font-weight: bold;
+}
+
+.dialog-image-container {
+  width: 100px;
+  height: 65px;
+  float: left;
+  margin-right: 10px;
+}
+
+.dialog-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.dialog-json-textarea {
+  width: 650px;
+  height: 250px;
+  overflow-y: scroll;
 }

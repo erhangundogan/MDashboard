@@ -258,7 +258,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     try {
       // lazy code section about json/serialization
-      debugger;
       var data = self.serialize();
       console.log(data);
       localStorage.setItem(dataId, JSON.stringify(data));
@@ -365,6 +364,47 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return _.find(allModules, function (item) {
       return item.uid === moduleId;
     });
+  };
+  MDashboard.prototype.getServiceById = function(serviceId) {
+    var self = this,
+        allServices = [];
+
+    function getServices(moduleArray) {
+      _.each(moduleArray, function(module, index) {
+        if (module.service) {
+          allServices.push(module.service);
+        }
+        if (module.modules && module.modules.length > 0) {
+          getServices(module.modules);
+        }
+      });
+    }
+    getServices(self.modules);
+
+    return _.find(allServices, function (item) {
+      return item.uid === serviceId;
+    });
+  };
+  MDashboard.prototype.getWidgetPrototypeById = function(widgetId, callback) {
+    var self = this,
+        allWidgets = [];
+
+    function getWidgets(moduleArray) {
+      _.each(moduleArray, function(module, index) {
+        if (module.widgetPrototypes && module.widgetPrototypes.length > 0) {
+          var widgetResult = _.find(module.widgetPrototypes, function(prototype) {
+            return widgetId === prototype.uid;
+          });
+          if (widgetResult) {
+            callback(widgetResult);
+          }
+        }
+        if (module.modules && module.modules.length > 0) {
+          getWidgets(module.modules);
+        }
+      });
+    }
+    getWidgets(self.modules);
   };
   /**
    * Finds module if is stored in dashboard modules
@@ -504,7 +544,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return _.find(this.widgets, function(widget, index) {
       return widget.uid === widgetId;
     });
-  }
+  };
   /**
    * Rearrange widget collection
    * @returns {*} self
@@ -704,6 +744,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }]
         }
       };
+
+      collection.dashboard.orchestrator.swiperVisibleItems = { Modules:true, Services:false, Widgets:true };
 
       addItemDialog.dashboard = collection.dashboard;
       addItemDialog.orchestrator = collection.dashboard.orchestrator;
@@ -915,8 +957,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       };
 
       if (editService) {
-        service = editService;
-        form = service.createForm(editService);
+        if (_.isString(editService)) {
+          service = collection.dashboard.getServiceById(editService);
+          form = service.createForm(service);
+        } else if (editService instanceof MService) {
+          service = editService;
+          form = service.createForm(editService);
+        }
       } else {
         var selectedItem = collection.dashboard.orchestrator.selected;
         if (selectedItem && selectedItem instanceof MModule) {
@@ -976,7 +1023,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             click: function(event) {
               event.preventDefault();
               if (editService) {
-                collection.events.onCreateServiceConnection(collection, service, editService.ajaxOptions);
+                var serviceItem = null;
+                if (_.isString(editService)) {
+                  serviceItem = collection.dashboard.getServiceById(editService);
+                } else if (editService instanceof MService) {
+                  serviceItem = editService;
+                }
+                collection.events.onCreateServiceConnection(collection, service, serviceItem.ajaxOptions);
               } else {
                 collection.events.onCreateServiceConnection(collection, service);
               }
@@ -1014,14 +1067,45 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         return;
       }
 
-      var form = service.createConnectionForm(collection, service);
+      var dialogPageTitle = editConnection ? 'Edit Connection' : 'Create Connection',
+          form = service.createConnectionForm(collection, service, editConnection);
 
       var paramOrder = 1;
+
+      var addParam = function(key, value) {
+        var keyValueLabel = $('<div class="form-label"></div>'),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+            keyValueItem = $('<div class="form-item"></div>'),
+            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+              .attr('data-order', paramOrder)
+              .click(function(event) {
+                var itemId = $(this).attr('data-order');
+                $('div.form-row[data-order=' + itemId + ']').remove();
+              }),
+            formRow = $('<div class="form-row"></div>');
+
+        var keyValueLabelInput = $('<input class="param-key" type="text" />').attr('data-order', paramOrder),
+            keyValueItemInput = $('<input class="param-value" type="text" />').attr('data-order', paramOrder);
+
+        if (key) { keyValueLabelInput.val(key); }
+        if (value) { keyValueItemInput.val(value); }
+
+        keyValueLabel.append(keyValueLabelInput);
+        keyValueItem.append(keyValueItemInput);
+
+        formRow.append(keyValueLabel)
+               .append(keyValueColumnBreak)
+               .append(keyValueItem)
+               .append(removeButton)
+               .attr('data-order', paramOrder);
+        form.find('form.form').append(formRow);
+        ++paramOrder;
+      };
 
       var editConnectionPage = {
         name: 'connection|edit',
         headerOptions: {
-          name: 'Create/Edit Connection',
+          name: dialogPageTitle,
           description: 'You can specify options for your web service connection here. This web service would be doing ajax requests for data retrieval.',
           icon: 'fa-chain',
           align: 'left'
@@ -1047,40 +1131,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-key',
             click: function(event) {
               event.preventDefault();
-
-              var keyValueLabel = $('<div class="form-label"></div>'),
-                  keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
-                  keyValueItem = $('<div class="form-item"></div>'),
-                  removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
-                    .attr('data-order', paramOrder)
-                    .click(function(event) {
-                      var itemId = $(this).attr('data-order');
-                      $('div.form-row[data-order=' + itemId + ']').remove();
-                    }),
-                  formRow = $('<div class="form-row"></div>');
-
-              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
-              formRow.append(keyValueLabel)
-                     .append(keyValueColumnBreak)
-                     .append(keyValueItem)
-                     .append(removeButton)
-                     .attr('data-order', paramOrder);
-              form.append(formRow);
-              ++paramOrder;
+              addParam();
             }
           }, {
             name: 'Save Connection',
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
-              service = service.events.onConnectionSave(service);
+              service = service.events.onConnectionSave(service, editConnection);
               collection.dashboard.activeDialog.activePage.enableButton('Test Connection');
             }
           }, {
             name: 'Test Connection',
             id: 'connection-page-button-test',
-            disabled: true,
+            disabled: editConnection ? false : true,
             icon: 'fa-bolt',
             click: function(event) {
               event.preventDefault();
@@ -1090,6 +1154,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }]
         }
       };
+
+      if (editConnection && editConnection.data && Object.keys(editConnection.data).length > 0) {
+        for (var key in editConnection.data) {
+          if (editConnection.data.hasOwnProperty(key)) {
+            addParam(key, editConnection.data[key]);
+          }
+        }
+      }
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
@@ -1228,6 +1300,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.ySize = 1;
     this.row = 1;
     this.col = 1;
+    this.data = null;
     this.header = null;
     this.description = null;
     this.template = null;
@@ -1332,11 +1405,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'html':
           if (self.contentType === "html" && self.html) {
-              if (self.html.render) {
-                contentSection.append(self.html.render(self));
-              } else if (self.template) {
-                contentSection.append(_.template(self.template, self));
-              }
+
+            if (self.service) {
+              contentSection.addClass('loading');
+              self.service.getData(function(err, result) {
+                debugger;
+                contentSection.removeClass('loading');
+                if (self.html.render) {
+                  contentSection.append(self.html.render(self, { data:result }));
+                } else if (self.template) {
+                  contentSection.append(_.template(self.template, { data:result }));
+                }
+              });
+            }
           }
           //contentSection.append(self.content);
           break;
@@ -1460,7 +1541,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
-      widget.collection.redraw();
+
+      if (widget.collection) {
+        widget.collection.redraw();
+      }
     },
     onUpdate: function(widget) {
       widget = widget.loadForm();
@@ -1592,11 +1676,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'service':
           var services = $('<select class="item-service"></select>');
 
-          /*
-          if (self.module.service) {
-            services.append($('<option value="' + self.module.service.uid + '" selected>' +
-              (self.module.service.name || self.module.service.uid) + '</option>'));
-          }*/
+          if (self.service) {
+            services.append($('<option value="' + self.service.uid + '" selected>' +
+              (self.service.name || self.service.uid) + '</option>'));
+          }
           label.append($('<span>Service</span>'));
           item.append(services);
           propertyRequired = true;
@@ -2089,12 +2172,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         }
       });
-    },
-    onOrchestrationSelect: function(module) {
-      module.dashboard.orchestrator.selected = module;
-    },
-    onOrchestrationDeselect: function(module) {
-      module.dashboard.orchestrator.selected = null;
     }
   };
   MModule.prototype.serialize = function() {
@@ -2267,6 +2344,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
+  MService.prototype.getData = function(callback) {
+    var self = this;
+
+    self.begin(function(err, data) {
+      if (err) {
+        console.error(err);
+        callback(err);
+      } else {
+        self.data = data;
+        callback(null, data);
+      }
+    });
+  };
   /**
    * Here we go to get it
    * @param _params service parameters
@@ -2285,7 +2375,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         });
         address = address + '?callback=?' + queryStrings.join('&');*/
 
-        $.getJSON(self.ajaxOptions.url + '?callback=?', self.ajaxOptions.data, callback);
+        $.getJSON(self.ajaxOptions.url + '?callback=?', self.ajaxOptions.data, function(data, statusText, error) {
+          if (statusText === 'success') {
+            callback(null, data)
+          } else {
+            callback(error);
+          }
+        });
       } else {
         var request = $.ajax(self.ajaxOptions);
 
@@ -2362,7 +2458,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  MService.prototype.createConnectionForm = function(collection, service) {
+  MService.prototype.createConnectionForm = function(collection, service, record) {
     var formContainer = $('<div class="service-ajax-container"></div>'),
         rows = [],
         form = $('<form class="form"></form>');
@@ -2379,7 +2475,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           label.append($('<span>Url</span>'));
           item.append(
             $('<input class="item-url" type="text" required placeholder="http://yourdomain.com/service" />')
-              .val('https://www.googleapis.com/freebase/v1/mqlread')
+              .val(record && record.url ? record.url : '')
           );
           propertyRequired = true;
           order = 3;
@@ -2394,6 +2490,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .append($('<option value="jsonp" selected>JSONP</option>'))
             .append($('<option value="text">Text</option>'));
           item.append(dataTypes);
+          if (record && record.dataType) {
+            dataTypes.val(record.dataType);
+          }
           propertyRequired = true;
           order = 2;
           break;
@@ -2403,74 +2502,80 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .append($('<option value="GET" selected>GET</option>'))
             .append($('<option value="POST">POST</option>'));
           item.append(types);
+          if (record && record.type) {
+            types.val(record.type);
+          }
           propertyRequired = true;
           order = 1;
           break;
-        /*case 'data':
-          label.append($('<span>Arguments</span>'));
-          item.append($('<input class="item-data" type="text" placeholder="{ \"count:1\" }" />').val('{ "count":1 }'));
-          propertyRequired = true;
-          order = 3;
-          break;*/
         case 'crossDomain':
           label.append($('<span>Cross Domain</span>'));
-          item.append($('<input class="item-crossDomain" type="checkbox" />'));
+          item.append($('<input class="item-crossDomain" type="checkbox" />')
+            .prop('checked', (record && record.crossDomain ? true : false)));
           propertyRequired = true;
           order = 4;
           break;
         case 'jsonp':
           label.append($('<span>jsonp</span>'));
-          item.append($('<input class="item-jsonp" type="checkbox" checked="checked" />'));
+          item.append($('<input class="item-jsonp" type="checkbox" checked="checked" />')
+            .prop('checked', (record && record.jsonp ? true : false)));
           propertyRequired = true;
           order = 5;
           break;
         case 'async':
           label.append($('<span>Asynchronous</span>'));
-          item.append($('<input class="item-async" type="checkbox" checked="checked" />'));
+          item.append($('<input class="item-async" type="checkbox" checked="checked" />')
+            .prop('checked', (record && record.async ? true : false)));
           propertyRequired = true;
           order = 6;
           break;
         case 'cache':
           label.append($('<span>Cache Results</span>'));
-          item.append($('<input class="item-cache" type="checkbox" checked="checked" />'));
+          item.append($('<input class="item-cache" type="checkbox" checked="checked" />')
+            .prop('checked', (record && record.cache ? true : false)));
           propertyRequired = true;
           order = 7;
           break;
         case 'processData':
           label.append($('<span>Process Data</span>'));
-          item.append($('<input class="item-processData" type="checkbox" />'));
+          item.append($('<input class="item-processData" type="checkbox" />')
+            .prop('checked', (record && record.processData ? true : false)));
           propertyRequired = true;
           order = 8;
           break;
         case 'global':
           label.append($('<span>Global</span>'));
-          item.append($('<input class="item-global" type="checkbox" checked="checked" />'));
+          item.append($('<input class="item-global" type="checkbox" checked="checked" />')
+            .prop('checked', (record && record.global ? true : false)));
           propertyRequired = true;
           order = 9;
           break;
         case 'ifModified':
           label.append($('<span>If Modified</span>'));
-          item.append($('<input class="item-ifModified" type="checkbox" />'));
+          item.append($('<input class="item-ifModified" type="checkbox" />')
+            .prop('checked', (record && record.ifModified ? true : false)));
           propertyRequired = true;
           order = 10;
           break;
         case 'contentType':
           label.append($('<span>Content Type</span>'));
           item.append($('<input class="item-contentType" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
-            .val('application/x-www-form-urlencoded; charset=UTF-8'));
+            .val(record && record.contentType ? record.contentType : 'application/x-www-form-urlencoded; charset=UTF-8'));
           propertyRequired = true;
           order = 11;
           break;
         case 'timeout':
           label.append($('<span>Timeout</span>'));
-          item.append($('<input class="item-timeout" type="text" placeholder="30000 (30 seconds)" />'));
+          item.append($('<input class="item-timeout" type="text" placeholder="30000 (30 seconds)" />')
+            .val(record && record.timeout ? record.timeout : 30000));
           propertyRequired = true;
           order = 12;
           break;
         case 'headers':
           label.append($('<span>Headers</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea rows="2" class="item-headers" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>'));
+          item.append($('<textarea rows="2" class="item-headers" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>')
+            .val(record && record.headers ? record.header : ''));
           propertyRequired = true;
           order = 13;
           break;
@@ -2535,30 +2640,34 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       callback(null, self);
     } else {
       var uploadControl = $('.item-image')[0];
-        if (uploadControl.files
-          && uploadControl.files[0]
-          && /image/.test(uploadControl.files[0].type)) {
-            if (uploadControl.files[0].size > 1000000) { // ~1MB
-              message = 'Image file size should be less than 1MB';
-              callback(message);
-            } else {
-              // read image file
-              var reader = new FileReader();
-              reader.onload = function(e) {
-                self.image = e.target.result;
-                self.icon = null;
-                callback(null, self);
-              };
-              reader.readAsDataURL(uploadControl.files[0]);
-            }
+      if (uploadControl.files && uploadControl.files[0] && /image/.test(uploadControl.files[0].type)) {
+        if (uploadControl.files[0].size > 1000000) { // ~1MB
+          message = 'Image file size should be less than 1MB';
+          callback(message);
+        } else {
+          // read image file
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            self.image = e.target.result;
+            self.icon = null;
+            callback(null, self);
+          };
+          reader.readAsDataURL(uploadControl.files[0]);
+        }
+      } else {
+        var updateImage = $('.dialog-image-container img');
+        if (updateImage.length > 0) {
+          self.image = $(updateImage).attr('src');
+          self.icon = null;
         } else {
           self.image = null;
           self.icon = 'fa-question-circle';
-          callback(null, self);
         }
+        callback(null, self);
+      }
     }
   };
-  MService.prototype.createForm = function(collection, container) {
+  MService.prototype.createForm = function(record) {
     var self = this,
         formContainer = $('<div class="service-container"></div>'),
         rows = [],
@@ -2574,44 +2683,55 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       switch(key) {
         case 'uid':
           label.append($('<span>ID</span>'));
-          item.append($('<span class="item-uid">' + value + '</span>'));
+          item.append($('<span class="item-uid">' + (record ? record[key] : value) + '</span>'));
           propertyRequired = true;
           order = 2;
           break;
         case 'description':
           label.append($('<span>Description</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-description" rows="2"></textarea>'));
+          item.append($('<textarea class="item-description" rows="2"></textarea>')
+            .val(record ? record[key] : self.description));
           propertyRequired = true;
           order = 4;
           break;
         case 'name':
           label.append($('<span>Name</span>'));
-          item.append($('<input class="item-name" type="text" required autofocus />'));
+          item.append($('<input class="item-name" type="text" required autofocus />')
+            .val(record ? record[key] : self.name));
           propertyRequired = true;
           order = 3;
           break;
         case 'schedule':
           label.append($('<span>Schedule</span>'));
-          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />'));
+          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />')
+            .val(record ? record[key] : self.schedule));
           propertyRequired = true;
           order = 5;
           break;
         case 'isScheduled':
           label.append($('<span>Scheduled</span>'));
-          item.append($('<input class="item-scheduled" type="checkbox" />'));
+          if (record && record.isScheduled) {
+            item.append($('<input class="item-scheduled" type="checkbox" />').prop('checked', true));
+          } else {
+            item.append($('<input class="item-scheduled" type="checkbox" />'));
+          }
           propertyRequired = true;
           order = 6;
           break;
         case 'module':
           label.append($('<span>Module</span>'));
-          item.append($('<span class="item-module">' + (value.name ? value.name : '') + '</span>'));
+          item.append($('<span class="item-module">' + (value.name ? value.name : '') + '</span>')
+            .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 1;
           break;
         case 'image':
           label.append($('<span>Image</span>'));
           item.append($('<input class="item-image" type="file" />'));
+          if (record && record.image) {
+            item.append($('<div class="dialog-image-container"></div>').append($('<img />').attr('src', record.image)));
+          }
           propertyRequired = true;
           order = 7;
           break;
@@ -2619,11 +2739,24 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           label.append($('<span>Icon</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
           var itemIcons = $('<ul class="item-icons"></ul>');
-          _.each(faIcons, function(faIcon, index) {
-            var listItem = $('<li class="item-icon" data-icon="' + faIcon + '"></li>');
-            listItem.append($('<i class="fa fa-2x fa-white ' + faIcon + '"></i>'));
-            itemIcons.append(listItem);
-          });
+          if (record && record.icon) {
+            _.each(faIcons, function(faIcon, index) {
+              var listItem = null;
+              if (record.icon === faIcon) {
+                listItem = $('<li class="item-icon selected-icon" data-icon="' + faIcon + '"></li>');
+              } else {
+                listItem = $('<li class="item-icon" data-icon="' + faIcon + '"></li>');
+              }
+              listItem.append($('<i class="fa fa-2x fa-white ' + faIcon + '"></i>'));
+              itemIcons.append(listItem);
+            });
+          } else {
+            _.each(faIcons, function(faIcon, index) {
+              var listItem = $('<li class="item-icon" data-icon="' + faIcon + '"></li>');
+              listItem.append($('<i class="fa fa-2x fa-white ' + faIcon + '"></i>'));
+              itemIcons.append(listItem);
+            });
+          }
           item.append(itemIcons);
           propertyRequired = true;
           order = 8;
@@ -2673,13 +2806,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       });
     },
     onUpdate: function(service) {
-      debugger;
+      service.loadForm(function(err, result) {
+        if (err) {
+          console.error(err);
+        } else {
+          if (result) {
+            result.module.service = service;
+            result.module.dashboard.save(result.module.dashboard.events.onSaved);
+          } else {
+            console.error('Could not load form values');
+          }
+        }
+      });
     },
     onConnectionSave: function (service) {
       return service.loadConnectionForm();
       //service.module.dashboard.save(service.module.dashboard.events.onSaved);
     },
     onConnectionTest: function (service) {
+      // service must be saved
+      service = service.loadConnectionForm();
       // empty result section
       var resultContainer = $('#connection-page-result-test');
       // clear container
@@ -2699,12 +2845,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
 
           if (data) {
-            var resultMessage = $('<div></div>').addClass('success').append('Service request successful.');
-            var dataMessage = $('<div></div>').append($('<code></code>').append(data));
+            var resultMessage = $('<div></div>').addClass('success').append('Service request successful.'),
+                dataMessage = $('<textarea class="dialog-json-textarea"></textarea>').val(JSON.stringify(data, null, 2));
+
             resultContainer.append(resultMessage).append('<hr/>').append(dataMessage);
+
           } else {
             var resultMessage = $('<div></div>').addClass('success').append('Service request successful. But no result returned.');
-            resultContainer.append(resultMessage).append('<hr/>');
+            resultContainer.append(resultMessage);
           }
         }
       });
@@ -3325,7 +3473,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
 
     $(window).bind('open.boxer', function(event) {
-      var contentHeight = $('.boxer-container').height() - 215,
+      var contentHeight = $('.boxer-container').height() - 195,
           contentWidth = $('.boxer-container').width() - 15;
 
       self.dialog.width = contentWidth;
@@ -3346,8 +3494,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
   };
 
-  managementDialog = new MDialog();
-  addItemDialog = new MDialog();
+  managementDialog = new MDialog({ name:'management' });
+  addItemDialog = new MDialog({ name:'user' });
   //editWidgetDialog = new MDialog();
   //editChartDialog = new MDialog();
 
@@ -3737,6 +3885,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         items = ['Modules', 'Services', 'Widgets'],
         colors = ['black', 'blue', 'green'];
 
+    if (!self.dashboard.account.isAdmin()) return;
+
     $('#swiper-show-items').empty().append($('<div style="margin:8px 25px 0 0;" class="dialog-header-text pull-left">Visible Items: </div>'));
 
     _.each(items, function(item, index) {
@@ -3752,6 +3902,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             checked = $(event.currentTarget).prop('checked');
 
         self.swiperVisibleItems[selectedItem] = checked;
+
+        self.swiper.removeAllSlides();
+        self.events.onModuleSelected(self.selected, self);
       });
 
       if (self.swiperVisibleItems && self.swiperVisibleItems[item]) {
@@ -3822,14 +3975,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     });
   };
   MOrchestrator.prototype.events = {
-    onModuleSelected: function(module) {
-      var orchestrator = module.dashboard.orchestrator;
+    onModuleSelected: function(module, orchestrator) {
+      if (!orchestrator) {
+        if (module) {
+          orchestrator = module.dashboard.orchestrator;
+        } else {
+          return;
+        }
+      }
       orchestrator.selected = module;
 
       // management dialog
-      module.dashboard.activeDialog.activePage.enableButton('Create Service');
+      orchestrator.dashboard.activeDialog.activePage.enableButton('Create Service');
       // add widget dialog
-      module.dashboard.activeDialog.activePage.enableButton('Create Widget');
+      orchestrator.dashboard.activeDialog.activePage.enableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
       orchestrator.setSwiperItemsVisible();
@@ -3844,17 +4003,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             orchestrator.swiper.updateActiveSlide(0);
           });
       }
-
-      module.events.onOrchestrationSelect(module);
     },
     // deprecated on swiper version
-    onModuleDeselected: function(module) {
-      var orchestrator = module.dashboard.orchestrator;
+    onModuleDeselected: function(module, orchestrator) {
+      if (!orchestrator) {
+        if (module) {
+          orchestrator = module.dashboard.orchestrator;
+        } else {
+          return;
+        }
+      }
       orchestrator.selected = null;
       // management dialog
-      module.dashboard.activeDialog.activePage.disableButton('Create Service');
+      orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
       // add widget dialog
-      module.dashboard.activeDialog.activePage.disableButton('Create Widget');
+      orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
       orchestrator.setSwiperItemsVisible();
@@ -3869,15 +4032,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             orchestrator.swiper.updateActiveSlide(0);
           });
       }
-
-      module.events.onOrchestrationDeselect(module);
     },
     onSlideClick: function onSlideClick(orchestrator, swiper) {
       var moduleId = $(swiper.clickedSlide).find('input.module-uid').val(),
           serviceId = $(swiper.clickedSlide).find('input.service-uid').val(),
-          widgetId = $(swiper.clickedSlide).find('input.widget-uid').val();
+          widgetId = $(swiper.clickedSlide).find('input.widget-uid').val(),
+          collection = orchestrator.dashboard.collections[0];
 
-      debugger;
       if (moduleId) {
         var module = orchestrator.dashboard.getModuleById(moduleId);
         if (module) {
@@ -3885,12 +4046,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           orchestrator.events.onModuleSelected(module);
         }
       } else if (serviceId) {
-
+        collection.events.onCreateService(collection, serviceId);
       } else if (widgetId) {
-
+        collection.dashboard.getWidgetPrototypeById(widgetId, function(widget) {
+          if (widget) {
+            collection.events.onCreateWidget(collection, widget);
+          } else {
+            console.error('Widget colud not be found');
+          }
+        });
       }
-
-      //$('.swiper-container .selected').removeClass('selected');
     },
     onBreadcrumbSelected: function(orchestrator, event) {
       if (event && event.currentTarget) {
