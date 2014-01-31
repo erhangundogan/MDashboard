@@ -258,9 +258,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     try {
       // lazy code section about json/serialization
-      var data = self.serialize();
-      console.log(data);
-      localStorage.setItem(dataId, JSON.stringify(data));
+      var data = self.serialize(),
+          dataString = JSON.stringify(data);
+
+      //console.log(data);
+      localStorage.setItem(dataId, dataString);
     } catch (exception) {
       // oldies but goldies
       console.error(exception);
@@ -1430,7 +1432,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   if (self.html.render) {
                     contentSection.append(self.html.render(self, { data:result }));
                   } else if (self.template) {
-                    contentSection.append(_.template(self.template, { data:result }));
+                    try {
+                      contentSection.append(_.template(self.template, { data:result }));
+                    } catch (exception) {
+                      console.error(exception);
+                    }
                   }
                 });
               }
@@ -1506,7 +1512,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       if (self.html.render) {
         self.container.append(self.html.render(self));
       } else if (self.template) {
-        self.container.append(_.template(self.template, self));
+        if (self.serviceId && self.collection) {
+          try {
+            var service = self.collection.dashboard.getServiceById(self.serviceId);
+            self.container.append(_.template(self.template, { data:service.data }));
+          } catch (exception) {
+            console.error(exception);
+          }
+        }
       }
     } else {
       self.container.removeClass('loading');
@@ -1579,6 +1592,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     },
     onResized: function(widget, event, ui) {
       widget.invalidate();
+      widget.render();
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
     onDragged: function(widget, event, ui) {
