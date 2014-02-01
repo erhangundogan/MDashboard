@@ -1440,6 +1440,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   }
                 });
               }
+            } else {
+              if (self.html.render) {
+                contentSection.append(self.html.render(self, { data:self }));
+              } else if (self.template) {
+                try {
+                  contentSection.append(_.template(self.template, { data:self }));
+                } catch (exception) {
+                  console.error(exception);
+                }
+              }
             }
           }
           //contentSection.append(self.content);
@@ -1516,6 +1526,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           try {
             var service = self.collection.dashboard.getServiceById(self.serviceId);
             self.container.append(_.template(self.template, { data:service.data }));
+          } catch (exception) {
+            console.error(exception);
+          }
+        } else {
+          try {
+            self.container.append(_.template(self.template, { data:self }));
           } catch (exception) {
             console.error(exception);
           }
