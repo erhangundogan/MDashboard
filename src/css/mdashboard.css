@@ -373,7 +373,7 @@ body {
 
 .dialog .dialog-footer {
   width: 690px;
-  height: 70px;
+  height: 65px;
   position: absolute;
   bottom: 0;
   left: 5px;
@@ -413,6 +413,11 @@ body {
   overflow-y: auto;
   z-index: 11;
   margin-top: .25em;
+}
+
+.inner-panel-resize {
+  height: 420px;
+  padding-top:2em;
 }
 
 #scroller-container {

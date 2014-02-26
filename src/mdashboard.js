@@ -305,7 +305,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     if (data) {
       self.uid = data.uid;
       self.userId = data.userId;
-      self.isAdmin = data.isAdmin;
       self.options = data.options;
 
       self.modules = _.map(data.modules, function(moduleData, index) {
@@ -793,20 +792,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           hasWell: true,
           container: $('<div id="dialog-content-id"></div>'),
           content: $('<div id="dialog-inner-content"></div>')
-            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .addClass('inner-panel-resize') // resize inner panel and center content
             .append(form)
         },
         footerOptions: {
           buttons: [{
             name: 'Save Widget',
             icon: 'fa-save',
+            // Save Widget visible if it is admin and if dialog page showed up from management dialog
+            visible : collection.dashboard.account.isAdmin() &&
+              collection.dashboard.activeDialog ? true : false,
             click: function(event) {
               event.preventDefault();
-              if (editWidget) {
-                widget.events.onUpdate(widget);
-              } else {
-                widget.events.onSave(widget, collection);
-              }
+              widget.events.onSave(widget, collection);
             }
           }]
         }
@@ -825,12 +823,17 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         createWidgetPage.footerOptions.buttons.push({
           name: 'Add to Dashboard',
           icon: 'fa-plus-square',
+          // Save Widget visible if it is admin and if dialog page showed up from management dialog
+          visible : collection.dashboard.account.isAdmin() &&
+            collection.dashboard.activeDialog ? true : false,
           click: function(event) {
             event.preventDefault();
             var newWidget = _.clone(widget);
             newWidget.uid = getUniqueId(globalUniqueIdLength);
+            // TODO: should control same widget id exists or not
+            newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
             newWidget.isPrototype = false;
-            collection.add(widget);
+            collection.add(newWidget);
             collection.dashboard.save(collection.dashboard.events.onSaved);
             collection.dashboard.activeDialog.close();
           }
@@ -879,7 +882,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           hasWell: true,
           container: $('<div id="dialog-content-id"></div>'),
           content: $('<div id="dialog-inner-content"></div>')
-            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .addClass('inner-panel-resize') // resize inner panel and center content
             .append(form)
         },
         footerOptions: {
@@ -930,7 +933,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }]
         }
       };
-
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
@@ -1005,7 +1007,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           hasWell: true,
           container: $('<div id="dialog-content-id"></div>'),
           content: $('<div id="dialog-inner-content"></div>')
-            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .addClass('inner-panel-resize') // resize inner panel and center content
             .append(form)
         },
         footerOptions: {
@@ -1131,7 +1133,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           hasWell: true,
           container: $('<div id="dialog-content-id"></div>'),
           content: $('<div id="dialog-inner-content"></div>')
-            .css({ 'height':'425px', 'padding-top':'2em' }) // resize inner panel and center content
+            .addClass('inner-panel-resize') // resize inner panel and center content
             .append(form)
         },
         footerOptions: {
@@ -1304,12 +1306,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
   /**
    *
-   * @param ownerCollection Owner MCollection
+   * @param owner Owner MWidgetCollection or MDashboard
    * @param _options Widget options (optional)
    * @returns {*} Widget itself
    * @constructor
    */
-  MWidget = function (ownerCollection, _options) {
+  MWidget = function (owner, _options) {
     this.uid = getUniqueId(globalUniqueIdLength);
     this.name = 'MWidget';
     this.xSize = 1;
@@ -1321,13 +1323,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.description = null;
     this.template = null;
     this.settings = true;
-    this.collection = ownerCollection;
     this.serviceId = null;
     this.moduleId = null;
     this.isInitialized = false;
     this.isClosable = true;
     this.isLocked = false;
     this.isRendered = false;
+
+    if (owner instanceof MWidgetCollection) {
+      this.collection = owner;
+      this.dashboard = null;
+    } else if (owner instanceof MDashboard) {
+      this.collection = null;
+      this.dashboard = owner;
+    }
+
     this.isPrototype = this.collection
       ? (this.collection.dashboard.account.isAdmin() ? true : false)
       : true;
@@ -1343,7 +1353,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       this.chart = new MChart(this, this.chart);
     }
 
-    if (!this.collection) {
+    if (this.collection) {
       var self = this;
       var collectionInitialized = setInterval(function () {
         if (self.collection.isInitialized) {
@@ -1571,40 +1581,49 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
     onSave: function(widget, collection) {
+      var dashboard = null;
+
+      function processSave(widget) {
+        var module = dashboard.getModuleById(widget.moduleId);
+        var widgetPrototypeIDs = _.map(module.widgetPrototypes, function(widgetPrototype) {
+          return widgetPrototype.uid;
+        });
+        var widgetIndex = widgetPrototypeIDs.indexOf(widget.uid);
+        if (widgetIndex < 0) {
+          module.widgetPrototypes.push(widget);
+        } else {
+          module.widgetPrototypes[widgetIndex] = widget;
+        }
+
+        widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+      }
+
       widget = widget.loadForm();
-      widget.collection.widgets.push(widget);
+      //widget.collection.widgets.push(widget);
 
-      var module = widget.collection
-        ? widget.collection.dashboard.getModuleById(widget.moduleId)
-        : collection.dashboard.getModuleById(widget.moduleId);
-
-      var widgetPrototypeIDs = _.map(module.widgetPrototypes, function(widgetPrototype) {
-        return widgetPrototype.uid;
-      });
-      if (widgetPrototypeIDs.indexOf(widget.uid) < 0) {
-        module.widgetPrototypes.push(widget);
+      if (widget && widget.collection) {
+        dashboard = widget.collection.dashboard;
+      } else if (collection) {
+        dashboard = collection.dashboard;
+      } else if (widget && widget.dashboard) {
+        dashboard = widget.dashboard;
       }
 
-      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+      if (widget.moduleId) {
+        processSave(widget);
+      } else {
+        dashboard.getWidgetPrototypeById(widget.uid, function(widgetPrototype) {
+          if (widgetPrototype) {
+            processSave(widgetPrototype);
+          } else {
+            console.error('Widget prototype could not be found!');
+          }
+        });
+      }
 
-      if (widget.collection) {
+      /*if (widget.collection && widget.collection.redraw) {
         widget.collection.redraw();
-      }
-    },
-    onUpdate: function(widget) {
-      widget = widget.loadForm();
-
-      var foundWidget = _.find(widget.collection.widgets, function(currentWidget) {
-        return currentWidget.uid === widget.uid;
-      });
-
-      foundWidget = widget;
-
-      widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
-
-      if (widget.collection) {
-        widget.collection.redraw();
-      }
+      }*/
     },
     onResized: function(widget, event, ui) {
       widget.invalidate();
@@ -1799,7 +1818,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }*/
 
     // collection
-    serialized.collection = self.collection.uid;
+    /*if (self.collection && self.collection.uid) {
+      serialized.collection = self.collection.uid;
+    }*/
 
     switch (self.contentType) {
       case 'html':
@@ -1852,8 +1873,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.width = data.width;
     self.xSize = data.xSize;
     self.ySize = data.ySize;
-    self.collection = owner;
     self.serviceId = data.serviceId;
+
+    if (owner instanceof MDashboard) {
+      self.collection = null;
+      self.dashboard = owner;
+    } else if (owner instanceof MWidgetCollection) {
+      self.collection = owner;
+      self.dashboard = null;
+    }
 
     // TODO test
     //self.module = owner.dashboard.getModuleById(data.module);
@@ -2196,7 +2224,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return formContainer;
   };
   MModule.prototype.events = {
-    onSave: function (module) {
+    onSave: function (module, callback) {
       module.loadForm(function(err, result) {
         if (err) {
           console.error(err);
@@ -2211,7 +2239,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                 result.dashboard.modules.push(module);
               }
             }
-            result.dashboard.save(result.dashboard.events.onSaved);
+            result.dashboard.save(function(err, result) {
+              /*result.dashboard.events.onSaved*/
+              if (callback) {
+                callback();
+              }
+            });
           } else {
             console.error('Could not load module form values');
           }
@@ -2289,8 +2322,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     if (data.widgetPrototypes && data.widgetPrototypes.length > 0) {
       self.widgetPrototypes = _.map(data.widgetPrototypes, function(widgetData, index) {
-        var newWidget = new MWidget();
-        return newWidget.deserialize(widgetData, self);
+        var newWidget = new MWidget(self.dashboard);
+        return newWidget.deserialize(widgetData, self.dashboard);
       });
     }
 
@@ -2961,7 +2994,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       // this event fires when the first time dialog showes up
       dialog.dashboard.activeDialog = dialog;
       dialog.orchestrator.setBreadcrumb();
-      dialog.orchestrator.setSwiperItemsVisible();
+      dialog.orchestrator.setSwiperItemsVisible(dialog);
     },
     onPageReady: function(dialogPage) {
       switch(dialogPage.name) {
@@ -3242,28 +3275,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.dashboard.orchestrator.dialog = self;
       self.dashboard.orchestrator.renderSwiper(swiper, defaults);
     }
-
   };
   MDialog.prototype.dealloc = function() {
     var self = this;
 
+    self.dashboard.activeDialog = null;
+
     // frees scroller events
-    if (self.dashboard && self.dashboard.orchestrator) {
+    if (self.dashboard) {
 
-      self.dashboard.orchestrator.selected = null;
+      if (self.dashboard.orchestrator) {
+        self.dashboard.orchestrator.selected = null;
 
-      if (self.dashboard.orchestrator.swiper) {
-        var swiper = $('.swiper-container').data('swiper');
+        if (self.dashboard.orchestrator.swiper) {
+          var swiper = $('.swiper-container').data('swiper');
 
-        if (swiper) {
-          swiper.destroy();
+          if (swiper) {
+            swiper.destroy();
+          }
+          self.dashboard.orchestrator.swiper = null;
+          self.dashboard.orchestrator.swiperOptions = null;
         }
-        self.dashboard.orchestrator.swiper = null;
-        self.dashboard.orchestrator.swiperOptions = null;
-      }
 
-      if (self.dashboard.orchestrator.container) {
-        $(self.dashboard.orchestrator.container).empty();
+        if (self.dashboard.orchestrator.container) {
+          $(self.dashboard.orchestrator.container).empty();
+        }
       }
     }
 
@@ -3329,7 +3365,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     _.each(self.footerOptions.buttons, function(currentButton, index) {
       if (currentButton.name === buttonName) {
-
         self.footerOptions.buttons[index].disabled = disable;
         self.footerOptions.buttons[index].reference.prop('disabled', disable);
 
@@ -3447,6 +3482,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             if (button.disabled === true) {
               btn.addClass('disabled');
               btn.prop('disabled', true);
+            }
+            break;
+          case 'visible':
+            if (button[key] === false) {
+              btn.css('display', 'none');
             }
             break;
         }
@@ -3741,15 +3781,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         });
       }
 
-      if (activeModule && activeModule.service && self.swiperVisibleItems.Services) {
-        service = activeModule.service;
-        servicesCount = 1;
+      // show service items in swiper if only management dialog
+      if (self.dialog.name === 'management') {
+        if (activeModule && activeModule.service && self.swiperVisibleItems.Services) {
+          service = activeModule.service;
+          servicesCount = 1;
 
-        drawItem(service, function(content) {
-          var newSlide = swiper.createSlide(content.html()).append();
-          slides.push(newSlide);
-          --servicesCount;
-        });
+          drawItem(service, function(content) {
+            var newSlide = swiper.createSlide(content.html()).append();
+            slides.push(newSlide);
+            --servicesCount;
+          });
+        }
       }
 
       if (activeModule &&
@@ -3888,7 +3931,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var row = 0;
 
       var iterator = function iterator(moduleModules) {
-        //debugger;
         _.each(moduleModules, function(module, index) {
           drawModule(module);
           iterator(module.modules);
@@ -3906,12 +3948,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     }
   };
 
-  MOrchestrator.prototype.setSwiperItemsVisible = function() {
+  MOrchestrator.prototype.setSwiperItemsVisible = function(dialog) {
     var self = this,
-        items = ['Modules', 'Services', 'Widgets'],
-        colors = ['black', 'blue', 'green'];
+        items = [],
+        colors = [];
 
-    if (!self.dashboard.account.isAdmin()) return;
+    if (dialog.name === 'management') {
+      items = ['Modules', 'Services', 'Widgets'];
+      colors = ['black', 'blue', 'green'];
+    } else {
+      items = ['Modules', 'Widgets'];
+      colors = ['black', 'green'];
+    }
+
+    //if (!self.dashboard.account.isAdmin()) return;
 
     $('#swiper-show-items').empty().append($('<div style="margin:8px 25px 0 0;" class="dialog-header-text pull-left">Visible Items: </div>'));
 
@@ -3966,7 +4016,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     parentModule.empty();
 
     do {
-
       // insert item inte breadcrumb if we have one
       if (currentModule) {
         var parentListItem = $('<li></li>')
@@ -3987,7 +4036,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         breadcrumbs.push(parentListItem);
       }
-
     } while (currentModule = getParent(currentModule));
 
     breadcrumbs.push(rootItem);
@@ -4017,7 +4065,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       orchestrator.dashboard.activeDialog.activePage.enableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
-      orchestrator.setSwiperItemsVisible();
+      orchestrator.setSwiperItemsVisible(orchestrator.dialog);
 
       if (orchestrator.swiper) {
         orchestrator.renderSwiper(
@@ -4046,7 +4094,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
 
       orchestrator.setBreadcrumb(module);
-      orchestrator.setSwiperItemsVisible();
+      orchestrator.setSwiperItemsVisible(orchestrator.dialog);
 
       if (orchestrator.swiper) {
         orchestrator.renderSwiper(
@@ -4063,10 +4111,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var moduleId = $(swiper.clickedSlide).find('input.module-uid').val(),
           serviceId = $(swiper.clickedSlide).find('input.service-uid').val(),
           widgetId = $(swiper.clickedSlide).find('input.widget-uid').val(),
-          collection = orchestrator.dashboard.collections[0];
+          collection = orchestrator.dashboard.collections[0],
+          dashboard = orchestrator.dashboard;
 
       if (moduleId) {
-        var module = orchestrator.dashboard.getModuleById(moduleId);
+        var module = dashboard.getModuleById(moduleId);
         if (module) {
           swiper.removeAllSlides();
           orchestrator.events.onModuleSelected(module);
@@ -4074,13 +4123,30 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       } else if (serviceId) {
         collection.events.onCreateService(collection, serviceId);
       } else if (widgetId) {
-        collection.dashboard.getWidgetPrototypeById(widgetId, function(widget) {
-          if (widget) {
-            collection.events.onCreateWidget(collection, widget);
-          } else {
-            console.error('Widget colud not be found');
-          }
-        });
+        if (dashboard.activeDialog.name === 'user') {
+          dashboard.getWidgetPrototypeById(widgetId, function(widgetPrototype) {
+            if (widgetPrototype) {
+              var newWidget = _.clone(widgetPrototype);
+              newWidget.uid = getUniqueId(globalUniqueIdLength);
+              // TODO: should control same widget id exists or not
+              newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
+              newWidget.isPrototype = false;
+              collection.add(newWidget);
+              dashboard.save(dashboard.events.onSaved);
+              dashboard.activeDialog.close();
+            } else {
+              console.error('Widget prototype could not be found');
+            }
+          });
+        } else if (dashboard.activeDialog.name === 'management') {
+          dashboard.getWidgetPrototypeById(widgetId, function(widget) {
+            if (widget) {
+              collection.events.onCreateWidget(collection, widget);
+            } else {
+              console.error('Widget could not be found');
+            }
+          });
+        }
       }
     },
     onBreadcrumbSelected: function(orchestrator, event) {
@@ -4095,7 +4161,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
               orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
               orchestrator.setBreadcrumb();
-              orchestrator.setSwiperItemsVisible();
+              orchestrator.setSwiperItemsVisible(orchestrator.dialog);
               orchestrator.renderSwiper(orchestrator.swiper,orchestrator.swiperOptions);
             }
           } else {
