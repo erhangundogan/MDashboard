@@ -901,7 +901,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
 
               // Save dashboard
-              module.events.onSave(module);
+              module.events.onSave(module, function(err, result) {
+                $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
+                managementDialog.getPage('module|main', 'slideUpDown');
+                collection.dashboard.orchestrator.swiper.removeAllSlides();
+                collection.dashboard.orchestrator.events.onModuleSelected(module);
+              });
             }
           }, {
             name: 'Add Key/Value',
@@ -3272,6 +3277,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       //.append($('<div class="bottom hide"></div>').click( function() { swiper.swipeNext() }));
 
     if (self.dashboard && self.dashboard.orchestrator) {
+      self.dashboard.orchestrator.swiper = swiper;
       self.dashboard.orchestrator.dialog = self;
       self.dashboard.orchestrator.renderSwiper(swiper, defaults);
     }

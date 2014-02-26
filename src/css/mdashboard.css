@@ -260,6 +260,7 @@ body {
   background-image: none;
   border-radius: 8px;
   float: left;
+  height: 65px;
 
   -webkit-user-select: none;
   -moz-user-select: none;
