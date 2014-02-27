@@ -810,6 +810,56 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       };
 
+      createWidgetPage.footerOptions.buttons.push({
+        name: 'Create Chart',
+        icon: 'fa-dashboard',
+        click: function(event) {
+          event.preventDefault();
+          var chart = new MChart(widget);
+          var chartForm = chart.createForm();
+
+          var createChartPage = {
+            name: 'chart|main',
+            headerOptions: {
+              name: 'Create Chart',
+              icon: 'fa-bar-chart-o',
+              align: 'left'
+            },
+            bodyOptions: {
+              hasScroller: false,
+              hasWell: true,
+              container: $('<div id="dialog-content-id"></div>'),
+              content: $('<div id="dialog-inner-content"></div>')
+                .addClass('inner-panel-resize') // resize inner panel and center content
+                .append(chartForm)
+            },
+            footerOptions: {
+              buttons: [{
+                name: 'Go<br/>Back',
+                icon: 'fa-arrow-left',
+                click: function(event) {
+                  event.preventDefault();
+                  managementDialog.getPage('widget|edit', 'slideUpDown');
+                }
+              }, {
+                name: 'Save Chart',
+                icon: 'fa-save',
+                // Save Widget visible if it is admin and if dialog page showed up from management dialog
+                click: function(event) {
+                  event.preventDefault();
+                  chart.events.onSave(chart, collection);
+                }
+              }]
+            }
+          };
+
+          managementDialog.dashboard = collection.dashboard;
+          managementDialog.orchestrator = collection.dashboard.orchestrator;
+          managementDialog.createPage(new MDialogPage(createChartPage, managementDialog));
+          managementDialog.getPage('chart|main', 'slideUpDown');
+        }
+      });
+
       if (editWidget) {
         createWidgetPage.footerOptions.buttons.push({
           name: 'Close Dialog',
@@ -1702,11 +1752,25 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 2;
           break;
+        case 'contentType':
+          var contentTypeSelect = $('<select class="item-contentType"></select>');
+          contentTypeSelect.append($('<option value="chart">Chart</option>'))
+                           .append($('<option value="html">HTML</option>'));
+          if (record) {
+            contentTypeSelect.val(record[key]);
+          }
+          label.append($('<span>Content</span>'));
+          item.append(contentTypeSelect);
+          propertyRequired = true;
+          order = 3;
+          break;
         case 'template':
+          // html
           label.append($('<span>Template</span>')).css('vertical-align', 'top');
           columnBreak.css('vertical-align', 'top');
           item.append($('<textarea class="item-template" rows="5"></textarea>')
             .val(record ? record[key] : ''));
+
           propertyRequired = true;
           order = 4;
           break;
@@ -1936,9 +2000,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MChart = function (ownerWidget, _options) {
     this.uid = getUniqueId(globalUniqueIdLength);
-    this.library = 'highcharts'; // default
+    this.library = 'Highcharts'; // default
     this.widget = ownerWidget;
+    this.type = 'column';
     this.isInitialized = false;
+    this.render = null;
+    this.dataset = null;
+    this.style = null;
 
     if (_options) {
       this.config = JSON.stringify(_options);
@@ -2034,6 +2102,136 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return self;
   };
   MChart.prototype.widget = typeof MWidget;
+
+  MChart.prototype.loadForm = function() {
+    var self = this;
+
+    self.library = $('.form-row .form-item .item-library').val();
+    self.type = $('.form-row .form-item .item-type').val();
+    self.config = $('.form-row .form-item .item-config').val();
+    self.style = $('.form-row .form-item .item-style').val();
+    self.dataset = $('.form-row .form-item .item-dataset').val();
+    self.render = $('.form-row .form-item .item-render').val();
+
+    return self;
+  };
+
+  MChart.prototype.createForm = function(record) {
+    var self = this,
+        formContainer = $('<div class="chart-container"></div>'),
+        rows = [],
+        form = $('<form class="form"></form>');
+
+    _.each(self, function(value, key) {
+      var propertyRequired = false,
+          formRow = $('<div class="form-row"></div>'),
+          label = $('<div class="form-label"></div>'),
+          item = $('<div class="form-item"></div>'),
+          order = null,
+          columnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>');
+
+      switch(key) {
+        case 'uid':
+          label.append($('<span>ID</span>'));
+          item.append($('<span class="item-uid">' + (record ? record[key] : value) + '</span>'));
+          propertyRequired = true;
+          order = 1;
+          break;
+        case 'library':
+          var librarySelect = $('<select class="item-library"></select>');
+          librarySelect.append($('<option value="google">Google Visualization Library</option>'))
+                       .append($('<option value="highcharts" selected>Highcharts</option>'))
+                       .append($('<option value="d3">D3</option>'));
+
+          if (record) {
+            librarySelect.val(record[key]);
+          }
+          label.append($('<span>Library</span>'));
+          item.append(librarySelect);
+          propertyRequired = true;
+          order = 2;
+          break;
+        case 'type':
+          var chartTypeSelect = $('<select class="item-type"></select>');
+          chartTypeSelect.append($('<option value="bar">Bar</option>'))
+                         .append($('<option value="column" selected>Column</option>'))
+                         .append($('<option value="line">Line</option>'))
+                         .append($('<option value="pie">Pie</option>'));
+
+          if (record) {
+            chartTypeSelect.val(record[key]);
+          }
+          label.append($('<span>Type</span>'));
+          item.append(chartTypeSelect);
+          propertyRequired = true;
+          order = 3;
+          break;
+        case 'config':
+          label.append($('<span>Configuration</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-config" rows="4"></textarea>')
+            .val(record ? record[key] : ''));
+
+          propertyRequired = true;
+          order = 4;
+          break;
+        case 'style':
+          label.append($('<span>Style</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-style" rows="4"></textarea>')
+            .val(record ? record[key] : ''));
+
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'dataset':
+          label.append($('<span>Dataset</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-dataset" rows="4"></textarea>')
+            .val(record ? record[key] : ''));
+
+          propertyRequired = true;
+          order = 6;
+          break;
+        case 'render':
+          label.append($('<span>Render</span>')).css('vertical-align', 'top');
+          columnBreak.css('vertical-align', 'top');
+          item.append($('<textarea class="item-render" rows="4"></textarea>')
+            .val(record ? record[key] : ''));
+
+          propertyRequired = true;
+          order = 7;
+          break;
+      }
+
+      if (propertyRequired) {
+        rows[order] = {
+          label: label,
+          columnBreak: columnBreak,
+          item: item
+        };
+      }
+    });
+
+    for (var count = 0; count < rows.length; count++) {
+      var currentRowItem = rows[count],
+          formRow = $('<div class="form-row"></div>');
+
+      if (currentRowItem) {
+        formRow
+          .append(currentRowItem.label)
+          .append(currentRowItem.columnBreak)
+          .append(currentRowItem.item);
+
+        form.append(formRow);
+      }
+    }
+
+    formContainer.append(form);
+
+    return formContainer;
+  }
+
 
   /***********************   Management   **************************/
 

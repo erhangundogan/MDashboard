@@ -519,6 +519,7 @@ body {
 }
 
 .widget-container,
+.chart-container,
 .module-container,
 .service-container,
 .service-ajax-container {
@@ -526,6 +527,7 @@ body {
 }
 
 .widget-container .form,
+.chart-container .form,
 .module-container .form,
 .service-container .form,
 .service-ajax-container .form {
@@ -535,6 +537,7 @@ body {
 }
 
 .widget-container .form-label,
+.chart-container .form-label,
 .module-container .form-label,
 .service-container .form-label {
   width: 16%;
@@ -551,6 +554,7 @@ body {
 }
 
 .widget-container .form-break,
+.chart-container .form-break,
 .module-container .form-break,
 .service-container .form-break,
 .service-ajax-container form-break {
@@ -559,6 +563,7 @@ body {
 }
 
 .widget-container .form-item,
+.chart-container .form-item,
 .module-container .form-item,
 .service-container .form-item,
 .service-ajax-container .form-item {
@@ -567,6 +572,7 @@ body {
 }
 
 .widget-container .form-button,
+.chart-container .form-button,
 .module-container .form-button,
 .service-container .form-button,
 .service-ajax-container .form-button {
