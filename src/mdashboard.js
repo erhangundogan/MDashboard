@@ -736,8 +736,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         footerOptions: {
           buttons: [{
-            name: 'Close Dialog',
+            name: 'Close<br/>Dialog',
             icon: 'fa-sign-out',
+            class: 'danger',
             click: function(event) {
               event.preventDefault();
               addItemDialog.close();
@@ -822,7 +823,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             name: 'chart|main',
             headerOptions: {
               name: 'Create Chart',
-              icon: 'fa-bar-chart-o',
+              icon: 'fa-dashboard',
               align: 'left'
             },
             bodyOptions: {
@@ -862,7 +863,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       if (editWidget) {
         createWidgetPage.footerOptions.buttons.push({
-          name: 'Close Dialog',
+          name: 'Close<br/>Dialog',
+          class: 'danger',
           icon: 'fa-sign-out',
           click: function(event) {
             event.preventDefault();
@@ -999,7 +1001,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var service = null,
           form = null,
           dialogPageTitle = editService ? 'Edit Service' : 'Create Service',
-          createConnectionButton = editService ? 'Edit Connection' : 'Create Connection',
+          createConnectionButton = editService ? 'Edit<br/>Connection' : 'Create<br/>Connection',
           paramOrder = 1;
 
       var addParam = function(key, value) {
@@ -1262,14 +1264,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         footerOptions: {
           buttons: [{
-            name: 'Create Module',
+            name: 'Create<br/>Module',
             icon: 'fa-puzzle-piece',
             click: function(event) {
               event.preventDefault();
               collection.events.onCreateModule(collection);
             }
           }, {
-            name: 'Create Service',
+            name: 'Create<br/>Service',
             icon: 'fa-cloud-download',
             disabled: true,
             click: function(event) {
@@ -1284,7 +1286,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             }
           }, {
-            name: 'Create Widget',
+            name: 'Create<br/>Widget',
             disabled: true,
             icon: 'fa-list',
             click: function(event) {
@@ -1298,7 +1300,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             }
           }, {
-            name: 'Close Dialog',
+            name: 'Close<br/>Dialog',
             icon: 'fa-sign-out',
             click: function(event) {
               event.preventDefault();
@@ -3538,7 +3540,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     };
     this.footerOptions = {
       buttons: [{
-        name: 'Close Dialog',
+        name: 'Close<br/>Dialog',
+        class: 'danger',
         icon: 'fa-sign-out'
       }]
     };
@@ -3655,7 +3658,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     _.extend(_options, self.footerOptions);
 
     _.each(self.footerOptions.buttons, function(button, index) {
-      var btn = $('<button type="button" class="button"></button>'),
+      //var btn = $('<button type="button" class="button"></button>'),
+        var btn = $('<a href="#" class="button black"></a>'),
           keys = Object.keys(button);
 
       _.each(keys, function(key, index) {
@@ -3665,14 +3669,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             break;
           case 'icon':
             btn.append(
-              $('<div class="pull-left"></div>').append(
-                $('<i class="fa fa-3x fa-white ' + button.icon + '"></i>')));
+              //$('<div class="pull-left"></div>').append(
+                $('<i class="fa fa-3x pull-left fa-white ' + button.icon + '"></i>'));
             break;
           case 'name':
             btn.append($('<div class="button-text pull-right">' + button.name + '</div>'));
+            //btn.append(button.name);
             break;
           case 'class':
-            btn.addClass(button.class);
+            btn.removeClass('black').addClass(button.class);
             break;
           case 'align':
             if (button.align === 'left') btn.addClass('pull-left');
@@ -4264,9 +4269,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       orchestrator.selected = module;
 
       // management dialog
-      orchestrator.dashboard.activeDialog.activePage.enableButton('Create Service');
+      orchestrator.dashboard.activeDialog.activePage.enableButton('Create<br/>Service');
       // add widget dialog
-      orchestrator.dashboard.activeDialog.activePage.enableButton('Create Widget');
+      orchestrator.dashboard.activeDialog.activePage.enableButton('Create<br/>Widget');
 
       orchestrator.setBreadcrumb(module);
       orchestrator.setSwiperItemsVisible(orchestrator.dialog);
@@ -4293,9 +4298,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
       orchestrator.selected = null;
       // management dialog
-      orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
+      orchestrator.dashboard.activeDialog.activePage.disableButton('Create<br/>Service');
       // add widget dialog
-      orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
+      orchestrator.dashboard.activeDialog.activePage.disableButton('Create<br/>Widget');
 
       orchestrator.setBreadcrumb(module);
       orchestrator.setSwiperItemsVisible(orchestrator.dialog);
@@ -4362,8 +4367,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             if (orchestrator.swiper) {
               orchestrator.swiper.removeAllSlides();
               orchestrator.selected = null;
-              orchestrator.dashboard.activeDialog.activePage.disableButton('Create Service');
-              orchestrator.dashboard.activeDialog.activePage.disableButton('Create Widget');
+              orchestrator.dashboard.activeDialog.activePage.disableButton('Create<br/>Service');
+              orchestrator.dashboard.activeDialog.activePage.disableButton('Create<br/>Widget');
               orchestrator.setBreadcrumb();
               orchestrator.setSwiperItemsVisible(orchestrator.dialog);
               orchestrator.renderSwiper(orchestrator.swiper,orchestrator.swiperOptions);
