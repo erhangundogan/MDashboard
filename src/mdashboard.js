@@ -754,10 +754,124 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       addItemDialog.createPage(new MDialogPage(addItemPage, addItemDialog));
       addItemDialog.getPage('widget|main', 'slideUpDown');
     },
+    onCreateChart: function (widget, editChart) {
+      var chart = null,
+          module = null,
+          form = null,
+          paramOrder = 1,
+          dialogPageTitle = editChart ? 'Edit Chart' : 'Create Chart';
+
+      var addParam = function(key, value, list) {
+        var keyValueLabel = $('<div class="form-label"></div>'),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+            keyValueItem = $('<div class="form-item"></div>');
+
+        var removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+          .attr('data-order', paramOrder)
+          .click(function(event) {
+            var itemId = $(this).attr('data-order');
+            $('div.form-row[data-order=' + itemId + ']').remove();
+          });
+
+        var formRow = $('<div class="form-row"></div>');
+
+        keyValueLabel.append($('<input class="param-key text" type="text" />').attr('data-order', paramOrder));
+        keyValueItem.append($('<select class="param-value text"></select>').attr('data-order', paramOrder));
+
+        _.each(list, function(item, index) {
+          keyValueItem.append($('<option></option>').attr('value', item).append(item));
+        });
+
+        if (key) { keyValueLabel.val(key); }
+        if (value) { keyValueItem.val(value); }
+
+        formRow.append(keyValueLabel)
+               .append(keyValueColumnBreak)
+               .append(keyValueItem)
+               .append(removeButton)
+               .attr('data-order', paramOrder);
+        form.append(formRow);
+        ++paramOrder;
+      };
+
+      chart = new MChart(widget);
+      form = chart.createForm();
+
+      var createChartPage = {
+        name: 'chart|main',
+        headerOptions: {
+          name: dialogPageTitle,
+          icon: 'fa-dashboard',
+          align: 'left'
+        },
+        bodyOptions: {
+          hasScroller: false,
+          hasWell: true,
+          container: $('<div id="dialog-content-id"></div>'),
+          content: $('<div id="dialog-inner-content"></div>')
+            .addClass('inner-panel-resize') // resize inner panel and center content
+            .append(form)
+        },
+        footerOptions: {
+          buttons: [{
+            name: 'Go<br/>Back',
+            class: 'critical',
+            icon: 'fa-arrow-left',
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.getPage('widget|edit', 'slideUpDown');
+              managementDialog.orchestrator.swiper.reInit();
+            }
+          }, {
+            name: 'Save<br/>Chart',
+            class: 'success',
+            icon: 'fa-save',
+            // Save Widget visible if it is admin and if dialog page showed up from management dialog
+            click: function(event) {
+              event.preventDefault();
+              chart.events.onSave(chart, widget.collection);
+            }
+          }, {
+            name: 'Add<br/>Series',
+            icon: 'fa-key',
+            disabled: !(widget && widget.serviceId),
+            click: function(event) {
+              event.preventDefault();
+              if (widget && widget.serviceId) {
+                debugger;
+                //contentSection.addClass('loading');
+                var service = managementDialog.dashboard.getServiceById(widget.serviceId);
+                service.getData(function(err, result) {
+                  //contentSection.removeClass('loading');
+                  addParam(null, null, result);
+                });
+              }
+            }
+          }]
+        }
+      };
+
+      /*
+      if (editChart && editChart.params && editChart.params.length > 0) {
+        _.each(editChart.params, function(param, index) {
+          for (var paramKey in param) {
+            if (param.hasOwnProperty(paramKey)) {
+              addParam(paramKey, param[paramKey]);
+            }
+          }
+        });
+      }
+      */
+
+      managementDialog.createPage(new MDialogPage(createChartPage, managementDialog));
+      managementDialog.getPage('chart|main', 'slideUpDown');
+
+    },
     onCreateWidget: function (collection, editWidget) {
       var widget = null,
           module = null,
           form = null,
+          paramOrder = 1,
           dialogPageTitle = editWidget ? 'Edit Widget' : 'Create Widget';
 
       if (editWidget) {
@@ -798,7 +912,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         footerOptions: {
           buttons: [{
-            name: 'Save Widget',
+            name: 'Save<br/>Widget',
+            class: 'success',
             icon: 'fa-save',
             // Save Widget visible if it is admin and if dialog page showed up from management dialog
             visible : collection.dashboard.account.isAdmin() &&
@@ -812,52 +927,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       };
 
       createWidgetPage.footerOptions.buttons.push({
-        name: 'Create Chart',
+        name: 'Create<br/>Chart',
         icon: 'fa-dashboard',
         click: function(event) {
           event.preventDefault();
-          var chart = new MChart(widget);
-          var chartForm = chart.createForm();
-
-          var createChartPage = {
-            name: 'chart|main',
-            headerOptions: {
-              name: 'Create Chart',
-              icon: 'fa-dashboard',
-              align: 'left'
-            },
-            bodyOptions: {
-              hasScroller: false,
-              hasWell: true,
-              container: $('<div id="dialog-content-id"></div>'),
-              content: $('<div id="dialog-inner-content"></div>')
-                .addClass('inner-panel-resize') // resize inner panel and center content
-                .append(chartForm)
-            },
-            footerOptions: {
-              buttons: [{
-                name: 'Go<br/>Back',
-                icon: 'fa-arrow-left',
-                click: function(event) {
-                  event.preventDefault();
-                  managementDialog.getPage('widget|edit', 'slideUpDown');
-                }
-              }, {
-                name: 'Save Chart',
-                icon: 'fa-save',
-                // Save Widget visible if it is admin and if dialog page showed up from management dialog
-                click: function(event) {
-                  event.preventDefault();
-                  chart.events.onSave(chart, collection);
-                }
-              }]
-            }
-          };
-
-          managementDialog.dashboard = collection.dashboard;
-          managementDialog.orchestrator = collection.dashboard.orchestrator;
-          managementDialog.createPage(new MDialogPage(createChartPage, managementDialog));
-          managementDialog.getPage('chart|main', 'slideUpDown');
+          collection.events.onCreateChart(widget);
         }
       });
 
@@ -873,7 +947,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         });
 
         createWidgetPage.footerOptions.buttons.push({
-          name: 'Add to Dashboard',
+          name: 'Add to<br/>Dashboard',
           icon: 'fa-plus-square',
           // Save Widget visible if it is admin and if dialog page showed up from management dialog
           visible : collection.dashboard.account.isAdmin() &&
@@ -893,6 +967,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       } else {
         createWidgetPage.footerOptions.buttons.push({
           name: 'Go<br/>Back',
+          class: 'critical',
           icon: 'fa-arrow-left',
           click: function(event) {
             event.preventDefault();
@@ -940,13 +1015,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         footerOptions: {
           buttons: [{
             name: 'Go<br/>Back',
+            class: 'critical',
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
               managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
-            name: 'Save Module',
+            name: 'Save<br/>Module',
+            class: 'success',
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
@@ -961,7 +1038,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               });
             }
           }, {
-            name: 'Add Key/Value',
+            name: 'Add<br/>Key/Value',
             icon: 'fa-key',
             click: function(event) {
               event.preventDefault();
@@ -977,8 +1054,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                     }),
                   formRow = $('<div class="form-row"></div>');
 
-              keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-              keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+              keyValueLabel.append($('<input class="param-key text" type="text" />').attr('data-order', paramOrder));
+              keyValueItem.append($('<input class="param-value text" type="text" />').attr('data-order', paramOrder));
               formRow.append(keyValueLabel)
                      .append(keyValueColumnBreak)
                      .append(keyValueItem)
@@ -1007,17 +1084,19 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       var addParam = function(key, value) {
         var keyValueLabel = $('<div class="form-label"></div>'),
             keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
-            keyValueItem = $('<div class="form-item"></div>'),
-            removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
+            keyValueItem = $('<div class="form-item"></div>');
+
+        var removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
               .attr('data-order', paramOrder)
               .click(function(event) {
                 var itemId = $(this).attr('data-order');
                 $('div.form-row[data-order=' + itemId + ']').remove();
-              }),
-            formRow = $('<div class="form-row"></div>');
+              });
 
-        keyValueLabel.append($('<input class="param-key" type="text" />').attr('data-order', paramOrder));
-        keyValueItem.append($('<input class="param-value" type="text" />').attr('data-order', paramOrder));
+        var formRow = $('<div class="form-row"></div>');
+
+        keyValueLabel.append($('<input class="param-key text" type="text" />').attr('data-order', paramOrder));
+        keyValueItem.append($('<input class="param-value text" type="text" />').attr('data-order', paramOrder));
 
         if (key) { keyValueLabel.val(key); }
         if (value) { keyValueItem.val(value); }
@@ -1070,13 +1149,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         footerOptions: {
           buttons: [{
             name: 'Go<br/>Back',
+            class: 'critical',
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
               managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
-            name: 'Save Service',
+            name: 'Save<br/>Service',
+            class: 'success',
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
@@ -1110,7 +1191,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             }
           }, {
-            name: 'Add Key/Value',
+            name: 'Add<br/>Key/Value',
             icon: 'fa-key',
             click: function(event) {
               event.preventDefault();
@@ -1159,8 +1240,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }),
             formRow = $('<div class="form-row"></div>');
 
-        var keyValueLabelInput = $('<input class="param-key" type="text" />').attr('data-order', paramOrder),
-            keyValueItemInput = $('<input class="param-value" type="text" />').attr('data-order', paramOrder);
+        var keyValueLabelInput = $('<input class="param-key text" type="text" />').attr('data-order', paramOrder),
+            keyValueItemInput = $('<input class="param-value text" type="text" />').attr('data-order', paramOrder);
 
         if (key) { keyValueLabelInput.val(key); }
         if (value) { keyValueItemInput.val(value); }
@@ -1196,28 +1277,30 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         footerOptions: {
           buttons: [{
             name: 'Go<br/>Back',
+            class: 'critical',
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
               managementDialog.getPage('service|edit', 'slideUpDown');
             }
           }, {
-            name: 'Add Query Strings',
+            name: 'Save<br/>Connection',
+            class: 'success',
+            icon: 'fa-save',
+            click: function(event) {
+              event.preventDefault();
+              service = service.events.onConnectionSave(service, editConnection);
+              collection.dashboard.activeDialog.activePage.enableButton('Test<br/>Connection');
+            }
+          }, {
+            name: 'Add Query<br/>Strings',
             icon: 'fa-key',
             click: function(event) {
               event.preventDefault();
               addParam();
             }
           }, {
-            name: 'Save Connection',
-            icon: 'fa-save',
-            click: function(event) {
-              event.preventDefault();
-              service = service.events.onConnectionSave(service, editConnection);
-              collection.dashboard.activeDialog.activePage.enableButton('Test Connection');
-            }
-          }, {
-            name: 'Test Connection',
+            name: 'Test<br/>Connection',
             id: 'connection-page-button-test',
             disabled: editConnection ? false : true,
             icon: 'fa-bolt',
@@ -1301,6 +1384,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
           }, {
             name: 'Close<br/>Dialog',
+            class: 'danger',
             icon: 'fa-sign-out',
             click: function(event) {
               event.preventDefault();
@@ -1731,6 +1815,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         rows = [],
         form = $('<form class="form"></form>');
 
+
     _.each(self, function(value, key) {
       var propertyRequired = false,
           formRow = $('<div class="form-row"></div>'),
@@ -1749,18 +1834,21 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'header':
           label.append($('<span>Header</span>'));
-          item.append($('<input class="item-header" type="text" required autofocus />')
+          item.append($('<input class="item-header text" type="text" required autofocus />')
             .val(record ? record[key] : self.header));
           propertyRequired = true;
           order = 2;
           break;
-        case 'contentType':
-          var contentTypeSelect = $('<select class="item-contentType"></select>');
+        case 'contentTypeX':
+          var contentTypeSelect = $('<select class="item-contentType text"></select>');
           contentTypeSelect.append($('<option value="chart">Chart</option>'))
                            .append($('<option value="html">HTML</option>'));
           if (record) {
             contentTypeSelect.val(record[key]);
+          } else {
+            contentTypeSelect.val('html');
           }
+
           label.append($('<span>Content</span>'));
           item.append(contentTypeSelect);
           propertyRequired = true;
@@ -1768,9 +1856,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'template':
           // html
-          label.append($('<span>Template</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-template" rows="5"></textarea>')
+          label.append($('<span>Template</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-template text" rows="5"></textarea>')
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
@@ -1778,42 +1866,42 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'row':
           label.append($('<span>Row</span>'));
-          item.append($('<input class="item-row" type="number" required />')
+          item.append($('<input class="item-row text" type="number" required />')
             .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 5;
           break;
         case 'col':
           label.append($('<span>Column</span>'));
-          item.append($('<input class="item-col" type="number" required />')
+          item.append($('<input class="item-col text" type="number" required />')
             .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 6;
           break;
         case 'xSize':
           label.append($('<span>Width Size</span>'));
-          item.append($('<input class="item-xsize" type="number" required />')
+          item.append($('<input class="item-xsize text" type="number" required />')
             .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 7;
           break;
         case 'ySize':
           label.append($('<span>Height Size</span>'));
-          item.append($('<input class="item-ysize" type="number" required />')
+          item.append($('<input class="item-ysize text" type="number" required />')
             .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 8;
           break;
         case 'description':
-          label.append($('<span>Description</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-description" rows="2"></textarea>')
+          label.append($('<span>Description</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-description text" rows="4"></textarea>')
             .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 9;
           break;
         case 'service':
-          var services = $('<select class="item-service"></select>');
+          var services = $('<select class="item-service text"></select>');
 
           if (self.serviceId) {
             var service = self.collection.dashboard.getServiceById(self.serviceId);
@@ -2140,7 +2228,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 1;
           break;
         case 'library':
-          var librarySelect = $('<select class="item-library"></select>');
+          var librarySelect = $('<select class="item-library text"></select>');
           librarySelect.append($('<option value="google">Google Visualization Library</option>'))
                        .append($('<option value="highcharts" selected>Highcharts</option>'))
                        .append($('<option value="d3">D3</option>'));
@@ -2154,7 +2242,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 2;
           break;
         case 'type':
-          var chartTypeSelect = $('<select class="item-type"></select>');
+          var chartTypeSelect = $('<select class="item-type text"></select>');
           chartTypeSelect.append($('<option value="bar">Bar</option>'))
                          .append($('<option value="column" selected>Column</option>'))
                          .append($('<option value="line">Line</option>'))
@@ -2169,40 +2257,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 3;
           break;
         case 'config':
-          label.append($('<span>Configuration</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-config" rows="4"></textarea>')
+          label.append($('<span>Configuration</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-config text" rows="4"></textarea>')
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
           order = 4;
           break;
-        case 'style':
-          label.append($('<span>Style</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-style" rows="4"></textarea>')
+        case 'render':
+          label.append($('<span>Render</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-render text" rows="4"></textarea>')
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
           order = 5;
-          break;
-        case 'dataset':
-          label.append($('<span>Dataset</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-dataset" rows="4"></textarea>')
-            .val(record ? record[key] : ''));
-
-          propertyRequired = true;
-          order = 6;
-          break;
-        case 'render':
-          label.append($('<span>Render</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-render" rows="4"></textarea>')
-            .val(record ? record[key] : ''));
-
-          propertyRequired = true;
-          order = 7;
           break;
       }
 
@@ -2363,33 +2433,33 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'name':
           label.append($('<span>Name</span>'));
-          item.append($('<input class="item-name" type="text" required autofocus />'));
+          item.append($('<input class="item-name text" type="text" required autofocus />'));
           propertyRequired = true;
           order = 2 + orderOffset;
           break;
         case 'tags':
           label.append($('<span>Tags</span>'));
-          item.append($('<input class="item-tags" type="text" />'));
+          item.append($('<input class="item-tags text" type="text" />'));
           propertyRequired = true;
           order = 3 + orderOffset;
           break;
         case 'description':
-          label.append($('<span>Description</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-description" rows="3"></textarea>'));
+          label.append($('<span>Description</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-description text" rows="3"></textarea>'));
           propertyRequired = true;
           order = 4 + orderOffset;
           break;
         case 'image':
           label.append($('<span>Image</span>'));
-          item.append($('<input class="item-image" type="file" />'));
+          item.append($('<input class="item-image text" type="file" />'));
           propertyRequired = true;
           order = 5 + orderOffset;
           break;
         case 'icon':
-          label.append($('<span>Icon</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          var itemIcons = $('<ul class="item-icons"></ul>');
+          label.append($('<span>Icon</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          var itemIcons = $('<ul class="item-icons text"></ul>');
           _.each(faIcons, function(faIcon, index) {
             var listItem = $('<li class="item-icon" data-icon="' + faIcon + '"></li>');
             listItem.append($('<i class="fa fa-2x fa-white ' + faIcon + '"></i>'));
@@ -2757,7 +2827,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'url':
           label.append($('<span>Url</span>'));
           item.append(
-            $('<input class="item-url" type="text" required placeholder="http://yourdomain.com/service" />')
+            $('<input class="item-url text" type="text" required placeholder="http://yourdomain.com/service" />')
               .val(record && record.url ? record.url : '')
           );
           propertyRequired = true;
@@ -2765,7 +2835,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'dataType':
           label.append($('<span>Data Type</span>'));
-          var dataTypes = $('<select class="item-dataType"></select>')
+          var dataTypes = $('<select class="item-dataType text"></select>')
             .append($('<option value="xml">XML</option>'))
             .append($('<option value="html">HTML</option>'))
             .append($('<option value="script">Script</option>'))
@@ -2781,7 +2851,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'type':
           label.append($('<span>Method</span>'));
-          var types = $('<select class="item-type"></select>')
+          var types = $('<select class="item-type text"></select>')
             .append($('<option value="GET" selected>GET</option>'))
             .append($('<option value="POST">POST</option>'));
           item.append(types);
@@ -2793,35 +2863,35 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'crossDomain':
           label.append($('<span>Cross Domain</span>'));
-          item.append($('<input class="item-crossDomain" type="checkbox" />')
+          item.append($('<input class="item-crossDomain text" type="checkbox" />')
             .prop('checked', (record && record.crossDomain ? true : false)));
           propertyRequired = true;
           order = 4;
           break;
         case 'jsonp':
           label.append($('<span>jsonp</span>'));
-          item.append($('<input class="item-jsonp" type="checkbox" checked="checked" />')
+          item.append($('<input class="item-jsonp text" type="checkbox" checked="checked" />')
             .prop('checked', (record && record.jsonp ? true : false)));
           propertyRequired = true;
           order = 5;
           break;
         case 'async':
           label.append($('<span>Asynchronous</span>'));
-          item.append($('<input class="item-async" type="checkbox" checked="checked" />')
+          item.append($('<input class="item-async text" type="checkbox" checked="checked" />')
             .prop('checked', (record && record.async ? true : false)));
           propertyRequired = true;
           order = 6;
           break;
         case 'cache':
           label.append($('<span>Cache Results</span>'));
-          item.append($('<input class="item-cache" type="checkbox" checked="checked" />')
+          item.append($('<input class="item-cache text" type="checkbox" checked="checked" />')
             .prop('checked', (record && record.cache ? true : false)));
           propertyRequired = true;
           order = 7;
           break;
         case 'processData':
           label.append($('<span>Process Data</span>'));
-          item.append($('<input class="item-processData" type="checkbox" />')
+          item.append($('<input class="item-processData text" type="checkbox" />')
             .prop('checked', (record && record.processData ? true : false)));
           propertyRequired = true;
           order = 8;
@@ -2835,29 +2905,29 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'ifModified':
           label.append($('<span>If Modified</span>'));
-          item.append($('<input class="item-ifModified" type="checkbox" />')
+          item.append($('<input class="item-ifModified text" type="checkbox" />')
             .prop('checked', (record && record.ifModified ? true : false)));
           propertyRequired = true;
           order = 10;
           break;
         case 'contentType':
           label.append($('<span>Content Type</span>'));
-          item.append($('<input class="item-contentType" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
+          item.append($('<input class="item-contentType text" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
             .val(record && record.contentType ? record.contentType : 'application/x-www-form-urlencoded; charset=UTF-8'));
           propertyRequired = true;
           order = 11;
           break;
         case 'timeout':
           label.append($('<span>Timeout</span>'));
-          item.append($('<input class="item-timeout" type="text" placeholder="30000 (30 seconds)" />')
+          item.append($('<input class="item-timeout text" type="text" placeholder="30000 (30 seconds)" />')
             .val(record && record.timeout ? record.timeout : 30000));
           propertyRequired = true;
           order = 12;
           break;
         case 'headers':
-          label.append($('<span>Headers</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea rows="2" class="item-headers" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>')
+          label.append($('<span>Headers</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea rows="2" class="item-headers text" type="text" placeholder="{ \'User-Agent\':\'foo\', \'Accept\':\'text/html\', ... }"></textarea>')
             .val(record && record.headers ? record.header : ''));
           propertyRequired = true;
           order = 13;
@@ -2971,23 +3041,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 2;
           break;
         case 'description':
-          label.append($('<span>Description</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          item.append($('<textarea class="item-description" rows="2"></textarea>')
+          label.append($('<span>Description</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          item.append($('<textarea class="item-description text" rows="2"></textarea>')
             .val(record ? record[key] : self.description));
           propertyRequired = true;
           order = 4;
           break;
         case 'name':
           label.append($('<span>Name</span>'));
-          item.append($('<input class="item-name" type="text" required autofocus />')
+          item.append($('<input class="item-name text" type="text" required autofocus />')
             .val(record ? record[key] : self.name));
           propertyRequired = true;
           order = 3;
           break;
         case 'schedule':
           label.append($('<span>Schedule</span>'));
-          item.append($('<input class="item-schedule" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />')
+          item.append($('<input class="item-schedule text" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />')
             .val(record ? record[key] : self.schedule));
           propertyRequired = true;
           order = 5;
@@ -2995,23 +3065,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'isScheduled':
           label.append($('<span>Scheduled</span>'));
           if (record && record.isScheduled) {
-            item.append($('<input class="item-scheduled" type="checkbox" />').prop('checked', true));
+            item.append($('<input class="item-scheduled text" type="checkbox" />').prop('checked', true));
           } else {
-            item.append($('<input class="item-scheduled" type="checkbox" />'));
+            item.append($('<input class="item-scheduled text" type="checkbox" />'));
           }
           propertyRequired = true;
           order = 6;
           break;
         case 'module':
           label.append($('<span>Module</span>'));
-          item.append($('<span class="item-module">' + (value.name ? value.name : '') + '</span>')
+          item.append($('<span class="item-module text">' + (value.name ? value.name : '') + '</span>')
             .val(record ? record[key] : ''));
           propertyRequired = true;
           order = 1;
           break;
         case 'image':
           label.append($('<span>Image</span>'));
-          item.append($('<input class="item-image" type="file" />'));
+          item.append($('<input class="item-image text" type="file" />'));
           if (record && record.image) {
             item.append($('<div class="dialog-image-container"></div>').append($('<img />').attr('src', record.image)));
           }
@@ -3019,9 +3089,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 7;
           break;
         case 'icon':
-          label.append($('<span>Icon</span>')).css('vertical-align', 'top');
-          columnBreak.css('vertical-align', 'top');
-          var itemIcons = $('<ul class="item-icons"></ul>');
+          label.append($('<span>Icon</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
+          var itemIcons = $('<ul class="item-icons text"></ul>');
           if (record && record.icon) {
             _.each(faIcons, function(faIcon, index) {
               var listItem = null;
@@ -3124,13 +3194,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
 
           if (data) {
-            var resultMessage = $('<div></div>').addClass('success').append('Service request successful.'),
+            var resultMessage = $('<div></div>').addClass('succeeded').append('Service request successful.'),
                 dataMessage = $('<textarea class="dialog-json-textarea"></textarea>').val(JSON.stringify(data, null, 2));
 
             resultContainer.append(resultMessage).append('<hr/>').append(dataMessage);
 
           } else {
-            var resultMessage = $('<div></div>').addClass('success').append('Service request successful. But no result returned.');
+            var resultMessage = $('<div></div>').addClass('succeeded').append('Service request successful. But no result returned.');
             resultContainer.append(resultMessage);
           }
         }
@@ -3206,7 +3276,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'module|edit':
         case 'service|edit':
           // icon choice section
-          $('ul.item-icons').on('click', 'li', function(event) {
+          $('ul.item-icons').off().on('click', 'li', function(event) {
             // remove old selected
             var item = $('ul.item-icons li.selected-icon');
             if (item && item.length > 0) {
@@ -3222,6 +3292,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         case 'module|main':
           // if we have swiper component on main page, we must refresh it
+          //debugger;
           var orchestrator = dialogPage.dialog.orchestrator;
           if (orchestrator) {
             orchestrator.setBreadcrumb(orchestrator.selected);
@@ -3234,6 +3305,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       dialog.dealloc();
     }
   };
+
+  MDialog.prototype.hasPage = function(identifier) {
+    var self = this;
+
+    if (identifier && _.isString(identifier)) {
+      if (self.pages && self.pages.length > 0) {
+        return _.find(self.pages, function(page) {
+          return page.name === identifier;
+        });
+      }
+    }
+  }
   /**
    * Show dialog page with pageNumber or DialogPage.name
    * @param identifier pageNumber or DialogPage.name
@@ -3253,7 +3336,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     } else if (identifier && _.isString(identifier)) {
       if (self.pages && self.pages.length > 0) {
-
         var selectedPage = _.find(self.pages, function(page) {
           return page.name === identifier;
         });
@@ -3459,7 +3541,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       preventLinksPropagation: false,
       initialSlide: 0,
       autoResize : true,
-      resizeReInit : false,
+      resizeReInit : true,
       visibilityFullFit : false,
       onSlideClick: function(swiperItem) {
         self.dashboard.orchestrator.events.onSlideClick(self.dashboard.orchestrator, swiperItem);
@@ -3539,11 +3621,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       swiper: $('<ul id="swiper-parent-module"></ul><div class="swiper-container"><div class="swiper-wrapper"></div></div><ul id="swiper-show-items"></ul>')
     };
     this.footerOptions = {
-      buttons: [{
-        name: 'Close<br/>Dialog',
-        class: 'danger',
-        icon: 'fa-sign-out'
-      }]
+      buttons: []
     };
 
     _.each(_options, function(option, key) {
@@ -4182,7 +4260,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           squaredLabel = $('<label for="' + squaredId + '"></label>').addClass(colors[index]),
           squaredSpan = $('<span></span>').append(item);
 
-      squaredInput.on('change', function(event) {
+      squaredInput.off().on('change', function(event) {
         var selectedItem = event.currentTarget.value,
             checked = $(event.currentTarget).prop('checked');
 
@@ -4253,7 +4331,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       parentModule.append(listItem).append($('<li></li>').addClass('swiper-parent-sep'));
     }
 
-    $('.swiper-parent-item').on('click', function(event) {
+    $('.swiper-parent-item').off().on('click', function(event) {
       self.events.onBreadcrumbSelected(self, event);
     });
   };
