@@ -386,6 +386,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       return item.uid === serviceId;
     });
   };
+  MDashboard.prototype.getServiceByModuleId = function(moduleId) {
+    var self = this,
+        allModules = [];
+
+    function getModules(moduleArray) {
+      _.each(moduleArray, function(module, index) {
+        allModules.push(module);
+        if (module.modules && module.modules.length > 0) {
+          getModules(module.modules);
+        }
+      });
+    }
+    getModules(self.modules);
+
+    var foundModule = _.find(allModules, function (item) {
+      return item.uid === moduleId;
+    });
+
+    return foundModule.service;
+  };
   MDashboard.prototype.getWidgetPrototypeById = function(widgetId, callback) {
     var self = this,
         allWidgets = [];
@@ -761,29 +781,100 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           paramOrder = 1,
           dialogPageTitle = editChart ? 'Edit Chart' : 'Create Chart';
 
-      var addParam = function(key, value, list) {
-        var keyValueLabel = $('<div class="form-label"></div>'),
-            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>'),
+      var addParam = function(result) {
+        var keyValueLabel = $('<div class="form-label"></div>').css({'vertical-align':'top'}),
+            keyValueColumnBreak = $('<div class="form-break"><span>&nbsp;:&nbsp;</span></div>').css({'vertical-align':'top', 'padding':'15px 0 0 0'}),
             keyValueItem = $('<div class="form-item"></div>');
 
         var removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
           .attr('data-order', paramOrder)
+          .css({'vertical-align':'top', 'padding':'10px 0 0 0'})
           .click(function(event) {
             var itemId = $(this).attr('data-order');
             $('div.form-row[data-order=' + itemId + ']').remove();
+            if ($('.param-key').length === 0) {
+              $('.underline-container').remove();
+            }
           });
 
         var formRow = $('<div class="form-row"></div>');
 
-        keyValueLabel.append($('<input class="param-key text" type="text" />').attr('data-order', paramOrder));
-        keyValueItem.append($('<select class="param-value text"></select>').attr('data-order', paramOrder));
+        keyValueLabel.append(
+          $('<input class="param-serie-name text" type="text" />').attr('data-order', paramOrder));
 
-        _.each(list, function(item, index) {
-          keyValueItem.append($('<option></option>').attr('value', item).append(item));
+        var options = $('<select class="param-serie text"></select>')
+          .attr('data-order', paramOrder)
+          .change(function() {
+            var selectedKey = $(this).val(),
+                containerItem = $(this).parents('.form-item'),
+                paramValue = $(this).attr('data-order');
+
+            // remove category options if exists
+            containerItem.find('.param-category').remove();
+            containerItem.find('.param-aggregate').remove();
+            containerItem.find('.param-value-field').remove();
+            containerItem.find('br').remove();
+
+            // if selected serie is an array and has items
+            if (result[selectedKey] && _.isArray(result[selectedKey]) && result[selectedKey].length > 0) {
+              var firstItem = result[selectedKey][0];
+
+              if (firstItem && _.isObject(firstItem)) {
+                var categories = Object.keys(firstItem),
+                    categorySelect = $('<select title="X-Axis Categories" class="param-category text"></select>').attr('data-order', paramValue),
+                    valueFieldSelect = $('<select title="Y-Axis Values" class="param-value-field text short"></select>').attr('data-order', paramValue);
+
+                _.each(categories, function(item, index) {
+                  categorySelect.append($('<option></option>').attr('value', item).append(item));
+                  valueFieldSelect.append($('<option></option>').attr('value', item).append(item));
+                });
+
+                $(containerItem)
+                  .append($('<br/>'))
+                  .append(categorySelect);
+
+                $(containerItem)
+                  .append($('<br/>'))
+                  .append($('<select title="Y-Axis Values Aggregation" class="param-aggregate text short"></select>')
+                    .attr('data-order', paramValue)
+                    .append($('<option value="average">Average</option>'))
+                    .append($('<option value="count">Count</option>'))
+                    .append($('<option value="min">Minimum</option>'))
+                    .append($('<option value="max">Maximum</option>'))
+                    .append($('<option value="sum">Total</option>'))
+                    .append($('<option value="value" selected>Value</option>')))
+                  .append(valueFieldSelect);
+
+              } else {
+                console.error('Selected serie items do not has objects');
+              }
+            } else {
+              console.error('Selected serie is not an array or empty');
+            }
+          });
+
+        var resultKeys = Object.keys(result);
+        options.append($('<option value="">- Please select an array -</option>'));
+        _.each(resultKeys, function(item, index) {
+          options.append($('<option></option>').attr('value', item).append(item));
         });
+        keyValueItem.append(options);
 
-        if (key) { keyValueLabel.val(key); }
-        if (value) { keyValueItem.val(value); }
+        //if (key) { keyValueLabel.val(key); }
+        //if (value) { keyValueItem.val(value); }
+
+        if ($('.underline-container').length === 0) {
+          form.append(
+            $('<div class="underline-container"></div>')
+              .append('Series')
+              .append($('<div class="fuzzy-background"></div>')
+                .append($('<div class="span span-1"></div>'))
+                .append($('<div class="span span-2"></div>'))
+                .append($('<div class="span span-3"></div>'))
+                .append($('<div class="span span-4"></div>'))
+                .append($('<div class="span span-5"></div>')))
+              .append($('<div class="header-underline"></div>')));
+        }
 
         formRow.append(keyValueLabel)
                .append(keyValueColumnBreak)
@@ -829,7 +920,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             // Save Widget visible if it is admin and if dialog page showed up from management dialog
             click: function(event) {
               event.preventDefault();
-              chart.events.onSave(chart, widget.collection);
+              chart = chart.events.onSave(chart, widget.collection);
+              if (chart.widget.collection) {
+                chart.widget.collection.events.onCreateWidget(chart.widget.collection, chart.widget);
+              } else if (chart.widget.dashboard) {
+                var widgetCollection = chart.widget.dashboard.collections[0];
+                widgetCollection.events.onCreateWidget(widgetCollection, chart.widget);
+              }
             }
           }, {
             name: 'Add<br/>Series',
@@ -838,12 +935,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             click: function(event) {
               event.preventDefault();
               if (widget && widget.serviceId) {
-                debugger;
                 //contentSection.addClass('loading');
                 var service = managementDialog.dashboard.getServiceById(widget.serviceId);
                 service.getData(function(err, result) {
                   //contentSection.removeClass('loading');
-                  addParam(null, null, result);
+                  addParam(result);
                 });
               }
             }
@@ -1470,6 +1566,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.isClosable = true;
     this.isLocked = false;
     this.isRendered = false;
+    this.chart = null;
 
     if (owner instanceof MWidgetCollection) {
       this.collection = owner;
@@ -1487,12 +1584,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     _.extend(this, _options);
 
-    if (this.contentType === "chart") {
+
+    /*if (this.contentType === "chart") {
       if (this.chart.widget) {
         delete this.chart.widget;
       }
       this.chart = new MChart(this, this.chart);
-    }
+    }*/
 
     if (this.collection) {
       var self = this;
@@ -1572,7 +1670,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'html':
           if (self.contentType === "html" && self.html) {
-
             if (self.serviceId) {
               contentSection.addClass('loading');
 
@@ -1589,6 +1686,38 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                       console.error(exception);
                     }
                   }
+                });
+              }
+            } else {
+              if (self.html.render) {
+                contentSection.append(self.html.render(self, { data:self }));
+              } else if (self.template) {
+                try {
+                  contentSection.append(_.template(self.template, { data:self }));
+                } catch (exception) {
+                  console.error(exception);
+                }
+              }
+            }
+          } else if (self.contentType === "chart" && self.html && self.chart) {
+            if (self.serviceId) {
+              contentSection.addClass('loading');
+
+              if (self.collection) {
+                var service = self.collection.dashboard.getServiceById(self.serviceId);
+                service.getData(function(err, result) {
+                  contentSection.removeClass('loading');
+                  if (self.html.render) {
+                    contentSection.append(self.html.render(self, { data:result }));
+                  } else if (self.template) {
+                    try {
+                      contentSection.append(_.template(self.template, { data:result }));
+                    } catch (exception) {
+                      console.error(exception);
+                    }
+                  }
+
+
                 });
               }
             } else {
@@ -1667,6 +1796,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     }, 100);
 
+    // todo
     if (self.contentType === "chart" && self.chart) {
       self.chart.render(self);
     } else if (self.contentType === "html" && self.html) {
@@ -1736,7 +1866,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           module.widgetPrototypes[widgetIndex] = widget;
         }
 
-        widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
+        dashboard.save(dashboard.events.onSaved);
       }
 
       widget = widget.loadForm();
@@ -1800,6 +1930,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.col = $('.form-row .form-item .item-col').val();
     self.xSize = $('.form-row .form-item .item-xsize').val();
     self.ySize = $('.form-row .form-item .item-ysize').val();
+    self.serviceId = $('.form-row .form-item .item-serviceId').val();
+    self.contentType = $('.form-row .form-item .item-contentType').val();
 
     self.description = $('.form-row .form-item .item-description').val();
 
@@ -1839,7 +1971,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 2;
           break;
-        case 'contentTypeX':
+        case 'contentType':
           var contentTypeSelect = $('<select class="item-contentType text"></select>');
           contentTypeSelect.append($('<option value="chart">Chart</option>'))
                            .append($('<option value="html">HTML</option>'));
@@ -1862,35 +1994,35 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
-          order = 4;
+          order = 5;
           break;
         case 'row':
           label.append($('<span>Row</span>'));
           item.append($('<input class="item-row text" type="number" required />')
             .val(record ? record[key] : ''));
           propertyRequired = true;
-          order = 5;
+          order = 6;
           break;
         case 'col':
           label.append($('<span>Column</span>'));
           item.append($('<input class="item-col text" type="number" required />')
             .val(record ? record[key] : ''));
           propertyRequired = true;
-          order = 6;
+          order = 7;
           break;
         case 'xSize':
           label.append($('<span>Width Size</span>'));
           item.append($('<input class="item-xsize text" type="number" required />')
             .val(record ? record[key] : '1'));
           propertyRequired = true;
-          order = 7;
+          order = 8;
           break;
         case 'ySize':
           label.append($('<span>Height Size</span>'));
           item.append($('<input class="item-ysize text" type="number" required />')
             .val(record ? record[key] : '1'));
           propertyRequired = true;
-          order = 8;
+          order = 9;
           break;
         case 'description':
           label.append($('<span>Description</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
@@ -1898,20 +2030,37 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           item.append($('<textarea class="item-description text" rows="4"></textarea>')
             .val(record ? record[key] : ''));
           propertyRequired = true;
-          order = 9;
+          order = 10;
           break;
-        case 'service':
-          var services = $('<select class="item-service text"></select>');
+        case 'serviceId':
+          var service = null,
+              dashboard = null,
+              services = $('<select class="item-serviceId text"></select>')
+                .append($('<option value="" selected>- Please select a data service -</option>'));
+
+          if (self.collection) {
+            dashboard = self.collection.dashboard;
+          } else if (self.dashboard) {
+            dashboard = self.dashboard;
+          }
 
           if (self.serviceId) {
-            var service = self.collection.dashboard.getServiceById(self.serviceId);
-            services.append($('<option value="' + service.uid + '" selected>' +
-              (service.name || service.uid) + '</option>'));
+            service = dashboard.getServiceById(self.serviceId);
+            if (service) {
+              services.append($('<option value="' + service.uid + '" selected>' +
+                (service.name || service.uid) + '</option>'));
+            }
+          } else if (self.moduleId) {
+            service = dashboard.getServiceByModuleId(self.moduleId);
+            if (service) {
+              services.append($('<option value="' + service.uid + '">' +
+                (service.name || service.uid) + '</option>'));
+            }
           }
           label.append($('<span>Service</span>'));
           item.append(services);
           propertyRequired = true;
-          order = 3;
+          order = 4;
           break;
       }
 
@@ -1970,17 +2119,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     // service
     serialized.serviceId = self.serviceId;
 
+    if (self.contentType === 'html') {
+      serialized.html = {};
+    } else if (self.contentType === 'chart' && self.chart) {
+      serialized.html = {};
+      serialized.chart = self.chart.serialize();
+    }
+
     /*
-    if (self.mainContainer) {
-      serialized.col = self.mainContainer.attr('data-col') || self.col;
-      serialized.row = self.mainContainer.attr('data-row') || self.row;
-    }*/
-
-    // collection
-    /*if (self.collection && self.collection.uid) {
-      serialized.collection = self.collection.uid;
-    }*/
-
     switch (self.contentType) {
       case 'html':
         serialized.html = {};
@@ -2007,7 +2153,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           serialized.chart = self.chart.serialize();
         }
         break;
-    }
+    }*/
 
     return serialized;
   };
@@ -2033,6 +2179,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.xSize = data.xSize;
     self.ySize = data.ySize;
     self.serviceId = data.serviceId;
+    self.moduleId = data.moduleId;
 
     if (owner instanceof MDashboard) {
       self.collection = null;
@@ -2042,9 +2189,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.dashboard = null;
     }
 
+    if (data.chart) {
+      var newChart = new MChart(self);
+      self.chart = newChart.deserialize(data.chart, self);
+    }
+
     // TODO test
     //self.module = owner.dashboard.getModuleById(data.module);
 
+    if (data.contentType === 'html') {
+      self.html = {};
+    } else if (data.contentType === 'chart') {
+      self.html = {};
+      var newChart = new MChart(self);
+      self.chart = newChart.deserialize(data.chart, self);
+    }
+
+    /*
     switch (data.contentType) {
       case 'html':
         self.html = {};
@@ -2077,6 +2238,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         self.chart = newChart.deserialize(data.chart, self);
         break;
     }
+    */
 
     return self;
   };
@@ -2094,13 +2256,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.widget = ownerWidget;
     this.type = 'column';
     this.isInitialized = false;
+    this.container = null;
+    this.config = null;
     this.render = null;
-    this.dataset = null;
-    this.style = null;
+    this.series = [];
 
-    if (_options) {
-      this.config = JSON.stringify(_options);
-    }
     _.extend(this, _options);
 
     var self = this;
@@ -2119,16 +2279,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this,
         serialized = {};
 
+    debugger;
     serialized.mType = 'MChart';
     serialized.library = self.library;
     serialized.type = self.type;
     serialized.uid = self.uid;
-
-    if (self.dataset) {
-      serialized.dataset = _.isFunction(self.dataset)
-        ? self.dataset.toString()
-        : JSON.stringify(self.dataset);
-    }
+    serialized.container = self.container;
+    serialized.config = self.config ? JSON.stringify(self.config) : null;
+    serialized.series = self.series && self.series.length > 0 ? JSON.stringify(self.series) : null;
 
     if (self.render) {
       serialized.render = _.isFunction(self.render)
@@ -2136,19 +2294,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         : JSON.stringify(self.render);
     }
 
-    if (self.style) {
-      serialized.style = _.isFunction(self.style)
-        ? self.style.toString()
-        : JSON.stringify(self.style);
-    }
-
     // parent widget
     serialized.widget = self.widget ? self.widget.uid : null;
-
-    // if chart has base options
-    if (self.config) {
-      serialized.config = self.config;
-    }
 
     return serialized;
   };
@@ -2158,15 +2305,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.library = data.library;
     self.type = data.type;
     self.uid = data.uid;
+    self.container = data.container;
     self.widget = owner;
-
-    if (data.dataset) {
-      if (/function/.test(data.dataset)) {
-        self.dataset = getSource(data.dataset, ['widget']);
-      } else {
-        self.dataset = $.parseJSON(data.dataset);
-      }
-    }
+    self.config = data.config ? $.parseJSON(data.config) : null;
+    self.series = data.series ? $.parseJSON(data.series) : [];
 
     if (data.render) {
       if (/function/.test(data.render)) {
@@ -2176,19 +2318,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     }
 
-    if (data.style) {
-      if (/function/.test(data.style)) {
-        self.style = getSource(data.style, ['widget']);
-      } else {
-        self.style = $.parseJSON(data.style);
-      }
-    }
-
-    if (data.config) {
-      var config = $.parseJSON(data.config);
-      _.extend(self, config);
-    }
-
     return self;
   };
   MChart.prototype.widget = typeof MWidget;
@@ -2196,11 +2325,25 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MChart.prototype.loadForm = function() {
     var self = this;
 
+    var series = [];
+    $('.param-serie-name').each(function() {
+      debugger;
+      var serie = {},
+          paramNumber = $(this).attr('data-order');
+
+      serie.serieName = $(this).val();
+      serie.serviceResultProperty = $('.param-serie[data-order=' + paramNumber + ']').val();
+      serie.categoryField = $('.param-category[data-order=' + paramNumber + ']').val();
+      serie.aggregateFunction = $('.param-aggregate[data-order=' + paramNumber + ']').val();
+      serie.valueField = $('.param-value-field[data-order=' + paramNumber + ']').val();
+      series.push(serie);
+    });
+
+    self.series = series;
     self.library = $('.form-row .form-item .item-library').val();
     self.type = $('.form-row .form-item .item-type').val();
+    self.container = $('.form-row .form-item .item-container').val();
     self.config = $('.form-row .form-item .item-config').val();
-    self.style = $('.form-row .form-item .item-style').val();
-    self.dataset = $('.form-row .form-item .item-dataset').val();
     self.render = $('.form-row .form-item .item-render').val();
 
     return self;
@@ -2229,13 +2372,42 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'library':
           var librarySelect = $('<select class="item-library text"></select>');
-          librarySelect.append($('<option value="google">Google Visualization Library</option>'))
-                       .append($('<option value="highcharts" selected>Highcharts</option>'))
-                       .append($('<option value="d3">D3</option>'));
+          librarySelect.append($('<option value="">- Please Select Chart Library -</option>'))
+                       .append($('<option value="google" disabled="disabled">Google Visualization Library</option>'))
+                       .append($('<option value="highcharts">Highcharts</option>'))
+                       .append($('<option value="d3" disabled="disabled">D3</option>'));
 
           if (record) {
             librarySelect.val(record[key]);
           }
+
+          librarySelect.change(function() {
+            var renderRow = $('.item-render').parents('.form-row');
+            var configItem = $('.item-config');
+            var typeItem = $('.item-type');
+
+            if (librarySelect.val() === 'highcharts') {
+              if (renderRow && renderRow.length > 0) {
+                  renderRow.hide();
+              }
+
+              if (configItem && configItem.length > 0) {
+                if (typeItem && typeItem.length > 0) {
+                  var config = {
+                    chart: {
+                      type: typeItem.val()
+                    }
+                  };
+                  configItem.val(JSON.stringify(config, null, 2));
+                }
+              }
+            } else {
+              if (renderRow && renderRow.length > 0) {
+                  renderRow.show();
+              }
+            }
+          });
+
           label.append($('<span>Library</span>'));
           item.append(librarySelect);
           propertyRequired = true;
@@ -2243,10 +2415,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'type':
           var chartTypeSelect = $('<select class="item-type text"></select>');
-          chartTypeSelect.append($('<option value="bar">Bar</option>'))
+          chartTypeSelect.append($('<option value="bar" disabled="disabled">Bar</option>'))
                          .append($('<option value="column" selected>Column</option>'))
-                         .append($('<option value="line">Line</option>'))
-                         .append($('<option value="pie">Pie</option>'));
+                         .append($('<option value="line" disabled="disabled">Line</option>'))
+                         .append($('<option value="pie" disabled="disabled">Pie</option>'));
 
           if (record) {
             chartTypeSelect.val(record[key]);
@@ -2256,14 +2428,26 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 3;
           break;
+        case 'container':
+          var containerSelector = $('<input class="item-container text" type="text" placeholder="chart container element css selector (eg: #chart)" /></input>');
+
+          if (record) {
+            containerSelector.val(record ? record[key] : '');
+          }
+
+          label.append($('<span>Container</span>'));
+          item.append(containerSelector);
+          propertyRequired = true;
+          order = 4;
+          break;
         case 'config':
           label.append($('<span>Configuration</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
           columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
-          item.append($('<textarea class="item-config text" rows="4"></textarea>')
+          item.append($('<textarea class="item-config text" rows="4" style="height:100px;"></textarea>')
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
-          order = 4;
+          order = 5;
           break;
         case 'render':
           label.append($('<span>Render</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
@@ -2272,7 +2456,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .val(record ? record[key] : ''));
 
           propertyRequired = true;
-          order = 5;
+          order = 6;
           break;
       }
 
@@ -2302,7 +2486,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     formContainer.append(form);
 
     return formContainer;
-  }
+  };
+
+  MChart.prototype.events = {
+    onSave: function(chart) {
+      var widget = chart.widget;
+      widget.contentType = 'chart';
+
+      var newChart = chart.loadForm();
+      widget.chart = newChart;
+      newChart.widget = widget;
+
+      return newChart;
+    }
+  };
 
 
   /***********************   Management   **************************/
@@ -2635,23 +2832,23 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     _.extend(this, _options);
 
     this.ajaxOptions = {
-      async: true,
-      cache: true,
       contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-      crossDomain: false,
       data: {},
       dataType: 'json',
-      global: true,
-      headers: {},
-      ifModified: false,
-      jsonp: false,
+      processData: true,
+      timeout: 20000, // 20sn
+      type: 'GET',
+      url: '',
+      jsonp: 'callback'
+      //cache: false,
+      //crossDomain: false,
+      //username: '',
+      //async: true,
+      //global: true,
+      //headers: {},
+      //ifModified: false,
       //jsonpCallback: function() {}
       //password: ''
-      processData: true,
-      timeout: 30000, // 30sn
-      type: 'GET',
-      //username: ''
-      url: ''
     };
     _.extend(this.ajaxOptions, _ajaxOptions);
 
@@ -2718,34 +2915,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     function callMeMaybe() {
-      if (self.ajaxOptions.dataType === 'jsonp' && self.ajaxOptions.type === 'GET') {
-        /*var address = self.ajaxOptions.url,
-            queryStrings = [];
+      var request = $.ajax(self.ajaxOptions);
 
-        _.each(self.ajaxOptions.data, function(value, key) {
-          var queryString = '' + key + '=' + (value ? encodeURIComponent(value) : '');
-          queryStrings.push(queryString);
-        });
-        address = address + '?callback=?' + queryStrings.join('&');*/
+      request.done(function (data, status, request) {
+        callback(null, data);
+      });
 
-        $.getJSON(self.ajaxOptions.url + '?callback=?', self.ajaxOptions.data, function(data, statusText, error) {
-          if (statusText === 'success') {
-            callback(null, data)
-          } else {
-            callback(error);
-          }
-        });
-      } else {
-        var request = $.ajax(self.ajaxOptions);
+      request.fail(function (request, status, error) {
+        callback(error);
+      });
 
-        request.done(function (data, status, request) {
-           callback(null, data);
-         });
-
-         request.fail(function (request, status, error) {
-           callback(error);
-         });
-      }
     }
 
     if (self.schedule) {
@@ -2765,10 +2944,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
    */
   MService.prototype.loadConnectionForm = function() {
     var self = this;
-
-    self.ajaxOptions.url = $('.form-row .form-item .item-url').val();
-    self.ajaxOptions.type = $('.form-row .form-item .item-type').val();
-    self.ajaxOptions.dataType = $('.form-row .form-item .item-dataType').val();
 
     /*
     var dataValue = $('.form-row .form-item .item-data').val();
@@ -2793,21 +2968,24 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     self.ajaxOptions.data = param;
 
-    self.ajaxOptions.crossDomain  = $('.form-row .form-item .item-crossDomain').prop('checked');
-    self.ajaxOptions.async        = $('.form-row .form-item .item-async').prop('checked');
-    self.ajaxOptions.cache        = $('.form-row .form-item .item-cache').prop('checked');
     self.ajaxOptions.processData  = $('.form-row .form-item .item-processData').prop('checked');
-    self.ajaxOptions.global       = $('.form-row .form-item .item-global').prop('checked');
-    self.ajaxOptions.ifModified   = $('.form-row .form-item .item-ifModified').prop('checked');
-    self.ajaxOptions.jsonp        = $('.form-row .form-item .item-jsonp').prop('checked');
-
     self.ajaxOptions.contentType = $('.form-row .form-item .item-contentType').val();
+    self.ajaxOptions.url = $('.form-row .form-item .item-url').val();
+    self.ajaxOptions.type = $('.form-row .form-item .item-type').val();
+    self.ajaxOptions.dataType = $('.form-row .form-item .item-dataType').val();
+    self.ajaxOptions.jsonp        = $('.form-row .form-item .item-jsonp').val();
+
+    //self.ajaxOptions.crossDomain  = $('.form-row .form-item .item-crossDomain').prop('checked');
+    //self.ajaxOptions.cache        = $('.form-row .form-item .item-cache').prop('checked');
+    //self.ajaxOptions.async        = $('.form-row .form-item .item-async').prop('checked');
+    //self.ajaxOptions.global       = $('.form-row .form-item .item-global').prop('checked');
+    //self.ajaxOptions.ifModified   = $('.form-row .form-item .item-ifModified').prop('checked');
 
     var timeoutValue = $('.form-row .form-item .item-timeout').val();
     self.ajaxOptions.timeout = timeoutValue ? parseInt(timeoutValue) : 30000;
 
-    var headersValue = $('.form-row .form-item .item-headers').val();
-    self.ajaxOptions.headers = headersValue ? $.parseJSON(headersValue) : {};
+    //var headersValue = $('.form-row .form-item .item-headers').val();
+    //self.ajaxOptions.headers = headersValue ? $.parseJSON(headersValue) : {};
 
     return self;
   };
@@ -2831,7 +3009,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               .val(record && record.url ? record.url : '')
           );
           propertyRequired = true;
-          order = 3;
+          order = 1;
           break;
         case 'dataType':
           label.append($('<span>Data Type</span>'));
@@ -2839,15 +3017,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .append($('<option value="xml">XML</option>'))
             .append($('<option value="html">HTML</option>'))
             .append($('<option value="script">Script</option>'))
-            .append($('<option value="json">JSON</option>'))
-            .append($('<option value="jsonp" selected>JSONP</option>'))
+            .append($('<option value="json" selected>JSON</option>'))
+            .append($('<option value="jsonp">JSONP</option>'))
             .append($('<option value="text">Text</option>'));
           item.append(dataTypes);
           if (record && record.dataType) {
             dataTypes.val(record.dataType);
           }
           propertyRequired = true;
-          order = 2;
+          order = 4;
           break;
         case 'type':
           label.append($('<span>Method</span>'));
@@ -2859,22 +3037,51 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             types.val(record.type);
           }
           propertyRequired = true;
-          order = 1;
+          order = 2;
           break;
-        case 'crossDomain':
+        case 'processData':
+          label.append($('<span>Process Data</span>'));
+
+          var processData = $('<input class="item-processData text" type="checkbox" />');
+
+          if (record) {
+            processData.prop('checked', (record && record.processData) ? true : false);
+          } else {
+            processData.prop('checked', true);
+          }
+          item.append(processData);
+          propertyRequired = true;
+          order = 7;
+          break;
+        case 'contentType':
+          label.append($('<span>Content Type</span>'));
+          item.append($('<input class="item-contentType text" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
+            .val(record && record.contentType ? record.contentType : 'application/x-www-form-urlencoded; charset=UTF-8'));
+          propertyRequired = true;
+          order = 3;
+          break;
+        case 'timeout':
+          label.append($('<span>Timeout</span>'));
+          item.append($('<input class="item-timeout text" type="text" placeholder="20000 (20 seconds)" />')
+            .val(record && record.timeout ? record.timeout : 20000));
+          propertyRequired = true;
+          order = 5;
+          break;
+        case 'jsonp':
+          label.append($('<span>jsonp</span>'));
+          item.append($('<input class="item-jsonp text" type="text" />')
+            .val(record && record.jsonp ? record.jsonp : 'callback'));
+          propertyRequired = true;
+          order = 6;
+          break;
+        /*case 'crossDomain':
           label.append($('<span>Cross Domain</span>'));
           item.append($('<input class="item-crossDomain text" type="checkbox" />')
             .prop('checked', (record && record.crossDomain ? true : false)));
           propertyRequired = true;
-          order = 4;
+          order = 7;
           break;
-        case 'jsonp':
-          label.append($('<span>jsonp</span>'));
-          item.append($('<input class="item-jsonp text" type="checkbox" checked="checked" />')
-            .prop('checked', (record && record.jsonp ? true : false)));
-          propertyRequired = true;
-          order = 5;
-          break;
+
         case 'async':
           label.append($('<span>Asynchronous</span>'));
           item.append($('<input class="item-async text" type="checkbox" checked="checked" />')
@@ -2888,13 +3095,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .prop('checked', (record && record.cache ? true : false)));
           propertyRequired = true;
           order = 7;
-          break;
-        case 'processData':
-          label.append($('<span>Process Data</span>'));
-          item.append($('<input class="item-processData text" type="checkbox" />')
-            .prop('checked', (record && record.processData ? true : false)));
-          propertyRequired = true;
-          order = 8;
           break;
         case 'global':
           label.append($('<span>Global</span>'));
@@ -2910,20 +3110,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           propertyRequired = true;
           order = 10;
           break;
-        case 'contentType':
-          label.append($('<span>Content Type</span>'));
-          item.append($('<input class="item-contentType text" type="text" placeholder="application/x-www-form-urlencoded; charset=UTF-8" />')
-            .val(record && record.contentType ? record.contentType : 'application/x-www-form-urlencoded; charset=UTF-8'));
-          propertyRequired = true;
-          order = 11;
-          break;
-        case 'timeout':
-          label.append($('<span>Timeout</span>'));
-          item.append($('<input class="item-timeout text" type="text" placeholder="30000 (30 seconds)" />')
-            .val(record && record.timeout ? record.timeout : 30000));
-          propertyRequired = true;
-          order = 12;
-          break;
         case 'headers':
           label.append($('<span>Headers</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
           columnBreak.css({'vertical-align':'top', 'padding':'15px 0 0 0'});
@@ -2931,7 +3117,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .val(record && record.headers ? record.header : ''));
           propertyRequired = true;
           order = 13;
-          break;
+          break;*/
       }
 
       if (propertyRequired) {
