@@ -722,7 +722,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.invalidate().render();
 
     _.each(self.widgets, function (widget, index) {
-      widget.invalidate();
+      widget.invalidate().render();
     });
   };
   /**
@@ -947,7 +947,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         }
       };
 
-      /*
+      /* // todo: load series and options
       if (editChart && editChart.params && editChart.params.length > 0) {
         _.each(editChart.params, function(param, index) {
           for (var paramKey in param) {
@@ -1584,14 +1584,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     _.extend(this, _options);
 
-
-    /*if (this.contentType === "chart") {
-      if (this.chart.widget) {
-        delete this.chart.widget;
-      }
-      this.chart = new MChart(this, this.chart);
-    }*/
-
     if (this.collection) {
       var self = this;
       var collectionInitialized = setInterval(function () {
@@ -1686,7 +1678,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                       console.error(exception);
                     }
                   }
+                  self.isRendered = true;
                 });
+              } else {
+                self.isRendered = true;
               }
             } else {
               if (self.html.render) {
@@ -1698,27 +1693,31 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   console.error(exception);
                 }
               }
+              self.isRendered = true;
             }
-          } else if (self.contentType === "chart" && self.html && self.chart) {
+          } else if (self.contentType === "chart" && self.template && self.chart) {
             if (self.serviceId) {
               contentSection.addClass('loading');
 
               if (self.collection) {
                 var service = self.collection.dashboard.getServiceById(self.serviceId);
                 service.getData(function(err, result) {
-                  contentSection.removeClass('loading');
                   if (self.html.render) {
                     contentSection.append(self.html.render(self, { data:result }));
                   } else if (self.template) {
                     try {
                       contentSection.append(_.template(self.template, { data:result }));
+                      if (!self.chart.isRendering) {
+                        self.chart.renderDefault(contentSection, result);
+                      }
                     } catch (exception) {
                       console.error(exception);
                     }
                   }
-
-
+                  self.isRendered = true;
                 });
+              } else {
+                self.isRendered = true;
               }
             } else {
               if (self.html.render) {
@@ -1730,9 +1729,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   console.error(exception);
                 }
               }
+              self.isRendered = true;
             }
           }
-          //contentSection.append(self.content);
           break;
         case 'settings':
           var isAdmin = self.collection.dashboard.account.isAdmin();
@@ -1796,32 +1795,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     }, 100);
 
-    // todo
-    if (self.contentType === "chart" && self.chart) {
-      self.chart.render(self);
-    } else if (self.contentType === "html" && self.html) {
-      if (self.html.render) {
-        self.container.append(self.html.render(self));
-      } else if (self.template) {
-        if (self.serviceId && self.collection) {
-          try {
-            var service = self.collection.dashboard.getServiceById(self.serviceId);
-            self.container.append(_.template(self.template, { data:service.data }));
-          } catch (exception) {
-            console.error(exception);
-          }
-        } else {
-          try {
-            self.container.append(_.template(self.template, { data:self }));
-          } catch (exception) {
-            console.error(exception);
-          }
-        }
-      }
-    } else {
-      self.container.removeClass('loading');
-    }
-
+    return self;
   };
   /**
    * Widget events
@@ -1870,7 +1844,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
 
       widget = widget.loadForm();
-      //widget.collection.widgets.push(widget);
 
       if (widget && widget.collection) {
         dashboard = widget.collection.dashboard;
@@ -1891,14 +1864,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
         });
       }
-
-      /*if (widget.collection && widget.collection.redraw) {
-        widget.collection.redraw();
-      }*/
     },
     onResized: function(widget, event, ui) {
-      widget.invalidate();
-      widget.render();
+      widget.invalidate().render();
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
     onDragged: function(widget, event, ui) {
@@ -2126,35 +2094,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       serialized.chart = self.chart.serialize();
     }
 
-    /*
-    switch (self.contentType) {
-      case 'html':
-        serialized.html = {};
-        if (self.html && self.html.dataset) {
-          serialized.html.dataset = _.isFunction(self.html.dataset)
-            ? self.html.dataset.toString()
-            : JSON.stringify(self.html.dataset);
-        }
-
-        if (self.html && self.html.render) {
-          serialized.html.render = _.isFunction(self.html.render)
-            ? self.html.render.toString()
-            : JSON.stringify(self.html.render);
-        }
-
-        if (self.html && self.html.style) {
-          serialized.html.style = _.isFunction(self.html.style)
-            ? self.html.style.toString()
-            : JSON.stringify(self.html.style);
-        }
-        break;
-      case 'chart':
-        if (self.chart) {
-          serialized.chart = self.chart.serialize();
-        }
-        break;
-    }*/
-
     return serialized;
   };
   MWidget.prototype.deserialize = function(data, owner) {
@@ -2205,41 +2144,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       self.chart = newChart.deserialize(data.chart, self);
     }
 
-    /*
-    switch (data.contentType) {
-      case 'html':
-        self.html = {};
-        if (data.html.dataset) {
-          if (/function/.test(data.html.dataset)) {
-            self.html.dataset = getSource(data.html.dataset, ['widget']);
-          } else {
-            self.html.dataset = $.parseJSON(data.html.dataset);
-          }
-        }
-
-        if (data.html.render) {
-          if (/function/.test(data.html.render)) {
-            self.html.render = getSource(data.html.render, ['widget', 'callback']);
-          } else {
-            self.html.render = $.parseJSON(data.html.render);
-          }
-        }
-
-        if (data.html.style) {
-          if (/function/.test(data.html.style)) {
-            self.html.style = getSource(data.html.style, ['widget']);
-          } else {
-            self.html.style = $.parseJSON(data.html.style);
-          }
-        }
-        break;
-      case 'chart':
-        var newChart = new MChart(self);
-        self.chart = newChart.deserialize(data.chart, self);
-        break;
-    }
-    */
-
     return self;
   };
 
@@ -2255,7 +2159,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     this.library = 'Highcharts'; // default
     this.widget = ownerWidget;
     this.type = 'column';
-    this.isInitialized = false;
+    this.isRendering = false;
     this.container = null;
     this.config = null;
     this.render = null;
@@ -2263,30 +2167,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     _.extend(this, _options);
 
-    var self = this;
-    var widgetInitialized = setInterval(function () {
-      if (self.widget.isInitialized) {
-        clearInterval(widgetInitialized);
-        if (self.render) {
-          self.render(self.widget);
-        }
-      }
-    }, 100);
-
     return this;
   };
+  MChart.prototype.widget = typeof MWidget;
   MChart.prototype.serialize = function() {
     var self = this,
         serialized = {};
 
-    debugger;
     serialized.mType = 'MChart';
     serialized.library = self.library;
     serialized.type = self.type;
     serialized.uid = self.uid;
     serialized.container = self.container;
+    debugger;
     serialized.config = self.config ? JSON.stringify(self.config) : null;
-    serialized.series = self.series && self.series.length > 0 ? JSON.stringify(self.series) : null;
+    serialized.series = self.series && self.series.length > 0
+      ? JSON.stringify(self.series) : null;
 
     if (self.render) {
       serialized.render = _.isFunction(self.render)
@@ -2320,14 +2216,60 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return self;
   };
-  MChart.prototype.widget = typeof MWidget;
+  MChart.prototype.renderDefault = function(container, data) {
+    var self = this;
 
+    function _renderHighcharts(container, data) {
+      if (!self.type || !self.container || !self.config || !self.series) {
+        return;
+      }
+
+      self.isRendering = true;
+      debugger;
+      var options = _.extend({}, self.config);
+
+      options.chart = options.chart || {};
+      options.chart.type = self.type;
+      options.xAxis = options.xAxis || {};
+      options.xAxis.categories = options.xAxis.categories || [];
+      options.series = options.series || [];
+
+      options.series = _.map(self.series, function(item) {
+        var dataArray = data[item.serviceResultProperty];
+        var serie = {
+          name: item.serieName || item.serviceResultProperty,
+          data: []
+        };
+        // Creating data series and xAxis categories
+        _.each(dataArray, function(dataItem, dataItemIndex) {
+          serie.data.push(dataItem[item.valueField]);
+
+          // Check xAxis array if we have value or not
+          if (options.xAxis.categories.indexOf(dataItem[item.categoryField]) < 0) {
+            options.xAxis.categories.push(dataItem[item.categoryField]);
+          }
+        });
+        return serie;
+      });
+
+      $(self.container, container).highcharts(options);
+      debugger;
+
+      self.isRendering = false;
+    }
+
+
+    switch (self.library) {
+      case 'highcharts':
+        _renderHighcharts(container, data);
+        break;
+    }
+  };
   MChart.prototype.loadForm = function() {
     var self = this;
 
     var series = [];
     $('.param-serie-name').each(function() {
-      debugger;
       var serie = {},
           paramNumber = $(this).attr('data-order');
 
@@ -2343,12 +2285,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.library = $('.form-row .form-item .item-library').val();
     self.type = $('.form-row .form-item .item-type').val();
     self.container = $('.form-row .form-item .item-container').val();
-    self.config = $('.form-row .form-item .item-config').val();
     self.render = $('.form-row .form-item .item-render').val();
+
+    var configValue = $('.form-row .form-item .item-config').val();
+    if (configValue && configValue.length > 0) {
+      self.config = $.parseJSON(configValue);
+    }
 
     return self;
   };
-
   MChart.prototype.createForm = function(record) {
     var self = this,
         formContainer = $('<div class="chart-container"></div>'),
@@ -2403,7 +2348,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             } else {
               if (renderRow && renderRow.length > 0) {
-                  renderRow.show();
+                renderRow.show();
               }
             }
           });
@@ -2487,7 +2432,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     return formContainer;
   };
-
   MChart.prototype.events = {
     onSave: function(chart) {
       var widget = chart.widget;
@@ -2500,7 +2444,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       return newChart;
     }
   };
-
 
   /***********************   Management   **************************/
 
@@ -4035,8 +3978,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
   managementDialog = new MDialog({ name:'management' });
   addItemDialog = new MDialog({ name:'user' });
-  //editWidgetDialog = new MDialog();
-  //editChartDialog = new MDialog();
 
   /**
    * Authorizes any component like (MModule, MService, MDialog, MWidget)

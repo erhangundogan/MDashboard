@@ -1,8 +1,8 @@
 
-@import url(http://fonts.googleapis.com/css?family=Ubuntu:400,700|Oxygen:400,700|Open+Sans:400,700|Marmelad|Varela&subset=latin,latin-ext);
+@import url(http://fonts.googleapis.com/css?family=Ubuntu:400,700);
 /*
 Google Fonts
-http://www.google.com/fonts#UsePlace:use/Collection:Ubuntu:400,700|Oxygen:400,700|Open+Sans:400,700|Marmelad|Varela
+http://www.google.com/fonts#UsePlace:use/Collection:Ubuntu:400,700|Oxygen:400,700|Open+Sans:400,700|Marmelad|Varela&subset=latin,latin-ext
 
 font-family: 'Ubuntu', sans-serif;
 font-family: 'Oxygen', sans-serif;
@@ -333,20 +333,6 @@ a {
   box-shadow: inset 0 -1px 0 0 #7d7d7d,inset 0 0 0 1px #949494,inset 0 2px 1px 0 rgba(255,255,255,0.32),0 1px 2px 0 rgba(0,0,0,0.3);
 }
 
-
-
-/*
-.button-text {
-  width: 90px;
-  text-align: center;
-}*/
-/*
-.disabled {
-  background-color: #f5f5f5;
-  color: #999;
-  opacity: .4;
-}*/
-
 .mdashboard-toolbar .btn {
   padding-left: 4px;
   padding-top: 2px;
@@ -468,18 +454,6 @@ a {
   color: #fff;
   border-radius: 5px;
 }
-
-/*
-.dialog-well {
-  background-color: #F5F2EF;
-  color: #fff;
-  border-radius: 5px;
-  border: solid 1px #CCC;
-
-  -webkit-box-shadow: inset 0 0 5px -2px rgba(50, 50, 50, 0.3);
-  -moz-box-shadow:    inset 0 0 7px -2px rgba(50, 50, 50, 0.3);
-  box-shadow:         inset 0 0 7px -2px rgba(50, 50, 50, 0.3);
-}*/
 
 #dialog-inner-content {
   width: 100%;
@@ -742,10 +716,6 @@ form.form, .form-row {
   display: inline-block;
   margin-bottom: .5em;
 }
-
-/*.item-uid {
-  color: #666;
-}*/
 
 .item-icons {
   width: 475px;
