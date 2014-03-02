@@ -722,7 +722,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.invalidate().render();
 
     _.each(self.widgets, function (widget, index) {
-      widget.invalidate().render();
+      widget.invalidate();
     });
   };
   /**
@@ -1013,7 +1013,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-save',
             // Save Widget visible if it is admin and if dialog page showed up from management dialog
             visible : collection.dashboard.account.isAdmin() &&
-              collection.dashboard.activeDialog ? true : false,
+              collection.dashboard.activeDialog ? true : false, // activeDialog does not set when user opened
             click: function(event) {
               event.preventDefault();
               widget.events.onSave(widget, collection);
@@ -1025,6 +1025,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       createWidgetPage.footerOptions.buttons.push({
         name: 'Create<br/>Chart',
         icon: 'fa-dashboard',
+        visible : collection.dashboard.account.isAdmin() &&
+          collection.dashboard.activeDialog ? true : false, // activeDialog does not set when user opened
         click: function(event) {
           event.preventDefault();
           collection.events.onCreateChart(widget);
@@ -1702,17 +1704,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               if (self.collection) {
                 var service = self.collection.dashboard.getServiceById(self.serviceId);
                 service.getData(function(err, result) {
-                  if (self.html.render) {
-                    contentSection.append(self.html.render(self, { data:result }));
-                  } else if (self.template) {
-                    try {
-                      contentSection.append(_.template(self.template, { data:result }));
-                      if (!self.chart.isRendering) {
-                        self.chart.renderDefault(contentSection, result);
-                      }
-                    } catch (exception) {
-                      console.error(exception);
+                  try {
+                    contentSection.append(_.template(self.template, { data:result }));
+                    if (!self.chart.isRendering) {
+                      self.chart.renderDefault(contentSection, result);
                     }
+                  } catch (exception) {
+                    console.error(exception);
                   }
                   self.isRendered = true;
                 });
@@ -1720,14 +1718,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                 self.isRendered = true;
               }
             } else {
-              if (self.html.render) {
-                contentSection.append(self.html.render(self, { data:self }));
-              } else if (self.template) {
-                try {
-                  contentSection.append(_.template(self.template, { data:self }));
-                } catch (exception) {
-                  console.error(exception);
+              try {
+                contentSection.append(_.template(self.template));
+                if (!self.chart.isRendering) {
+                  self.chart.renderDefault(contentSection);
                 }
+              } catch (exception) {
+                console.error(exception);
               }
               self.isRendered = true;
             }
@@ -1767,6 +1764,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.isRendered = false;
     self.container.empty();
 
+    self.container.addClass('loading');
+
     self.xSize = parseInt(self.mainContainer.attr('data-sizex'));
     self.ySize = parseInt(self.mainContainer.attr('data-sizey'));
 
@@ -1795,7 +1794,44 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     }, 100);
 
-    return self;
+
+    if (self.template) {
+      if (self.serviceId && self.collection) {
+        try {
+          var service = self.collection.dashboard.getServiceById(self.serviceId);
+          if (service) {
+            service.getData(function(err, result) {
+              self.container.append(_.template(self.template, { data:result }));
+              if (self.contentType === "chart" && self.chart) {
+                self.chart.renderDefault(self.container, result);
+              }
+              self.container.removeClass('loading');
+            });
+          } else {
+            console.error('Widget service could not be found');
+            self.container.removeClass('loading');
+          }
+        } catch (exception) {
+          console.error(exception);
+          self.container.removeClass('loading');
+        }
+      } else {
+        try {
+          self.container.append(_.template(self.template));
+          if (self.contentType === "chart" && self.chart) {
+            self.chart.renderDefault(self.container);
+          }
+          self.container.removeClass('loading');
+        } catch (exception) {
+          console.error(exception);
+          self.container.removeClass('loading');
+        }
+      }
+    } else {
+      console.error('Cannot render widget without template');
+      self.container.removeClass('loading');
+    }
+
   };
   /**
    * Widget events
@@ -1866,7 +1902,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       }
     },
     onResized: function(widget, event, ui) {
-      widget.invalidate().render();
+      widget.invalidate();
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
     onDragged: function(widget, event, ui) {
@@ -2179,7 +2215,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     serialized.type = self.type;
     serialized.uid = self.uid;
     serialized.container = self.container;
-    debugger;
+
     serialized.config = self.config ? JSON.stringify(self.config) : null;
     serialized.series = self.series && self.series.length > 0
       ? JSON.stringify(self.series) : null;
@@ -2220,40 +2256,52 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     var self = this;
 
     function _renderHighcharts(container, data) {
-      if (!self.type || !self.container || !self.config || !self.series) {
+      if (!self.type || !self.container || !self.config) {
         return;
       }
 
       self.isRendering = true;
-      debugger;
-      var options = _.extend({}, self.config);
 
-      options.chart = options.chart || {};
-      options.chart.type = self.type;
-      options.xAxis = options.xAxis || {};
-      options.xAxis.categories = options.xAxis.categories || [];
-      options.series = options.series || [];
+      var chartOptions = $.extend(true, {}, self.config);
 
-      options.series = _.map(self.series, function(item) {
-        var dataArray = data[item.serviceResultProperty];
-        var serie = {
-          name: item.serieName || item.serviceResultProperty,
-          data: []
-        };
-        // Creating data series and xAxis categories
-        _.each(dataArray, function(dataItem, dataItemIndex) {
-          serie.data.push(dataItem[item.valueField]);
+      chartOptions.chart = chartOptions.chart || {};
+      chartOptions.chart.type = self.type;
+      chartOptions.series = chartOptions.series || [];
 
-          // Check xAxis array if we have value or not
-          if (options.xAxis.categories.indexOf(dataItem[item.categoryField]) < 0) {
-            options.xAxis.categories.push(dataItem[item.categoryField]);
-          }
+      if (self.series && self.series.length > 0) {
+        chartOptions.series = _.map(self.series, function(item) {
+          var dataArray = data[item.serviceResultProperty];
+          var serie = {
+            name: item.serieName || item.serviceResultProperty,
+            data: []
+          };
+
+          chartOptions.xAxis = chartOptions.xAxis || {};
+          chartOptions.xAxis.categories = chartOptions.xAxis.categories || [];
+
+          // Creating data series and xAxis categories
+          _.each(dataArray, function(dataItem, dataItemIndex) {
+            serie.data.push(dataItem[item.valueField]);
+
+            // Check xAxis array if we have value or not
+            if (chartOptions.xAxis.categories.indexOf(dataItem[item.categoryField]) < 0) {
+              chartOptions.xAxis.categories.push(dataItem[item.categoryField]);
+            }
+          });
+          return serie;
         });
-        return serie;
-      });
+      }
 
-      $(self.container, container).highcharts(options);
-      debugger;
+      if (chartOptions.xAxis && chartOptions.xAxis.labels && chartOptions.xAxis.labels.rotation) {
+        chartOptions.xAxis.labels.rotation = Number(chartOptions.xAxis.labels.rotation);
+      }
+
+      var chartContainer = self.container;
+      $(chartContainer, container).highcharts(chartOptions);
+      /*
+      if (self.config.renderTo) {
+        delete self.config.renderTo;
+      }*/
 
       self.isRendering = false;
     }
@@ -2341,6 +2389,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   var config = {
                     chart: {
                       type: typeItem.val()
+                    },
+                    credits: {
+                      enabled: false
                     }
                   };
                   configItem.val(JSON.stringify(config, null, 2));
