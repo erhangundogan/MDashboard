@@ -853,6 +853,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             }
           });
 
+        if (_.isArray(result)) {
+          result = { result: result }; // if we have an array in result we should put it into object
+        }
         var resultKeys = Object.keys(result);
         options.append($('<option value="">- Please select an array -</option>'));
         _.each(resultKeys, function(item, index) {
@@ -2280,15 +2283,108 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           chartOptions.xAxis.categories = chartOptions.xAxis.categories || [];
 
           // Creating data series and xAxis categories
-          _.each(dataArray, function(dataItem, dataItemIndex) {
-            serie.data.push(dataItem[item.valueField]);
+          switch(item.aggregateFunction) {
+            case 'value':
+              _.each(dataArray, function(dataItem, dataItemIndex) {
+                serie.data.push(dataItem[item.valueField]);
 
-            // Check xAxis array if we have value or not
-            if (chartOptions.xAxis.categories.indexOf(dataItem[item.categoryField]) < 0) {
-              chartOptions.xAxis.categories.push(dataItem[item.categoryField]);
-            }
-          });
-          return serie;
+                // Check xAxis array if we have value or not
+                if (chartOptions.xAxis.categories.indexOf(dataItem[item.categoryField]) < 0) {
+                  chartOptions.xAxis.categories.push(dataItem[item.categoryField]);
+                }
+              });
+              return serie;
+
+            case 'count':
+              var countResult = _.reduce(
+                _.map(dataArray, function(arrayItem) {
+                    return { key: arrayItem[item.categoryField], value: 1 }
+                }),
+                function(memo, num) {
+                    memo[num.key] = memo[num.key] || 0;
+                    memo[num.key] += num.value;
+                    return memo;
+                }, {});
+
+              _.each(countResult, function(dataItem, dataItemIndex) {
+                serie.data.push(dataItem);
+
+                // Check xAxis array if we have value or not
+                if (chartOptions.xAxis.categories.indexOf(dataItemIndex) < 0) {
+                  chartOptions.xAxis.categories.push(dataItemIndex);
+                }
+              });
+              return serie;
+
+            case 'sum':
+              var sumResult = _.reduce(
+                _.map(dataArray, function(arrayItem) {
+                    return { key: arrayItem[item.categoryField], value: arrayItem[item.valueField] }
+                }),
+                function(memo, num) {
+                    memo[num.key] = memo[num.key] || 0;
+                    memo[num.key] += num.value;
+                    return memo;
+                }, {});
+
+              _.each(sumResult, function(dataItem, dataItemIndex) {
+                serie.data.push(dataItem);
+
+                // Check xAxis array if we have value or not
+                if (chartOptions.xAxis.categories.indexOf(dataItemIndex) < 0) {
+                  chartOptions.xAxis.categories.push(dataItemIndex);
+                }
+              });
+              return serie;
+
+            case 'average':
+              var averageResult = _.reduce(
+                _.map(dataArray, function(arrayItem) {
+                    return { key: arrayItem[item.categoryField], value: arrayItem[item.valueField] }
+                }),
+                function(memo, num) {
+                    memo[num.key] = memo[num.key] || 0;
+                    memo[num.key] += num.value;
+                    return memo;
+                }, {});
+
+              var itemCount = dataArray.length;
+              _.each(averageResult, function(dataItem, dataItemIndex) {
+                serie.data.push((dataItem/itemCount).toFixed(2));
+
+                // Check xAxis array if we have value or not
+                if (chartOptions.xAxis.categories.indexOf(dataItemIndex) < 0) {
+                  chartOptions.xAxis.categories.push(dataItemIndex);
+                }
+              });
+              return serie;
+
+            case 'min':
+              debugger;
+              var minResult = _.min(dataArray, function(arrayItem) {
+                return arrayItem[item.valueField];
+              });
+
+              serie.data.push(minResult[item.valueField]);
+
+              if (chartOptions.xAxis.categories.indexOf(minResult[item.categoryField]) < 0) {
+                chartOptions.xAxis.categories.push(minResult[item.categoryField]);
+              }
+              return serie;
+
+            case 'max':
+              var maxResult = _.max(dataArray, function(arrayItem) {
+                return arrayItem[item.valueField];
+              });
+
+              serie.data.push(maxResult[item.valueField]);
+
+              if (chartOptions.xAxis.categories.indexOf(maxResult[item.categoryField]) < 0) {
+                chartOptions.xAxis.categories.push(maxResult[item.categoryField]);
+              }
+              return serie;
+          }
+
         });
       }
 
@@ -2309,7 +2405,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     switch (self.library) {
       case 'highcharts':
-        _renderHighcharts(container, data);
+        if (_.isArray(data)) {
+          _renderHighcharts(container, { result: data });
+        } else {
+          _renderHighcharts(container, data);
+        }
+
         break;
     }
   };
@@ -3472,7 +3573,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         case 'module|main':
           // if we have swiper component on main page, we must refresh it
-          //debugger;
           var orchestrator = dialogPage.dialog.orchestrator;
           if (orchestrator) {
             orchestrator.setBreadcrumb(orchestrator.selected);
