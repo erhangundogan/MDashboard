@@ -2934,15 +2934,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       timeout: 20000, // 20sn
       type: 'GET',
       url: '',
-      jsonp: 'callback'
+      jsonp: 'callback',
+      jsonpCallback: 'jsonpCallback',
+      crossDomain: false
       //cache: false,
-      //crossDomain: false,
       //username: '',
       //async: true,
       //global: true,
       //headers: {},
       //ifModified: false,
-      //jsonpCallback: function() {}
       //password: ''
     };
     _.extend(this.ajaxOptions, _ajaxOptions);
@@ -3063,14 +3063,15 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
     self.ajaxOptions.data = param;
 
-    self.ajaxOptions.processData  = $('.form-row .form-item .item-processData').prop('checked');
-    self.ajaxOptions.contentType = $('.form-row .form-item .item-contentType').val();
-    self.ajaxOptions.url = $('.form-row .form-item .item-url').val();
-    self.ajaxOptions.type = $('.form-row .form-item .item-type').val();
-    self.ajaxOptions.dataType = $('.form-row .form-item .item-dataType').val();
-    self.ajaxOptions.jsonp        = $('.form-row .form-item .item-jsonp').val();
+    self.ajaxOptions.contentType    = $('.form-row .form-item .item-contentType').val();
+    self.ajaxOptions.url            = $('.form-row .form-item .item-url').val();
+    self.ajaxOptions.type           = $('.form-row .form-item .item-type').val();
+    self.ajaxOptions.dataType       = $('.form-row .form-item .item-dataType').val();
+    self.ajaxOptions.jsonp          = $('.form-row .form-item .item-jsonp').val();
+    self.ajaxOptions.jsonpCallback  = $('.form-row .form-item .item-jsonpCallback').val();
+    self.ajaxOptions.processData    = $('.form-row .form-item .item-processData').prop('checked');
+    self.ajaxOptions.crossDomain    = $('.form-row .form-item .item-crossDomain').prop('checked');
 
-    //self.ajaxOptions.crossDomain  = $('.form-row .form-item .item-crossDomain').prop('checked');
     //self.ajaxOptions.cache        = $('.form-row .form-item .item-cache').prop('checked');
     //self.ajaxOptions.async        = $('.form-row .form-item .item-async').prop('checked');
     //self.ajaxOptions.global       = $('.form-row .form-item .item-global').prop('checked');
@@ -3146,7 +3147,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           }
           item.append(processData);
           propertyRequired = true;
-          order = 7;
+          order = 9;
           break;
         case 'contentType':
           label.append($('<span>Content Type</span>'));
@@ -3168,6 +3169,27 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             .val(record && record.jsonp ? record.jsonp : 'callback'));
           propertyRequired = true;
           order = 6;
+          break;
+        case 'jsonpCallback':
+          label.append($('<span>jsonpCallback</span>'));
+          item.append($('<input class="item-jsonpCallback text" type="text" />')
+            .val(record && record.jsonpCallback ? record.jsonpCallback : 'jsonpCallback'));
+          propertyRequired = true;
+          order = 7;
+          break;
+        case 'crossDomain':
+          label.append($('<span>Cross domain</span>'));
+
+          var crossDomain = $('<input class="item-crossDomain text" type="checkbox" />');
+
+          if (record) {
+            crossDomain.prop('checked', (record && record.crossDomain) ? true : false);
+          } else {
+            crossDomain.prop('checked', true);
+          }
+          item.append(crossDomain);
+          propertyRequired = true;
+          order = 8;
           break;
         /*case 'crossDomain':
           label.append($('<span>Cross Domain</span>'));
@@ -3576,6 +3598,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           var orchestrator = dialogPage.dialog.orchestrator;
           if (orchestrator) {
             orchestrator.setBreadcrumb(orchestrator.selected);
+            // todo
           }
           break;
       }
@@ -4727,7 +4750,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               orchestrator.dashboard.activeDialog.activePage.disableButton('Create<br/>Widget');
               orchestrator.setBreadcrumb();
               orchestrator.setSwiperItemsVisible(orchestrator.dialog);
-              orchestrator.renderSwiper(orchestrator.swiper,orchestrator.swiperOptions);
+              orchestrator.renderSwiper(orchestrator.swiper, orchestrator.swiperOptions);
             }
           } else {
             var module = orchestrator.dashboard.getModuleById(moduleId);
