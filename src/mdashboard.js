@@ -779,7 +779,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           module = null,
           form = null,
           paramOrder = 1,
-          dialogPageTitle = editChart ? 'Edit Chart' : 'Create Chart';
+          dialogPageTitle = editChart ? 'Edit Chart' : 'Add Chart';
 
       var addParam = function(result) {
         var keyValueLabel = $('<div class="form-label"></div>').css({'vertical-align':'top'}),
@@ -913,8 +913,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
+              managementDialog.block();
               managementDialog.getPage('widget|edit', 'slideUpDown');
-              managementDialog.orchestrator.swiper.reInit();
             }
           }, {
             name: 'Save<br/>Chart',
@@ -923,6 +923,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             // Save Widget visible if it is admin and if dialog page showed up from management dialog
             click: function(event) {
               event.preventDefault();
+              managementDialog.block();
+
               chart = chart.events.onSave(chart, widget.collection);
               if (chart.widget.collection) {
                 chart.widget.collection.events.onCreateWidget(chart.widget.collection, chart.widget);
@@ -938,11 +940,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             click: function(event) {
               event.preventDefault();
               if (widget && widget.serviceId) {
-                //contentSection.addClass('loading');
+                managementDialog.block();
                 var service = managementDialog.dashboard.getServiceById(widget.serviceId);
                 service.getData(function(err, result) {
-                  //contentSection.removeClass('loading');
                   addParam(result);
+                  managementDialog.unblock();
                 });
               }
             }
@@ -994,6 +996,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         form = widget.createForm();
       }
 
+      // Check that if it is admin and if dialog page opened up from management dialog
+      // activeDialog does not set when user dialog opened or settings icon clicked
+      var isManagementDialog = collection.dashboard.account.isAdmin() &&
+        collection.dashboard.activeDialog ? true : false;
+
       var createWidgetPage = {
         name: 'widget|edit',
         headerOptions: {
@@ -1011,71 +1018,69 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         },
         footerOptions: {
           buttons: [{
+            name: 'Go<br/>Back',
+            class: 'critical',
+            icon: 'fa-arrow-left',
+            visible : isManagementDialog,
+            click: function(event) {
+              event.preventDefault();
+              managementDialog.block();
+              managementDialog.getPage('module|main', 'slideUpDown');
+            }
+          }, {
             name: 'Save<br/>Widget',
             class: 'success',
             icon: 'fa-save',
-            // Save Widget visible if it is admin and if dialog page showed up from management dialog
-            visible : collection.dashboard.account.isAdmin() &&
-              collection.dashboard.activeDialog ? true : false, // activeDialog does not set when user opened
+            visible : isManagementDialog,
             click: function(event) {
               event.preventDefault();
-              widget.events.onSave(widget, collection);
+              managementDialog.block();
+
+              widget.events.onSave(widget, collection, function(err, result) {
+                if (err) {
+                  console.error(err);
+                } else {
+                  managementDialog.getPage('module|main', 'slideUpDown');
+                  collection.dashboard.orchestrator.swiper.removeAllSlides();
+                  collection.dashboard.orchestrator.events.onModuleSelected(module);
+                }
+              });
+            }
+          }, {
+            name: 'Add<br/>Chart',
+            icon: 'fa-dashboard',
+            visible : isManagementDialog,
+            click: function(event) {
+              event.preventDefault();
+              collection.events.onCreateChart(widget);
+            }
+          }, {
+            name: 'Add to<br/>Dashboard',
+            icon: 'fa-plus-square',
+            visible : isManagementDialog,
+            click: function(event) {
+              event.preventDefault();
+              var newWidget = _.clone(widget);
+              newWidget.uid = getUniqueId(globalUniqueIdLength);
+
+              // TODO: should control same widget id exists or not
+              newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
+              newWidget.isPrototype = false;
+              collection.add(newWidget);
+              collection.dashboard.save(collection.dashboard.events.onSaved);
+              collection.dashboard.activeDialog.close();
+            }
+          }, {
+            name: 'Close<br/>Dialog',
+            class: 'danger',
+            icon: 'fa-sign-out',
+            click: function(event) {
+              event.preventDefault();
+              collection.dashboard.activeDialog.close();
             }
           }]
         }
       };
-
-      createWidgetPage.footerOptions.buttons.push({
-        name: 'Create<br/>Chart',
-        icon: 'fa-dashboard',
-        visible : collection.dashboard.account.isAdmin() &&
-          collection.dashboard.activeDialog ? true : false, // activeDialog does not set when user opened
-        click: function(event) {
-          event.preventDefault();
-          collection.events.onCreateChart(widget);
-        }
-      });
-
-      if (editWidget) {
-        createWidgetPage.footerOptions.buttons.push({
-          name: 'Close<br/>Dialog',
-          class: 'danger',
-          icon: 'fa-sign-out',
-          click: function(event) {
-            event.preventDefault();
-            collection.dashboard.activeDialog.close();
-          }
-        });
-
-        createWidgetPage.footerOptions.buttons.push({
-          name: 'Add to<br/>Dashboard',
-          icon: 'fa-plus-square',
-          // Save Widget visible if it is admin and if dialog page showed up from management dialog
-          visible : collection.dashboard.account.isAdmin() &&
-            collection.dashboard.activeDialog ? true : false,
-          click: function(event) {
-            event.preventDefault();
-            var newWidget = _.clone(widget);
-            newWidget.uid = getUniqueId(globalUniqueIdLength);
-            // TODO: should control same widget id exists or not
-            newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
-            newWidget.isPrototype = false;
-            collection.add(newWidget);
-            collection.dashboard.save(collection.dashboard.events.onSaved);
-            collection.dashboard.activeDialog.close();
-          }
-        });
-      } else {
-        createWidgetPage.footerOptions.buttons.push({
-          name: 'Go<br/>Back',
-          class: 'critical',
-          icon: 'fa-arrow-left',
-          click: function(event) {
-            event.preventDefault();
-            managementDialog.getPage('module|main', 'slideUpDown');
-          }
-        });
-      }
 
       managementDialog.dashboard = collection.dashboard;
       managementDialog.orchestrator = collection.dashboard.orchestrator;
@@ -1120,6 +1125,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
+              managementDialog.block();
               managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
@@ -1128,14 +1134,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-save',
             click: function(event) {
               event.preventDefault();
-              $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+              managementDialog.block();
 
-              // Save dashboard
               module.events.onSave(module, function(err, result) {
-                $('.dialog').prop('disabled', false).removeClass('passive-dialog loading');
-                managementDialog.getPage('module|main', 'slideUpDown');
-                collection.dashboard.orchestrator.swiper.removeAllSlides();
-                collection.dashboard.orchestrator.events.onModuleSelected(module);
+                if (err) {
+                  console.error(err);
+                } else {
+                  managementDialog.getPage('module|main', 'slideUpDown');
+                  collection.dashboard.orchestrator.swiper.removeAllSlides();
+                  collection.dashboard.orchestrator.events.onModuleSelected(module);
+                }
               });
             }
           }, {
@@ -1254,6 +1262,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             icon: 'fa-arrow-left',
             click: function(event) {
               event.preventDefault();
+              managementDialog.block();
               managementDialog.getPage('module|main', 'slideUpDown');
             }
           }, {
@@ -1263,15 +1272,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             click: function(event) {
               event.preventDefault();
               if (service.ajaxOptions.url) {
-                $('.dialog').prop('disabled', true).addClass('passive-dialog loading');
+                managementDialog.block();
                 // Save service
-                if (editService) {
-                  service.events.onUpdate(service);
-                } else {
-                  service.events.onSave(service);
-                }
+                service.events.onSave(service, function(err, result) {
+                  if (err) {
+                    console.error(err);
+                  } else {
+                    managementDialog.getPage('module|main', 'slideUpDown');
+                    var orchestrator = collection.dashboard.orchestrator;
+                    orchestrator.swiper.removeAllSlides();
+                    orchestrator.events.onModuleSelected(orchestrator.selected);
+                  }
+                });
               } else {
-                console.error('Connection settings not specified for web service. Please create connection first.');
+                alert('Connection settings not specified for web service. Please create connection first.');
               }
             }
           }, {
@@ -1864,7 +1878,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
       widget.collection.dashboard.save(widget.collection.dashboard.events.onSaved);
     },
-    onSave: function(widget, collection) {
+    onSave: function(widget, collection, callback) {
       var dashboard = null;
 
       function processSave(widget) {
@@ -1879,7 +1893,13 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           module.widgetPrototypes[widgetIndex] = widget;
         }
 
-        dashboard.save(dashboard.events.onSaved);
+        dashboard.save(function(err, result) {
+          if (callback) {
+            callback(err, result);
+          } else {
+            dashboard.events.onSaved(err, result);
+          }
+        });
       }
 
       widget = widget.loadForm();
@@ -1938,7 +1958,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     self.xSize = $('.form-row .form-item .item-xsize').val();
     self.ySize = $('.form-row .form-item .item-ysize').val();
     self.serviceId = $('.form-row .form-item .item-serviceId').val();
-    self.contentType = $('.form-row .form-item .item-contentType').val();
+    //self.contentType = $('.form-row .form-item .item-contentType').val();
 
     self.description = $('.form-row .form-item .item-description').val();
 
@@ -1979,6 +1999,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           order = 2;
           break;
         case 'contentType':
+          label.append($('<span>Widget Type</span>'));
+          item.append($('<span class="item-contentType">' + (record ? record[key] : value) + '</span>'));
+          propertyRequired = true;
+          order = 3;
+          break;
+          /*
           var contentTypeSelect = $('<select class="item-contentType text"></select>');
           contentTypeSelect.append($('<option value="chart">Chart</option>'))
                            .append($('<option value="html">HTML</option>'));
@@ -1992,7 +2018,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           item.append(contentTypeSelect);
           propertyRequired = true;
           order = 3;
-          break;
+          break;*/
         case 'template':
           // html
           label.append($('<span>Template</span>')).css({'vertical-align':'top', 'padding':'15px 0 0 0'});
@@ -2006,28 +2032,28 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         case 'row':
           label.append($('<span>Row</span>'));
           item.append($('<input class="item-row text" type="number" required />')
-            .val(record ? record[key] : ''));
+            .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 6;
           break;
         case 'col':
           label.append($('<span>Column</span>'));
           item.append($('<input class="item-col text" type="number" required />')
-            .val(record ? record[key] : ''));
+            .val(record ? record[key] : '1'));
           propertyRequired = true;
           order = 7;
           break;
         case 'xSize':
           label.append($('<span>Width Size</span>'));
           item.append($('<input class="item-xsize text" type="number" required />')
-            .val(record ? record[key] : '1'));
+            .val(record ? record[key] : '2'));
           propertyRequired = true;
           order = 8;
           break;
         case 'ySize':
           label.append($('<span>Height Size</span>'));
           item.append($('<input class="item-ysize text" type="number" required />')
-            .val(record ? record[key] : '1'));
+            .val(record ? record[key] : '2'));
           propertyRequired = true;
           order = 9;
           break;
@@ -2807,9 +2833,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               }
             }
             result.dashboard.save(function(err, result) {
-              /*result.dashboard.events.onSaved*/
               if (callback) {
-                callback();
+                callback(err, result);
               }
             });
           } else {
@@ -3360,7 +3385,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           break;
         case 'schedule':
           label.append($('<span>Schedule</span>'));
-          item.append($('<input class="item-schedule text" type="text" placeholder="*/5 * * * * (every 5 minute, cron string)" />')
+          item.append($('<input class="item-schedule text" type="text" placeholder="*/5 * * * * (eg. every 5 minute, cron string)" />')
             .val(record ? record[key] : self.schedule));
           propertyRequired = true;
           order = 5;
@@ -3447,28 +3472,20 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
     return formContainer;
   };
   MService.prototype.events = {
-    onSave: function (service) {
+    onSave: function (service, callback) {
       service.loadForm(function(err, result) {
         if (err) {
           console.error(err);
         } else {
           if (result) {
             result.module.service = service;
-            result.module.dashboard.save(result.module.dashboard.events.onSaved);
-          } else {
-            console.error('Could not load form values');
-          }
-        }
-      });
-    },
-    onUpdate: function(service) {
-      service.loadForm(function(err, result) {
-        if (err) {
-          console.error(err);
-        } else {
-          if (result) {
-            result.module.service = service;
-            result.module.dashboard.save(result.module.dashboard.events.onSaved);
+            result.module.dashboard.save(function(err, result) {
+              if (callback) {
+                callback(err, result);
+              } else {
+                result.module.dashboard.events.onSaved(err, result);
+              }
+            });
           } else {
             console.error('Could not load form values');
           }
@@ -3598,7 +3615,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           var orchestrator = dialogPage.dialog.orchestrator;
           if (orchestrator) {
             orchestrator.setBreadcrumb(orchestrator.selected);
-            // todo
+            dialogPage.dialog.unblock();
           }
           break;
       }
@@ -4712,14 +4729,18 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         collection.events.onCreateService(collection, serviceId);
       } else if (widgetId) {
         if (dashboard.activeDialog.name === 'user') {
+          // User wants to add widget to dashboard
+          // find widget prototype and create new widget using prototype
           dashboard.getWidgetPrototypeById(widgetId, function(widgetPrototype) {
             if (widgetPrototype) {
               var newWidget = _.clone(widgetPrototype);
               newWidget.uid = getUniqueId(globalUniqueIdLength);
+
               // TODO: should control same widget id exists or not
               newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
               newWidget.isPrototype = false;
               collection.add(newWidget);
+              debugger;
               dashboard.save(dashboard.events.onSaved);
               dashboard.activeDialog.close();
             } else {
