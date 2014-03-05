@@ -923,7 +923,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             // Save Widget visible if it is admin and if dialog page showed up from management dialog
             click: function(event) {
               event.preventDefault();
-              managementDialog.block();
 
               chart = chart.events.onSave(chart, widget.collection);
               if (chart.widget.collection) {
@@ -1041,8 +1040,9 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                   console.error(err);
                 } else {
                   managementDialog.getPage('module|main', 'slideUpDown');
-                  collection.dashboard.orchestrator.swiper.removeAllSlides();
-                  collection.dashboard.orchestrator.events.onModuleSelected(module);
+                  var orchestrator = collection.dashboard.orchestrator;
+                  orchestrator.swiper.removeAllSlides();
+                  orchestrator.events.onModuleSelected(orchestrator.selected);
                 }
               });
             }
@@ -2386,7 +2386,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               return serie;
 
             case 'min':
-              debugger;
               var minResult = _.min(dataArray, function(arrayItem) {
                 return arrayItem[item.valueField];
               });
@@ -4662,6 +4661,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           return;
         }
       }
+      
       orchestrator.selected = module;
 
       // management dialog
@@ -4740,9 +4740,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
               newWidget.id = 'mwidget-' + (collection.widgets.length + 1);
               newWidget.isPrototype = false;
               collection.add(newWidget);
-              debugger;
-              dashboard.save(dashboard.events.onSaved);
-              dashboard.activeDialog.close();
+
+              dashboard.save(function(err, result) {
+                dashboard.events.onSaved(err, result);
+                window.location.reload(true);
+              });
+
             } else {
               console.error('Widget prototype could not be found');
             }
