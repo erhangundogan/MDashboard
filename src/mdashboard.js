@@ -640,7 +640,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       buttons.push(saveButton);
 
       // Add management button
-      if (self.dashboard.account && self.dashboard.account.roles.indexOf('admin') >= 0) {
+      if (self.dashboard.account.isAdmin()) {
         var manageButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-cogs"></i></a>')
           .attr('title', 'Manage Services')
           .click(function () {
@@ -649,11 +649,49 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
         buttons.push(manageButton);
 
         var deleteButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-times-circle-o"></i></a>')
-          .attr('title', 'Delete Configuration')
+          .attr('title', 'Reset Dashboard')
           .click(function () {
             self.dashboard.events.onDeleteConfig(self.dashboard);
           });
         buttons.push(deleteButton);
+
+        var loadConfigurationButton = $('<a href="#" class="btn"><i class="fa fa-3x fa-download"></i></a>')
+          .attr('title', 'Load Dashboard')
+          .click(function () {
+            var serviceAddress = window.location.origin + '/Service/Common/CommonService.svc/GetDashboardData';
+
+            var request = $.ajax({
+                url: serviceAddress,
+                type: 'GET',
+                processData: true,
+                contentType: "application/json; charset=utf-8",
+                dataType: 'json',
+                cache: false
+            });
+
+            request.done(function (msg) {
+              if (msg.result.Success && msg.result.Data) {
+                localStorage.setItem('dashboard499', msg.result.Data);
+                var dashboard = new MDashboard().init();
+                if (dashboard.isLoaded) {
+                  dashboard.collections[0].invalidate();
+                  window.location.reload(true);
+                } else {
+                  dashboard.createCollection(function (err, collection) {
+                    collection.render();
+                  });
+                }
+              } else {
+                console.error('Could not get default dashboard configuration.');
+              }
+            });
+
+            request.fail(function (jqXHR, status, error) {
+              console.error(error);
+            });
+        });
+
+        buttons.push(loadConfigurationButton);
       }
 
 
@@ -4661,7 +4699,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           return;
         }
       }
-      
+
       orchestrator.selected = module;
 
       // management dialog
