@@ -624,9 +624,34 @@ a {
 .service-container .form-button,
 .service-ajax-container .form-button {
   display: inline-block;
-  margin-left: .5em;
+  margin: -4px 0 0 7px;
+  padding: 4px 3px 0 6px;
   vertical-align: middle;
   line-height: 30px;
+  background-color: #5d5d5d;
+  border: solid 1px #3e3e3e;
+  -webkit-box-shadow: inset 1px 1px 0 0 rgba(255,255,255,.65);
+  -moz-box-shadow: inset 1px 1px 0 0 rgba(255,255,255,.65);
+  box-shadow: inset 1px 1px 0 0 rgba(255,255,255,.65);
+}
+
+.widget-container .form-button:hover,
+.chart-container .form-button:hover,
+.module-container .form-button:hover,
+.service-container .form-button:hover,
+.service-ajax-container .form-button:hover {
+  background-color: #6e6e6e;
+}
+
+.widget-container .form-button:active,
+.chart-container .form-button:active,
+.module-container .form-button:active,
+.service-container .form-button:active,
+.service-ajax-container .form-button:active {
+  background-color: #6e6e6e;
+  -webkit-box-shadow: inset 1px 1px 0 0 rgba(0,0,0,.25), inset -1px -1px 0 0 rgba(255,255,255,.45);
+  -moz-box-shadow: inset 1px 1px 0 0 rgba(0,0,0,.25), inset -1px -1px 0 0 rgba(255,255,255,.45);
+  box-shadow: inset 1px 1px 0 0 rgba(0,0,0,.25), inset -1px -1px 0 0 rgba(255,255,255,.45);
 }
 
 .form-label input[type='text'].text,
@@ -662,7 +687,7 @@ a {
   position: relative;
   z-index: 2;
   display: inline-block;
-  width: 475px;
+  width: 450px;
   margin: 5px 0;
   outline: 0;
   -webkit-border-radius: 0;
@@ -692,12 +717,18 @@ a {
 }
 
 .form-item select.text {
-  width: 497px;
+  width: 472px;
 }
 
 .form-item select.text.short {
-  width: 245px !important;
+  width: 233px !important;
   margin-right: 7px;
+}
+
+.form-item input[type='checkbox'] {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
 }
 
 .form-label input[type=text]  {
@@ -1075,7 +1106,6 @@ form.form, .form-row {
   list-style-type: none;
   height: 88px;
   line-height: 88px;
-  vertical-align: middle;
   float: left;
   margin-top: 1px;
   border-radius: 5px 0 0 5px;
@@ -1090,6 +1120,10 @@ form.form, .form-row {
 .swiper-parent-item img:hover {
   cursor: pointer;
   -webkit-filter: invert(1);
+}
+
+.swiper-parent-item > img, .swiper-parent-item > i {
+  vertical-align: middle;
 }
 
 #swiper-parent-module, .current-module-well {

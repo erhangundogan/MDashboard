@@ -826,7 +826,6 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
 
         var removeButton = $('<a href="#" class="form-button red"><i class="fa fa-times fa-2x fa-white"></i></a>')
           .attr('data-order', paramOrder)
-          .css({'vertical-align':'top', 'padding':'10px 0 0 0'})
           .click(function(event) {
             var itemId = $(this).attr('data-order');
             $('div.form-row[data-order=' + itemId + ']').remove();
@@ -845,7 +844,8 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
           .change(function() {
             var selectedKey = $(this).val(),
                 containerItem = $(this).parents('.form-item'),
-                paramValue = $(this).attr('data-order');
+                paramValue = $(this).attr('data-order'),
+                dataResult = null;
 
             // remove category options if exists
             containerItem.find('.param-category').remove();
@@ -853,9 +853,22 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
             containerItem.find('.param-value-field').remove();
             containerItem.find('br').remove();
 
+            if (result[selectedKey] && _.isString(result[selectedKey])) {
+                var resultset = $.parseJSON(result[selectedKey]);
+                if (resultset && _.isObject(resultset)) {
+                    if (resultset.Table) {
+                        dataResult = resultset.Table;
+                    } else {
+                        dataResult = resultset;
+                    }
+                }
+            } else {
+                dataResult = result[selectedKey];
+            }
+
             // if selected serie is an array and has items
-            if (result[selectedKey] && _.isArray(result[selectedKey]) && result[selectedKey].length > 0) {
-              var firstItem = result[selectedKey][0];
+            if (dataResult && _.isArray(dataResult) && dataResult.length > 0) {
+              var firstItem = dataResult[0];
 
               if (firstItem && _.isObject(firstItem)) {
                 var categories = Object.keys(firstItem),
@@ -1209,6 +1222,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                      .append(removeButton)
                      .attr('data-order', paramOrder);
               form.append(formRow);
+
+              $('#dialog-inner-content').animate({
+                  scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
+              }, 2000);
+
               ++paramOrder;
             }
           }]
@@ -1254,6 +1272,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                .append(removeButton)
                .attr('data-order', paramOrder);
         form.append(formRow);
+
+        $('#dialog-inner-content').animate({
+            scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
+        }, 2000);
+
         ++paramOrder;
       };
 
@@ -1408,6 +1431,11 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                .append(removeButton)
                .attr('data-order', paramOrder);
         form.find('form.form').append(formRow);
+
+        $('#dialog-inner-content').animate({
+            scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
+        }, 2000);
+
         ++paramOrder;
       };
 
@@ -2338,6 +2366,14 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
       if (self.series && self.series.length > 0) {
         chartOptions.series = _.map(self.series, function(item) {
           var dataArray = data[item.serviceResultProperty];
+
+          if (dataArray && _.isString(dataArray)) {
+             dataArray = $.parseJSON(dataArray);
+             if (dataArray && _.isObject(dataArray) && dataArray.Table) {
+                dataArray = dataArray.Table;
+             }
+          }
+
           var serie = {
             name: item.serieName || item.serviceResultProperty,
             data: []
@@ -2556,6 +2592,16 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                     },
                     credits: {
                       enabled: false
+                    },
+                    xAxis: {
+                        labels: {
+                            rotation: -90,
+                            align: 'right',
+                            style: {
+                                fontSize: '10px',
+                                fontFamily: 'Arial, sans-serif'
+                            }
+                        }
                     }
                   };
                   configItem.val(JSON.stringify(config, null, 2));
@@ -2917,7 +2963,7 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   };
   MModule.prototype.deserialize = function(data, owner) {
     var self = this;
-    
+
     self.uid = data.uid;
     self.name = data.name;
     self.image = data.image;

@@ -1,0 +1,129 @@
+{"mType": "MDashboard", "uid": "CAF91BE155B237C7E76C484814F83C82", "options": {}, "account": {
+  "uid": "69B1F94942880C8B486DE2C6BC06F50E",
+  "roles": ["admin"],
+  "userId": 499,
+  "owner": "CAF91BE155B237C7E76C484814F83C82"
+}, "modules": [
+  {
+    "mType": "MModule",
+    "uid": "3CA826A67809F1F97282053B3D9010EC",
+    "name": "Task",
+    "image": null,
+    "icon": "fa-question-circle",
+    "description": "",
+    "tags": [""],
+    "params": [],
+    "parent": null,
+    "dashboard": "CAF91BE155B237C7E76C484814F83C82",
+    "service": {
+      "mType": "MService",
+      "uid": "B66CCDE7E4CA1F292FFE19F4FADB23D1",
+      "name": "TaskService",
+      "description": "",
+      "schedule": "",
+      "isScheduled": false,
+      "image": null,
+      "icon": "fa-gear",
+      "ajaxOptions": {
+        "contentType": "application/x-www-form-urlencoded; charset=UTF-8",
+        "data": {
+          "command": "select * from TaskView"
+        },
+        "dataType": "json",
+        "processData": true,
+        "timeout": 20000,
+        "type": "GET",
+        "url": "http://demo.merlon.com.tr/Service/Administration/DBManagementService.svc/RunCommandText",
+        "jsonp": "callback",
+        "jsonpCallback": "jsonpCallback",
+        "crossDomain": false
+      },
+      "params": [],
+      "module": "3CA826A67809F1F97282053B3D9010EC"
+    },
+    "modules": [],
+    "widgetPrototypes": [
+      {
+        "mType": "MWidget",
+        "contentType": "chart",
+        "description": "",
+        "template": "<div id=\"chart1\"></div>",
+        "name": "MWidget",
+        "header": "Task",
+        "id": "mwidget-1",
+        "isClosable": true,
+        "isLocked": false,
+        "isPrototype": true,
+        "moduleId": "3CA826A67809F1F97282053B3D9010EC",
+        "order": 1,
+        "settings": true,
+        "uid": "8B9DF746579A4A965ED90260FD4420F9",
+        "xSize": "6",
+        "ySize": "5",
+        "col": "1",
+        "row": "1",
+        "serviceId": "B66CCDE7E4CA1F292FFE19F4FADB23D1",
+        "html": {},
+        "chart": {
+          "mType": "MChart",
+          "library": "highcharts",
+          "type": "column",
+          "uid": "7FB0ADA7CB437216665BEE5041B5856E",
+          "container": "#chart1",
+          "config": "{\"chart\":{\"type\":\"column\"},\"credits\":{\"enabled\":false},\"xAxis\":{\"labels\":{\"rotation\":-90,\"align\":\"right\",\"style\":{\"fontSize\":\"10px\",\"fontFamily\":\"Arial, sans-serif\"}}}}",
+          "series": "[{\"serieName\":\"\",\"serviceResultProperty\":\"Data\",\"categoryField\":\"OperationTypeName\",\"aggregateFunction\":\"count\",\"valueField\":\"OperationTypeName\"}]",
+          "widget": "8B9DF746579A4A965ED90260FD4420F9"
+        }
+      }
+    ]
+  }
+], "collections": [
+  {
+    "mType": "MWidgetCollection",
+    "uid": "BD1A522033034DAF57E59056AD29E287",
+    "columnMargin": 25,
+    "columnWidth": 64,
+    "height": 979,
+    "order": 1,
+    "rowHeight": 113,
+    "rowMargin": 25,
+    "width": 1145,
+    "dashboard": "CAF91BE155B237C7E76C484814F83C82",
+    "widgets": [
+      {
+        "mType": "MWidget",
+        "contentType": "chart",
+        "description": "",
+        "template": "<div id=\"chart1\"></div>",
+        "name": "MWidget",
+        "header": "Task",
+        "height": 405,
+        "id": "mwidget-1",
+        "isClosable": true,
+        "isLocked": false,
+        "isPrototype": false,
+        "moduleId": "3CA826A67809F1F97282053B3D9010EC",
+        "order": 1,
+        "settings": true,
+        "uid": "8895A45AA7900C7C25C746CC988B6504",
+        "width": 748,
+        "xSize": 7,
+        "ySize": 3,
+        "col": "1",
+        "row": "1",
+        "serviceId": "B66CCDE7E4CA1F292FFE19F4FADB23D1",
+        "html": {},
+        "chart": {
+          "mType": "MChart",
+          "library": "highcharts",
+          "type": "column",
+          "uid": "7FB0ADA7CB437216665BEE5041B5856E",
+          "container": "#chart1",
+          "config": "{\"chart\":{\"type\":\"column\"},\"credits\":{\"enabled\":false},\"xAxis\":{\"labels\":{\"rotation\":-90,\"align\":\"right\",\"style\":{\"fontSize\":\"10px\",\"fontFamily\":\"Arial, sans-serif\"}}}}",
+          "series": "[{\"serieName\":\"\",\"serviceResultProperty\":\"Data\",\"categoryField\":\"OperationTypeName\",\"aggregateFunction\":\"count\",\"valueField\":\"OperationTypeName\"}]",
+          "widget": "8895A45AA7900C7C25C746CC988B6504"
+        }
+      }
+    ]
+  }
+]}
