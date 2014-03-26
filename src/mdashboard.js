@@ -154,6 +154,10 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
   MAccount.prototype.isAdmin = function() {
     return this.roles.indexOf('admin') >= 0;
   };
+  MAccount.prototype.authenticate = function() {
+  };
+  MAccount.prototype.getDashboards = function() {
+  };
 
   /**
    * MDashboard
@@ -1223,9 +1227,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                      .attr('data-order', paramOrder);
               form.append(formRow);
 
-              $('#dialog-inner-content').animate({
-                  scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
-              }, 2000);
+              var paramRow = $('.form-row[data-order='+paramOrder+']');
+              if (paramRow && paramRow.length > 0) {
+                $('#dialog-inner-content').animate({
+                    scrollTop: paramRow.offset().top
+                }, 2000);
+              }
 
               ++paramOrder;
             }
@@ -1273,9 +1280,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                .attr('data-order', paramOrder);
         form.append(formRow);
 
-        $('#dialog-inner-content').animate({
-            scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
-        }, 2000);
+        var paramRow = $('.form-row[data-order='+paramOrder+']');
+        if (paramRow && paramRow.length > 0) {
+          $('#dialog-inner-content').animate({
+              scrollTop: paramRow.offset().top
+          }, 2000);
+        }
 
         ++paramOrder;
       };
@@ -1432,9 +1442,12 @@ var MDashboard, MWidgetCollection, MWidget, MChart, MService,
                .attr('data-order', paramOrder);
         form.find('form.form').append(formRow);
 
-        $('#dialog-inner-content').animate({
-            scrollTop: $('.form-row[data-order='+paramOrder+']').offset().top
-        }, 2000);
+        var paramRow = $('.form-row[data-order='+paramOrder+']');
+        if (paramRow && paramRow.length > 0) {
+          $('#dialog-inner-content').animate({
+              scrollTop: paramRow.offset().top
+          }, 2000);
+        }
 
         ++paramOrder;
       };
