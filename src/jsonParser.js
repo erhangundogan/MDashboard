@@ -5,20 +5,14 @@
   };
   (function () {
     var favicon = 'favicon',
-      online = 'online',
-      $status = document.getElementById('status'),
-      slash = '/',
-      dot = '.',
-      parser = 'parser',
-      semicolumn = ':',
-      json = 'json',
-      $head = document.querySelector('head'),
-      $result = document.getElementById('result'),
-      $editor = document.getElementById('editor'),
-      fr = 'fr',
-      event_keyup = 'keyup',
-      event_click = 'click';
-    //root = 'http' + semicolumn + slash + slash + json + dot + parser + dot + online + dot + fr + slash;
+        $status = document.getElementById('status'),
+        json = 'json',
+        $head = document.querySelector('head'),
+        $result = document.getElementById('result'),
+        $editor = document.getElementById('editor'),
+        event_keyup = 'keyup',
+        event_click = 'click';
+
     for (var i = 0, nodes = document.querySelectorAll('.ui-option'), node; node = nodes[i]; i++) {
       node.addEventListener(event_click, function () {
         document.querySelector('body').classList.toggle(this.id)
@@ -342,17 +336,6 @@
       return result
     }
 
-    /*
-    if ((document.location + '').search(root) !== 0) {
-      parse = function () {
-        return {
-          html: '',
-          valid: true
-        }
-      };
-      return
-    }
-    */
 
     function analyze() {
       function trim(s) {
@@ -395,12 +378,7 @@
     $editor.addEventListener(event_keyup, analyze, false);
     $editor.addEventListener(event_click, analyze, false);
     analyze();
-    /*
-    if (root.length !== 22 + favicon.length) {
-      analyze = function () {
-      };
-      return
-    }*/
+
     $editor.select()
   })()
 })();
